@@ -1,0 +1,86 @@
+/* Tiptap 编辑器视觉：和画布同字体族但缩小到屏幕可读尺寸。
+ * 画布是 1080×1920，编辑器是屏幕原尺寸——这里只关心可读，不关心还原。 */
+
+.tiptap-editor {
+  font-family:
+    "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #1a1a1a;
+  outline: none;
+}
+
+.tiptap-editor :focus {
+  outline: none;
+}
+
+.tiptap-editor h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 12px 0;
+}
+
+.tiptap-editor h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  padding-left: 12px;
+  border-left: 4px solid #1a1a1a;
+}
+
+.tiptap-editor h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+}
+
+.tiptap-editor p {
+  margin: 8px 0;
+}
+
+.tiptap-editor blockquote {
+  background: #eee;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin: 10px 0;
+  color: #444;
+}
+
+.tiptap-editor pre {
+  background: #f4f4f4;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+.tiptap-editor hr {
+  border: none;
+  border-top: 1px dashed #aaa;
+  margin: 16px 0;
+}
+
+.tiptap-editor hr.page-break {
+  border-top: 2px dashed #2563eb;
+  position: relative;
+  margin: 24px 0;
+}
+
+.tiptap-editor hr.page-break::after {
+  content: "↓ 分页 ↓";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fafaf8;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #2563eb;
+}
+
+.tiptap-editor ul,
+.tiptap-editor ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
