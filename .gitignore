@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 编辑器/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志和临时文件
+*.log
+*.tmp
+tmp/
+temp/
+
+# Node（为 Step 2 React 重构预留）
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# 用户产物（不提交）
+*.zip
+exports/

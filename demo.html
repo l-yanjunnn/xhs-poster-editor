@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小红书排版 demo</title>
+<style>
+/* ========== 设计 Token ========== */
+:root {
+  /* 画布 */
+  --canvas-w: 1080px;
+  --canvas-h: 1920px;
+  --page-padding-x: 80px;
+  --page-padding-top: 260px;   /* Logo 底部约在 180px，正文从此处下方开始留白 */
+  --page-padding-bottom: 120px;
+
+  /* Logo */
+  --logo-size: 120px;
+  --logo-offset-x: 60px;
+  --logo-offset-y: 60px;
+
+  /* 字体 */
+  --font-display: "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --font-body: "PingFang SC", "Source Han Sans SC", "Hiragino Sans GB", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  --font-en: "Inter", "Helvetica Neue", sans-serif;
+
+  /* 字号 */
+  --fs-h1: 64px;
+  --fs-h2: 40px;
+  --fs-h3: 32px;
+  --fs-body: 28px;
+  --fs-quote: 28px;
+  --fs-code: 24px;
+  --fs-caption: 22px;
+
+  /* 行高 */
+  --lh-display: 1.3;
+  --lh-body: 1.85;
+  --lh-code: 1.5;
+
+  /* 颜色（浅底主题 — 之后可通过 .theme-dark 等覆写）*/
+  --c-text-primary: #1a1a1a;
+  --c-text-secondary: #4a4a4a;
+  --c-text-muted: #888;
+  --c-accent: #1a1a1a;
+  --c-quote-bg: rgba(0,0,0,0.05);
+  --c-code-bg: rgba(0,0,0,0.04);
+  --c-divider: rgba(0,0,0,0.25);
+  --c-overlay-tint: rgba(255,255,255,0);
+  --c-overlay-opacity: 0;
+
+  /* 间距 */
+  --gap-paragraph: 24px;
+  --gap-h1-after: 56px;
+  --gap-h2-before: 64px;
+  --gap-h2-after: 24px;
+  --gap-h3-before: 40px;
+  --gap-h3-after: 16px;
+  --gap-block: 28px;
+}
+
+/* ========== 基础 ========== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #2a2a2a; /* 编辑视图外的环境色，正式导出时不会出现 */
+  font-family: var(--font-body);
+  color: var(--c-text-primary);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+/* ========== 单页 ========== */
+.page {
+  position: relative;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+
+.page .bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.page .overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--c-overlay-tint);
+  opacity: var(--c-overlay-opacity);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.page .logo {
+  position: absolute;
+  top: var(--logo-offset-y);
+  right: var(--logo-offset-x);
+  width: var(--logo-size);
+  height: var(--logo-size);
+  object-fit: contain;
+  z-index: 3;
+}
+
+.page .content {
+  position: relative;
+  z-index: 2;
+  padding: var(--page-padding-top) var(--page-padding-x) var(--page-padding-bottom);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== Block 样式 ========== */
+.content > * + * { margin-top: var(--gap-paragraph); }
+
+h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-display);
+  font-weight: 700;
+  color: var(--c-text-primary);
+  letter-spacing: -0.5px;
+  /* 默认窄版，编辑器里可切宽窄两挡 */
+  max-width: 66%;
+  /* 换行策略：中英文混排时尽量不拆开词组；text-wrap pretty 让浏览器智能平衡行 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+h1.h1-full { max-width: 100%; }
+h1.h1-narrow { max-width: 66%; }
+/* 用户也可以在 H1 内部写 <br> 自己控制断行点 */
+.content > h1 + * { margin-top: var(--gap-h1-after); }
+
+h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-display);
+  font-weight: 700;
+  color: var(--c-text-primary);
+  padding-left: 20px;
+  position: relative;
+}
+h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8%;
+  bottom: 8%;
+  width: 5px;
+  background: var(--c-accent);
+  border-radius: 1px;
+}
+.content > * + h2 { margin-top: var(--gap-h2-before); }
+.content > h2 + * { margin-top: var(--gap-h2-after); }
+
+h3 {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-display);
+  font-weight: 600;
+  color: var(--c-text-primary);
+}
+.content > * + h3 { margin-top: var(--gap-h3-before); }
+.content > h3 + * { margin-top: var(--gap-h3-after); }
+
+p {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-primary);
+  text-align: justify;
+}
+
+blockquote {
+  background: var(--c-quote-bg);
+  padding: 22px 28px;
+  border-radius: 6px;
+  font-size: var(--fs-quote);
+  line-height: var(--lh-body);
+  color: var(--c-text-secondary);
+}
+.content > * + blockquote,
+.content > blockquote + * { margin-top: var(--gap-block); }
+
+pre {
+  background: var(--c-code-bg);
+  padding: 24px 28px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
+  color: var(--c-text-primary);
+  overflow-x: auto;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--c-code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+pre code { background: none; padding: 0; }
+
+ul, ol {
+  padding-left: 36px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-primary);
+}
+ul li, ol li { margin-bottom: 8px; }
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--c-divider);
+  margin: 0;
+}
+.content > * + hr, .content > hr + * { margin-top: var(--gap-block); }
+
+/* 标签：用于"页码"等辅助标识 */
+.page-tag {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  color: var(--c-text-muted);
+  font-family: var(--font-en);
+  letter-spacing: 2px;
+  z-index: 4;
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 第 1 页 ============ -->
+<div class="page">
+  <img class="bg" src="assets/bg-xuan-paper.png" alt="">
+  <div class="overlay"></div>
+  <img class="logo" src="assets/logo-cat-ring.png" alt="">
+  <div class="content">
+    <h1>真没招了，只能比影视飓风薪资更高一点儿</h1>
+
+    <p>这是我小号。小红书试一试</p>
+    <p>作为26岁创业者，团队全是零零后，正在从1→10扩张，急缺更厉害的小伙伴加入我们。</p>
+    <p>Boss直聘猎聘真是老登平台 班味太重。</p>
+
+    <blockquote>学习；进步；好奇心；工作就是玩耍（应该）…… 这些应当是 AI时代的必备精神。</blockquote>
+
+    <h2>参考影视飓风，</h2>
+    <p>我们暂时更激进（人多以后就不一定）：</p>
+    <p>扁平管理；保证双休；远程办公；不搞打卡；弹性请假；想休息就休息，工作时间自己管理。</p>
+    <p>每人发放配备MacBookPro，附送每月Claude的200刀最新订阅等。技术小伙伴帮所有人配齐，确保时时刻刻都能登陆。</p>
+    <p>然后再说岗位，这个真的无所谓了。</p>
+  </div>
+  <div class="page-tag">1 / 2</div>
+</div>
+
+<!-- ============ 第 2 页 ============ -->
+<div class="page">
+  <img class="bg" src="assets/bg-xuan-paper.png" alt="">
+  <div class="overlay"></div>
+  <img class="logo" src="assets/logo-cat-ring.png" alt="">
+  <div class="content">
+    <h2>公司的业务领域是：</h2>
+    <p>【AI】【自媒体】【toC教育】【toB咨询】</p>
+    <p>只需要好奇心强，在【某一领域】足够专业、具备品位。对经验、学历等等没有任何要求。</p>
+    <p>最急缺的岗位我会放在评论区。12～24k不等。</p>
+
+    <h2>最后证明不是骗子，创业真的是因为好玩。</h2>
+    <p>我的技能点是长这样的：</p>
+    <p>长期写作（还算厉害）；计算机本科；心理学辅修（精神动力）；设计硕；美术史；艺术史；哲学（未入门）；认知科学；steam重度；电影中度（豆瓣280/500）；奇/科幻小说中度；动漫漫画中度（电锯人、jojo剑风传奇这样的？）；</p>
+    <p>工作时：某厂大数据工程师；项目经理；虚线leader。</p>
+    <p>创业后：AI；产品经理；自媒体；营销；商业；教育。</p>
+
+    <hr>
+    <p>为证明真实 评论区提供无偿咨询。</p>
+    <hr>
+
+    <p>求求了，希望合拍的小伙伴能看到，缺人还是缺人 真忙不过来了😭</p>
+  </div>
+  <div class="page-tag">2 / 2</div>
+</div>
+
+</body>
+</html>

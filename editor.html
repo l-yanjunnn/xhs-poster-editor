@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小红书排版编辑器 v0.1</title>
+
+<!-- ===== Web Fonts（CDN 加载，跨平台一致；联网首次加载，浏览器会缓存）===== -->
+<!-- Google Fonts：按字符自动子集化，比完整中文字体快 5-20 倍 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=ZCOOL+QingKe+HuangYou&family=Long+Cang&display=swap">
+<!-- 霞鹜文楷（jsdelivr 镜像） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css">
+<!-- Inter（西文/数字） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css">
+
+<!-- html2canvas + JSZip + FileSaver -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<!-- 内置素材（base64 嵌入，单文件可分享）-->
+<script src="assets/builtin-assets.js"></script>
+
+<style>
+/* ============ 设计 Token（默认：宣纸主题）============ */
+:root {
+  /* 画布 */
+  --canvas-w: 1080px;
+  --canvas-h: 1920px;
+  --page-padding-x: 80px;
+  --page-padding-top: 260px;
+  --page-padding-bottom: 120px;
+
+  /* Logo */
+  --logo-size: 120px;
+  --logo-offset-x: 60px;
+  --logo-offset-y: 60px;
+
+  /* 字体（webfont 优先，回退到系统字）*/
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-body: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  --font-en: "Inter", "Helvetica Neue", sans-serif;
+
+  /* 字号（小红书风：正文 40px ≈ 一行 22 字；其它按 1.4 倍同步放大）*/
+  --fs-h1: 90px;
+  --fs-h2: 56px;
+  --fs-h3: 44px;
+  --fs-body: 40px;
+  --fs-quote: 40px;
+  --fs-code: 34px;
+
+  /* 行高 */
+  --lh-display: 1.3;
+  --lh-body: 1.85;
+
+  /* 颜色（浅底） */
+  --c-text-primary: #1a1a1a;
+  --c-text-secondary: #4a4a4a;
+  --c-text-muted: #888;
+  --c-accent: #1a1a1a;
+  --c-quote-bg: rgba(0,0,0,0.05);
+  --c-code-bg: rgba(0,0,0,0.04);
+  --c-divider: rgba(0,0,0,0.25);
+
+  /* 间距（对应"标准"档；用户可在工具栏切换紧凑/宽松/超宽松）*/
+  --gap-paragraph: 32px;
+  --gap-h1-after: 64px;
+  --gap-h2-before: 72px;
+  --gap-h2-after: 28px;
+  --gap-h3-before: 48px;
+  --gap-h3-after: 20px;
+  --gap-block: 36px;
+
+  /* H1 宽度（窄/全） */
+  --h1-max-width: 66%;
+
+  /* 叠色（盖在背景图上方、内容下方，保证文字可读）*/
+  --c-overlay-color: transparent;
+  --c-overlay-opacity: 0;
+}
+
+/* ============ 主题：极简白 ============ */
+.theme-minimal-white {
+  --c-text-primary: #111;
+  --c-text-secondary: #555;
+  --c-text-muted: #999;
+  --c-quote-bg: rgba(0,0,0,0.04);
+  --c-divider: rgba(0,0,0,0.2);
+}
+
+/* ============ 主题：深夜黑 ============ */
+.theme-dark-night {
+  --c-text-primary: #f0f0f0;
+  --c-text-secondary: #c0c0c0;
+  --c-text-muted: #888;
+  --c-accent: #f0f0f0;
+  --c-quote-bg: rgba(255,255,255,0.08);
+  --c-code-bg: rgba(255,255,255,0.06);
+  --c-divider: rgba(255,255,255,0.25);
+}
+.theme-dark-night .page { background: #1a1a1a; }
+
+/* ============ 应用 UI ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-body);
+  background: #1f1f1f;
+  color: #ddd;
+  display: flex;
+  flex-direction: column;
+}
+
+/* —— 顶部工具栏 —— */
+.toolbar {
+  flex-shrink: 0;
+  background: #2a2a2a;
+  border-bottom: 1px solid #3a3a3a;
+  padding: 12px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.toolbar .group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid #3a3a3a;
+}
+.toolbar .group:last-child { border-right: none; }
+.toolbar label {
+  font-size: 12px;
+  color: #888;
+  margin-right: 4px;
+}
+.toolbar select, .toolbar button {
+  background: #3a3a3a;
+  color: #eee;
+  border: 1px solid #4a4a4a;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.toolbar select:hover, .toolbar button:hover { background: #4a4a4a; }
+.toolbar button.primary { background: #2563eb; border-color: #2563eb; }
+.toolbar button.primary:hover { background: #1d4ed8; }
+.toolbar button.secondary { background: #6b21a8; border-color: #6b21a8; }
+.toolbar button.secondary:hover { background: #581c87; }
+.toolbar input[type="file"] { display: none; }
+.toolbar .file-btn {
+  background: #3a3a3a;
+  padding: 6px 12px;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toolbar .file-btn:hover { background: #4a4a4a; }
+
+/* —— 主体：左编辑 + 右预览 —— */
+.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* —— 左侧：编辑区 —— */
+.editor-pane {
+  width: 45%;
+  background: #fafaf8;
+  color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #3a3a3a;
+}
+.editor-toolbar {
+  flex-shrink: 0;
+  background: #ececec;
+  border-bottom: 1px solid #d0d0d0;
+  padding: 8px 16px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.editor-toolbar button {
+  background: white;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  font-family: inherit;
+}
+.editor-toolbar button:hover { background: #e8f0fe; border-color: #4285f4; }
+.editor-toolbar button.divider { border: none; background: none; padding: 0; width: 1px; background: #ccc; margin: 0 4px; }
+
+.editor {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+  outline: none;
+}
+.editor h1 { font-size: 28px; font-weight: 700; margin: 12px 0; font-family: var(--font-display); }
+.editor h2 {
+  font-size: 22px; font-weight: 700; margin: 18px 0 8px;
+  padding-left: 12px; border-left: 4px solid #1a1a1a;
+  font-family: var(--font-display);
+}
+.editor h3 { font-size: 18px; font-weight: 600; margin: 14px 0 6px; }
+.editor p { margin: 8px 0; }
+.editor blockquote {
+  background: #eee; padding: 10px 16px; border-radius: 4px;
+  margin: 10px 0; color: #444;
+}
+.editor pre {
+  background: #f4f4f4; padding: 12px 16px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 14px; margin: 10px 0;
+}
+.editor hr {
+  border: none; border-top: 1px dashed #aaa; margin: 16px 0;
+}
+.editor hr.page-break {
+  border-top: 2px dashed #2563eb;
+  position: relative; margin: 24px 0;
+}
+.editor hr.page-break::after {
+  content: "↓ 分页 ↓"; position: absolute; top: -10px; left: 50%;
+  transform: translateX(-50%); background: #fafaf8;
+  padding: 0 12px; font-size: 12px; color: #2563eb;
+}
+.editor:focus { outline: none; }
+
+/* —— 右侧：预览区 —— */
+.preview-pane {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  background: #1f1f1f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.preview-scale-info {
+  color: #888;
+  font-size: 12px;
+  font-family: var(--font-en);
+}
+
+/* —— 单页 9:16 画布 —— */
+.page-wrapper {
+  /* 缩放容器 */
+  transform-origin: top center;
+  transform: scale(var(--preview-scale, 0.4));
+  margin-bottom: calc(var(--canvas-h) * (var(--preview-scale, 0.4) - 1));
+}
+.page {
+  position: relative;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.page .bg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.page .overlay {
+  position: absolute; inset: 0;
+  background: var(--c-overlay-color);
+  opacity: var(--c-overlay-opacity);
+  z-index: 1;
+  pointer-events: none;
+}
+.page .logo {
+  position: absolute;
+  top: var(--logo-offset-y);
+  right: var(--logo-offset-x);
+  width: var(--logo-size);
+  height: var(--logo-size);
+  object-fit: contain;
+  z-index: 3;
+}
+.page .content {
+  position: relative; z-index: 2;
+  padding: var(--page-padding-top) var(--page-padding-x) var(--page-padding-bottom);
+  height: 100%;
+}
+.page-tag {
+  position: absolute; bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px; color: var(--c-text-muted);
+  font-family: var(--font-en); letter-spacing: 2px;
+  z-index: 4;
+}
+
+/* ============ 画布内 Block 样式（与 demo.html 一致）============ */
+.content > * + * { margin-top: var(--gap-paragraph); }
+
+.content h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-display);
+  font-weight: 700;
+  color: var(--c-text-primary);
+  letter-spacing: -0.5px;
+  max-width: var(--h1-max-width);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  /* 不用 text-wrap: pretty —— 它会让所有行变短以避免末行孤儿，导致看起来只占 50% */
+}
+.content > h1 + * { margin-top: var(--gap-h1-after); }
+
+.content h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-display);
+  font-weight: 700;
+  color: var(--c-text-primary);
+  padding-left: 36px;
+  position: relative;
+}
+.content h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4%;
+  bottom: 4%;
+  width: 12px;
+  background: var(--c-accent);
+  border-radius: 2px;
+}
+.content > * + h2 { margin-top: var(--gap-h2-before); }
+.content > h2 + * { margin-top: var(--gap-h2-after); }
+
+.content h3 {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-display);
+  font-weight: 600;
+  color: var(--c-text-primary);
+}
+.content > * + h3 { margin-top: var(--gap-h3-before); }
+.content > h3 + * { margin-top: var(--gap-h3-after); }
+
+.content p {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-primary);
+  text-align: justify;
+}
+
+.content blockquote {
+  background: var(--c-quote-bg);
+  padding: 22px 28px; border-radius: 6px;
+  font-size: var(--fs-quote);
+  line-height: var(--lh-body);
+  color: var(--c-text-secondary);
+  font-family: var(--font-body);
+}
+
+.content pre {
+  background: var(--c-code-bg);
+  padding: 24px 28px; border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-code);
+  color: var(--c-text-primary);
+}
+
+.content ul, .content ol {
+  padding-left: 36px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-primary);
+  font-family: var(--font-body);
+}
+.content ul li, .content ol li { margin-bottom: 8px; }
+
+.content hr {
+  border: none;
+  border-top: 1px dashed var(--c-divider);
+}
+.content > * + hr, .content > hr + * { margin-top: var(--gap-block); }
+
+/* —— 素材库 Modal —— */
+.modal-mask {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-mask.show { display: flex; }
+.modal {
+  background: #2a2a2a;
+  border-radius: 8px;
+  width: 720px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 {
+  color: #eee;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modal-header button {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+}
+.modal-header button:hover { color: #fff; }
+.modal-toolbar {
+  padding: 12px 24px;
+  border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  gap: 8px;
+}
+.modal-toolbar .file-btn {
+  background: #2563eb;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.modal-toolbar .file-btn:hover { background: #1d4ed8; }
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.asset-card {
+  position: relative;
+  background: #1a1a1a;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.asset-card:hover { border-color: #555; }
+.asset-card.selected { border-color: #2563eb; }
+.asset-card .thumb {
+  width: 100%;
+  display: block;
+  background: #fff;
+}
+.asset-grid.bg-grid .thumb { aspect-ratio: 9 / 16; object-fit: cover; }
+.asset-grid.logo-grid .thumb { aspect-ratio: 1 / 1; object-fit: contain; padding: 12px; }
+.asset-card .label {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  color: white;
+  padding: 8px 10px 6px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.asset-card .del {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  width: 24px; height: 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.asset-card:hover .del { display: flex; }
+.asset-card .del:hover { background: #dc2626; }
+.asset-card.builtin .del { display: none !important; }
+.asset-card.empty .thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, #2a2a2a, #2a2a2a 8px, #1a1a1a 8px, #1a1a1a 16px);
+  color: #888;
+  font-size: 13px;
+}
+
+/* —— 模态提示 —— */
+.toast {
+  position: fixed; bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  background: #2563eb; color: white;
+  padding: 12px 24px; border-radius: 4px;
+  font-size: 14px; z-index: 9999;
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ============ 顶部工具栏 ============ -->
+<div class="toolbar">
+  <div class="group">
+    <label>主题</label>
+    <select id="select-theme">
+      <option value="">宣纸（默认）</option>
+      <option value="theme-minimal-white">极简白</option>
+      <option value="theme-dark-night">深夜黑</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>叠色</label>
+    <select id="select-overlay" title="盖在背景图上的半透明遮罩，保证文字可读">
+      <option value="none">无</option>
+      <option value="light-30">浅膜 30%</option>
+      <option value="light-60">浅膜 60%</option>
+      <option value="dark-30">深膜 30%</option>
+      <option value="dark-60">深膜 60%</option>
+      <option value="dark-80">深膜 80%</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>大标题</label>
+    <select id="select-font-display">
+      <optgroup label="经典宋黑（跨平台 ✓）">
+        <option value='"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif'>思源宋体</option>
+        <option value='"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif'>思源黑体</option>
+      </optgroup>
+      <optgroup label="人文感（跨平台 ✓）">
+        <option value='"LXGW WenKai", serif'>霞鹜文楷</option>
+      </optgroup>
+      <optgroup label="设计感（跨平台 ✓）">
+        <option value='"ZCOOL XiaoWei", "Noto Serif SC", serif'>站酷小薇</option>
+        <option value='"ZCOOL QingKe HuangYou", "Noto Sans SC", sans-serif'>站酷庆科黄油</option>
+      </optgroup>
+      <optgroup label="手书风（跨平台 ✓）">
+        <option value='"Ma Shan Zheng", cursive'>马善政毛笔</option>
+        <option value='"Long Cang", cursive'>龙藏体</option>
+      </optgroup>
+      <optgroup label="仅 macOS（跨平台 ✗）">
+        <option value='"PingFang SC", sans-serif'>PingFang</option>
+        <option value='"Songti SC", serif'>Songti SC</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>正文</label>
+    <select id="select-font-body">
+      <optgroup label="经典宋黑（跨平台 ✓）">
+        <option value='"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif'>思源黑体</option>
+        <option value='"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif'>思源宋体</option>
+      </optgroup>
+      <optgroup label="人文感（跨平台 ✓）">
+        <option value='"LXGW WenKai", serif'>霞鹜文楷</option>
+      </optgroup>
+      <optgroup label="仅 macOS（跨平台 ✗）">
+        <option value='"PingFang SC", sans-serif'>PingFang</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>素材</label>
+    <button id="btn-bg-library">🖼️ 背景库</button>
+    <button id="btn-logo-library">🐱 Logo 库</button>
+    <select id="select-logo-strategy" title="Logo 显示策略">
+      <option value="every">每页都显示</option>
+      <option value="first">仅首页</option>
+      <option value="first-last">仅首尾页</option>
+      <option value="none">不显示</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>H1 宽度</label>
+    <select id="select-h1-width">
+      <option value="50%">50%</option>
+      <option value="66%" selected>66% (默认)</option>
+      <option value="80%">80%</option>
+      <option value="100%">100% 全宽</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>正文字号</label>
+    <select id="select-font-size">
+      <option value="32">小 32px</option>
+      <option value="36">较小 36px</option>
+      <option value="40" selected>标准 40px (约22字/行)</option>
+      <option value="44">较大 44px</option>
+      <option value="48">大 48px</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>间距</label>
+    <select id="select-density">
+      <option value="compact">紧凑</option>
+      <option value="normal" selected>标准</option>
+      <option value="relaxed">宽松</option>
+      <option value="loose">超宽松</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <button id="btn-export" class="primary">📥 导出 PNG</button>
+  </div>
+</div>
+
+<!-- ============ 工作区 ============ -->
+<div class="workspace">
+
+  <!-- 左侧：编辑区 -->
+  <div class="editor-pane">
+    <div class="editor-toolbar">
+      <button data-action="h1">H1</button>
+      <button data-action="h2">H2</button>
+      <button data-action="h3">H3</button>
+      <button data-action="p">正文</button>
+      <span class="divider"></span>
+      <button data-action="quote">引用</button>
+      <button data-action="pre">代码块</button>
+      <button data-action="ul">列表</button>
+      <button data-action="hr">分隔线</button>
+      <span class="divider"></span>
+      <button data-action="page-break">⎯ 分页符 ⎯</button>
+      <span class="divider"></span>
+      <button data-action="bold"><b>B</b></button>
+      <button data-action="undo">↶</button>
+      <button data-action="redo">↷</button>
+    </div>
+    <div class="editor" id="editor" contenteditable="true" spellcheck="false">
+      <h1>真没招了，只能比影视飓风薪资更高一点儿</h1>
+      <p>这是我小号。小红书试一试</p>
+      <p>作为26岁创业者，团队全是零零后，正在从1→10扩张，急缺更厉害的小伙伴加入我们。</p>
+      <p>Boss直聘猎聘真是老登平台 班味太重。</p>
+      <blockquote>学习；进步；好奇心；工作就是玩耍（应该）…… 这些应当是 AI时代的必备精神。</blockquote>
+      <h2>参考影视飓风，</h2>
+      <p>我们暂时更激进（人多以后就不一定）：</p>
+      <p>扁平管理；保证双休；远程办公；不搞打卡；弹性请假；想休息就休息，工作时间自己管理。</p>
+      <p>每人发放配备MacBookPro，附送每月Claude的200刀最新订阅等。技术小伙伴帮所有人配齐，确保时时刻刻都能登陆。</p>
+      <p>然后再说岗位，这个真的无所谓了。</p>
+      <hr class="page-break">
+      <h2>公司的业务领域是：</h2>
+      <p>【AI】【自媒体】【toC教育】【toB咨询】</p>
+      <p>只需要好奇心强，在【某一领域】足够专业、具备品位。对经验、学历等等没有任何要求。</p>
+      <p>最急缺的岗位我会放在评论区。12～24k不等。</p>
+      <h2>最后证明不是骗子，创业真的是因为好玩。</h2>
+      <p>我的技能点是长这样的：</p>
+      <p>长期写作（还算厉害）；计算机本科；心理学辅修（精神动力）；设计硕；美术史；艺术史；哲学（未入门）；认知科学；steam重度；电影中度（豆瓣280/500）。</p>
+      <hr>
+      <p>为证明真实 评论区提供无偿咨询。</p>
+      <hr>
+      <p>求求了，希望合拍的小伙伴能看到，缺人还是缺人 真忙不过来了😭</p>
+    </div>
+  </div>
+
+  <!-- 右侧：预览区 -->
+  <div class="preview-pane" id="preview-pane">
+    <div class="preview-scale-info" id="scale-info">预览缩放 40%</div>
+    <div id="pages-container"></div>
+  </div>
+</div>
+
+<!-- ============ 素材库 Modal ============ -->
+<div class="modal-mask" id="modal-mask">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">素材库</h3>
+      <button id="modal-close">✕</button>
+    </div>
+    <div class="modal-toolbar">
+      <label class="file-btn">
+        ➕ 上传新素材
+        <input type="file" id="modal-upload" accept="image/*" style="display:none">
+      </label>
+      <span style="color:#888;font-size:12px;align-self:center;margin-left:auto">
+        ⚠️ 用户上传的素材存在浏览器本地，清缓存会丢失
+      </span>
+    </div>
+    <div class="modal-body">
+      <div class="asset-grid" id="asset-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ 全局状态 ============
+const state = {
+  bgSrc: (window.BUILTIN_ASSETS?.backgrounds[0]?.src) || '',
+  logoSrc: (window.BUILTIN_ASSETS?.logos[0]?.src) || '',
+  logoStrategy: 'every',
+  theme: '',
+  overlay: 'none',
+  previewScale: 0.4,
+};
+
+// ============ 叠色映射 ============
+const OVERLAY_MAP = {
+  'none':     ['transparent', 0],
+  'light-30': ['#ffffff', 0.3],
+  'light-60': ['#ffffff', 0.6],
+  'dark-30':  ['#000000', 0.3],
+  'dark-60':  ['#000000', 0.6],
+  'dark-80':  ['#000000', 0.8],
+};
+function applyOverlay(val) {
+  const [color, opacity] = OVERLAY_MAP[val] || OVERLAY_MAP['none'];
+  document.documentElement.style.setProperty('--c-overlay-color', color);
+  document.documentElement.style.setProperty('--c-overlay-opacity', opacity);
+  state.overlay = val;
+  document.getElementById('select-overlay').value = val;
+}
+
+// ============ 主题预设（完整状态，切换主题时一次性应用）============
+const THEMES = {
+  '': {
+    name: '宣纸（默认）',
+    bg: 'builtin-bg-xuan',     // 背景图：用 asset id 引用，找不到时回退到空
+    logo: 'builtin-logo-cat',
+    logoStrategy: 'every',
+    overlay: 'none',
+    h1Width: '66%',
+    fontDisplay: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif',
+    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontSize: 36,
+    density: 'compact',
+  },
+  'theme-minimal-white': {
+    name: '极简白',
+    bg: '',                     // 纯白底
+    logo: 'builtin-logo-cat',
+    logoStrategy: 'every',
+    overlay: 'none',
+    h1Width: '66%',
+    fontDisplay: '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif',
+    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontSize: 40,
+    density: 'normal',
+  },
+  'theme-dark-night': {
+    name: '深夜黑',
+    bg: '',                     // 纯黑底（靠主题 CSS 类提供色板）
+    logo: 'builtin-logo-cat',
+    logoStrategy: 'every',
+    overlay: 'dark-60',
+    h1Width: '66%',
+    fontDisplay: '"Noto Serif SC", "Source Han Serif SC", serif',
+    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontSize: 40,
+    density: 'normal',
+  },
+};
+
+function applyTheme(key) {
+  const t = THEMES[key];
+  if (!t) return;
+  state.theme = key;
+
+  // 1. 素材：从素材库按 id 查 src
+  if (t.bg) {
+    const bg = (typeof getBgs === 'function' ? getBgs() : []).find(b => b.id === t.bg);
+    state.bgSrc = bg ? bg.src : '';
+  } else {
+    state.bgSrc = '';
+  }
+  if (t.logo) {
+    const logo = (typeof getLogos === 'function' ? getLogos() : []).find(l => l.id === t.logo);
+    state.logoSrc = logo ? logo.src : '';
+  } else {
+    state.logoSrc = '';
+  }
+
+  // 2. Logo 策略
+  state.logoStrategy = t.logoStrategy;
+  document.getElementById('select-logo-strategy').value = t.logoStrategy;
+
+  // 3. 叠色
+  applyOverlay(t.overlay);
+
+  // 4. H1 宽度
+  document.documentElement.style.setProperty('--h1-max-width', t.h1Width);
+  document.getElementById('select-h1-width').value = t.h1Width;
+
+  // 5. 字体
+  document.documentElement.style.setProperty('--font-display', t.fontDisplay);
+  document.documentElement.style.setProperty('--font-body', t.fontBody);
+  syncSelectByValue('select-font-display', t.fontDisplay);
+  syncSelectByValue('select-font-body', t.fontBody);
+
+  // 6. 字号联动
+  applyFontSize(t.fontSize);
+  document.getElementById('select-font-size').value = String(t.fontSize);
+
+  // 7. 间距
+  applyDensity(t.density);
+  document.getElementById('select-density').value = t.density;
+
+  // 8. 主题下拉本身
+  document.getElementById('select-theme').value = key;
+
+  renderPreview();
+}
+
+// 工具：根据 value 同步下拉框（用于字体/H1宽度等 select）
+function syncSelectByValue(selectId, value) {
+  if (!value) return;
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  for (const opt of sel.options) {
+    if (opt.value.trim() === String(value).trim()) { sel.value = opt.value; return; }
+  }
+}
+
+// ============ DOM ============
+const editor = document.getElementById('editor');
+const pagesContainer = document.getElementById('pages-container');
+const toast = document.getElementById('toast');
+
+// ============ 工具：toast 提示 ============
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+// ============ 工具：编辑器命令 ============
+document.addEventListener('DOMContentLoaded', () => {
+  // 让 Enter 默认插入 <p> 而不是 <div>
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch(e) {}
+});
+
+document.querySelector('.editor-toolbar').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  editor.focus();
+
+  switch (action) {
+    case 'h1': document.execCommand('formatBlock', false, 'h1'); break;
+    case 'h2': document.execCommand('formatBlock', false, 'h2'); break;
+    case 'h3': document.execCommand('formatBlock', false, 'h3'); break;
+    case 'p':  document.execCommand('formatBlock', false, 'p'); break;
+    case 'quote': document.execCommand('formatBlock', false, 'blockquote'); break;
+    case 'pre': document.execCommand('formatBlock', false, 'pre'); break;
+    case 'ul': document.execCommand('insertUnorderedList'); break;
+    case 'hr': document.execCommand('insertHorizontalRule'); break;
+    case 'page-break': {
+      const hr = document.createElement('hr');
+      hr.className = 'page-break';
+      document.execCommand('insertHTML', false, hr.outerHTML);
+      break;
+    }
+    case 'bold': document.execCommand('bold'); break;
+    case 'undo': document.execCommand('undo'); break;
+    case 'redo': document.execCommand('redo'); break;
+  }
+  schedulePreview();
+});
+
+// ============ 预览：按分页符切分 + 渲染 ============
+function splitIntoPages(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const pages = [[]];
+  for (const node of [...div.childNodes]) {
+    if (node.nodeName === 'HR' && node.classList && node.classList.contains('page-break')) {
+      pages.push([]);
+    } else {
+      pages[pages.length - 1].push(node);
+    }
+  }
+  return pages.map(nodes =>
+    nodes.map(n => n.nodeType === Node.TEXT_NODE ? n.textContent : (n.outerHTML || '')).join('')
+  ).filter(s => s.trim());
+}
+
+function logoFor(pageIndex, total) {
+  switch (state.logoStrategy) {
+    case 'none': return false;
+    case 'first': return pageIndex === 0;
+    case 'first-last': return pageIndex === 0 || pageIndex === total - 1;
+    case 'every':
+    default: return true;
+  }
+}
+
+function renderPreview() {
+  const pages = splitIntoPages(editor.innerHTML);
+  const total = pages.length;
+  pagesContainer.innerHTML = pages.map((content, i) => `
+    <div class="page-wrapper">
+      <div class="page ${state.theme}">
+        ${state.bgSrc ? `<img class="bg" src="${state.bgSrc}" crossorigin="anonymous">` : ''}
+        <div class="overlay"></div>
+        ${state.logoSrc && logoFor(i, total) ? `<img class="logo" src="${state.logoSrc}" crossorigin="anonymous">` : ''}
+        <div class="content">${content}</div>
+        <div class="page-tag">${i + 1} / ${total}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+let previewTimer = null;
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(renderPreview, 200);
+}
+
+editor.addEventListener('input', schedulePreview);
+
+// ============ 顶部工具栏交互 ============
+document.getElementById('select-theme').addEventListener('change', (e) => {
+  applyTheme(e.target.value);
+  showToast(`已应用主题：${THEMES[e.target.value]?.name || ''}`);
+});
+
+document.getElementById('select-overlay').addEventListener('change', (e) => {
+  applyOverlay(e.target.value);
+});
+
+document.getElementById('select-font-display').addEventListener('change', (e) => {
+  document.documentElement.style.setProperty('--font-display', e.target.value);
+});
+document.getElementById('select-font-body').addEventListener('change', (e) => {
+  document.documentElement.style.setProperty('--font-body', e.target.value);
+});
+
+document.getElementById('select-h1-width').addEventListener('change', (e) => {
+  document.documentElement.style.setProperty('--h1-max-width', e.target.value);
+});
+
+// —— 正文字号：联动所有字号（按 40px 为基准等比缩放）——
+const FS_RATIOS = {
+  '--fs-h1':    90 / 40,
+  '--fs-h2':    56 / 40,
+  '--fs-h3':    44 / 40,
+  '--fs-body':  1,
+  '--fs-quote': 1,
+  '--fs-code':  34 / 40,
+};
+function applyFontSize(bodyPx) {
+  Object.entries(FS_RATIOS).forEach(([k, ratio]) => {
+    document.documentElement.style.setProperty(k, Math.round(bodyPx * ratio) + 'px');
+  });
+}
+document.getElementById('select-font-size').addEventListener('change', (e) => {
+  applyFontSize(parseInt(e.target.value, 10));
+});
+
+// —— 间距密度：4 档预设 ——
+const DENSITY_MAP = {
+  compact: {
+    '--gap-paragraph': '20px',
+    '--gap-h1-after':  '40px',
+    '--gap-h2-before': '48px',
+    '--gap-h2-after':  '18px',
+    '--gap-h3-before': '30px',
+    '--gap-h3-after':  '12px',
+    '--gap-block':     '22px',
+  },
+  normal: {
+    '--gap-paragraph': '32px',
+    '--gap-h1-after':  '64px',
+    '--gap-h2-before': '72px',
+    '--gap-h2-after':  '28px',
+    '--gap-h3-before': '48px',
+    '--gap-h3-after':  '20px',
+    '--gap-block':     '36px',
+  },
+  relaxed: {
+    '--gap-paragraph': '44px',
+    '--gap-h1-after':  '88px',
+    '--gap-h2-before': '100px',
+    '--gap-h2-after':  '40px',
+    '--gap-h3-before': '64px',
+    '--gap-h3-after':  '28px',
+    '--gap-block':     '48px',
+  },
+  loose: {
+    '--gap-paragraph': '60px',
+    '--gap-h1-after':  '120px',
+    '--gap-h2-before': '140px',
+    '--gap-h2-after':  '56px',
+    '--gap-h3-before': '88px',
+    '--gap-h3-after':  '40px',
+    '--gap-block':     '64px',
+  },
+};
+function applyDensity(level) {
+  const tokens = DENSITY_MAP[level] || DENSITY_MAP.normal;
+  Object.entries(tokens).forEach(([k, v]) => {
+    document.documentElement.style.setProperty(k, v);
+  });
+}
+document.getElementById('select-density').addEventListener('change', (e) => {
+  applyDensity(e.target.value);
+});
+
+document.getElementById('select-logo-strategy').addEventListener('change', (e) => {
+  state.logoStrategy = e.target.value;
+  renderPreview();
+});
+
+// ============ 图片处理：转 DataURL + 压缩（节省 localStorage 空间）============
+function fileToDataURL(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// 等比缩放到 maxW × maxH 以内，输出 jpeg/png
+function compressImage(dataUrl, maxW, maxH, mime = 'image/png', quality = 0.9) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      const scale = Math.min(maxW / width, maxH / height, 1);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      res(canvas.toDataURL(mime, quality));
+    };
+    img.onerror = rej;
+    img.src = dataUrl;
+  });
+}
+
+// ============ 素材库（内置素材从 builtin-assets.js 加载，base64 嵌入）============
+const BUILTIN_BACKGROUNDS = (window.BUILTIN_ASSETS?.backgrounds || []).map(a => ({ ...a, builtin: true }));
+const BUILTIN_LOGOS = (window.BUILTIN_ASSETS?.logos || []).map(a => ({ ...a, builtin: true }));
+
+function loadAssets(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+  catch { return []; }
+}
+function saveAssets(key, arr) {
+  try {
+    localStorage.setItem(key, JSON.stringify(arr));
+    return true;
+  } catch (e) {
+    showToast('存储空间不足，请删除一些素材再上传');
+    return false;
+  }
+}
+
+function getBgs()    { return [...BUILTIN_BACKGROUNDS, ...loadAssets('xhs-bgs')]; }
+function getLogos()  { return [...BUILTIN_LOGOS, ...loadAssets('xhs-logos')]; }
+
+// ============ Modal 控制 ============
+let currentLibraryType = null; // 'bg' | 'logo'
+
+function openLibrary(type) {
+  currentLibraryType = type;
+  document.getElementById('modal-title').textContent = type === 'bg' ? '🖼️ 背景图库' : '🐱 Logo 库';
+  document.getElementById('modal-mask').classList.add('show');
+  renderLibrary();
+}
+function closeLibrary() {
+  document.getElementById('modal-mask').classList.remove('show');
+  currentLibraryType = null;
+}
+
+function renderLibrary() {
+  const grid = document.getElementById('asset-grid');
+  grid.className = `asset-grid ${currentLibraryType}-grid`;
+  const assets = currentLibraryType === 'bg' ? getBgs() : getLogos();
+  const currentSrc = currentLibraryType === 'bg' ? state.bgSrc : state.logoSrc;
+
+  // "无" 选项
+  const emptyCard = `
+    <div class="asset-card empty ${!currentSrc ? 'selected' : ''}" data-action="set-empty">
+      <div class="thumb">— 无 —</div>
+      <div class="label">不使用${currentLibraryType === 'bg' ? '背景' : ' Logo'}</div>
+    </div>
+  `;
+
+  const cards = assets.map(a => `
+    <div class="asset-card ${a.builtin ? 'builtin' : ''} ${a.src === currentSrc ? 'selected' : ''}"
+         data-action="select" data-id="${a.id}">
+      <img class="thumb" src="${a.src}" alt="${a.name}">
+      <div class="label">${a.name}${a.builtin ? ' · 内置' : ''}</div>
+      <button class="del" data-action="delete" data-id="${a.id}" title="删除">✕</button>
+    </div>
+  `).join('');
+
+  grid.innerHTML = emptyCard + cards;
+}
+
+// Modal 内的事件委托
+document.getElementById('asset-grid').addEventListener('click', (e) => {
+  const delBtn = e.target.closest('[data-action="delete"]');
+  if (delBtn) {
+    e.stopPropagation();
+    const id = delBtn.dataset.id;
+    if (!confirm('确定删除这个素材？')) return;
+    const key = currentLibraryType === 'bg' ? 'xhs-bgs' : 'xhs-logos';
+    const arr = loadAssets(key).filter(a => a.id !== id);
+    saveAssets(key, arr);
+    // 如果删除的是当前在用的，回退到空
+    const deleted = (currentLibraryType === 'bg' ? getBgs() : getLogos()).find(a => a.id === id);
+    if (deleted) {
+      if (currentLibraryType === 'bg' && state.bgSrc === deleted.src) state.bgSrc = '';
+      if (currentLibraryType === 'logo' && state.logoSrc === deleted.src) state.logoSrc = '';
+    }
+    renderLibrary();
+    renderPreview();
+    showToast('已删除');
+    return;
+  }
+
+  const card = e.target.closest('.asset-card');
+  if (!card) return;
+  if (card.dataset.action === 'set-empty') {
+    if (currentLibraryType === 'bg') state.bgSrc = '';
+    else state.logoSrc = '';
+  } else {
+    const id = card.dataset.id;
+    const asset = (currentLibraryType === 'bg' ? getBgs() : getLogos()).find(a => a.id === id);
+    if (asset) {
+      if (currentLibraryType === 'bg') state.bgSrc = asset.src;
+      else state.logoSrc = asset.src;
+    }
+  }
+  renderLibrary();
+  renderPreview();
+  closeLibrary();
+});
+
+// 上传新素材
+document.getElementById('modal-upload').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const name = prompt('为这个素材命个名：', file.name.replace(/\.[^.]+$/, ''));
+  if (!name) { e.target.value = ''; return; }
+
+  showToast('正在处理...');
+  try {
+    const raw = await fileToDataURL(file);
+    // 背景图压缩到 ≤1080×1920，Logo 压缩到 ≤360×360
+    const compressed = currentLibraryType === 'bg'
+      ? await compressImage(raw, 1080, 1920, 'image/jpeg', 0.88)
+      : await compressImage(raw, 360, 360, 'image/png', 1.0);
+
+    const newAsset = {
+      id: `user-${Date.now()}`,
+      name,
+      src: compressed,
+      builtin: false,
+    };
+    const key = currentLibraryType === 'bg' ? 'xhs-bgs' : 'xhs-logos';
+    const arr = loadAssets(key);
+    arr.push(newAsset);
+    if (saveAssets(key, arr)) {
+      renderLibrary();
+      showToast(`已添加：${name}`);
+    }
+  } catch (err) {
+    showToast('上传失败：' + err.message);
+  }
+  e.target.value = '';
+});
+
+document.getElementById('btn-bg-library').addEventListener('click', () => openLibrary('bg'));
+document.getElementById('btn-logo-library').addEventListener('click', () => openLibrary('logo'));
+document.getElementById('modal-close').addEventListener('click', closeLibrary);
+document.getElementById('modal-mask').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-mask') closeLibrary();
+});
+
+// ============ 导出 PNG ============
+async function exportAllPages() {
+  const pages = document.querySelectorAll('#pages-container .page');
+  if (!pages.length) { showToast('没有可导出的页面'); return; }
+
+  // 1. 先让用户填文件名
+  const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const defaultName = `xhs-poster-${ts}`;
+  const baseName = prompt('导出文件名（不含扩展名）：', defaultName);
+  if (baseName === null) return; // 用户取消
+
+  const btn = document.getElementById('btn-export');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+
+  // 临时还原缩放到 1.0
+  const wrappers = document.querySelectorAll('.page-wrapper');
+  wrappers.forEach(w => {
+    w.dataset.originalTransform = w.style.transform;
+    w.style.transform = 'scale(1)';
+    w.style.marginBottom = '20px';
+  });
+
+  try {
+    const zip = new JSZip();
+    for (let i = 0; i < pages.length; i++) {
+      btn.textContent = `导出中 ${i + 1}/${pages.length}...`;
+      const canvas = await html2canvas(pages[i], {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        backgroundColor: null,
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64 = dataUrl.split(',')[1];
+      zip.file(`${baseName}-${String(i + 1).padStart(2, '0')}.png`, base64, { base64: true });
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+
+    // 2. 优先用 File System Access API 让用户选保存位置（Chrome/Edge 支持）
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: `${baseName}.zip`,
+          types: [{
+            description: '小红书排版图片包',
+            accept: { 'application/zip': ['.zip'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        showToast(`已保存：${baseName}.zip`);
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          showToast('已取消');
+        } else {
+          // 降级到自动下载
+          saveAs(blob, `${baseName}.zip`);
+          showToast(`已下载：${baseName}.zip`);
+        }
+      }
+    } else {
+      // Safari/Firefox 不支持选路径，降级
+      saveAs(blob, `${baseName}.zip`);
+      showToast(`已下载到 Downloads：${baseName}.zip`);
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('导出失败：' + err.message);
+  } finally {
+    wrappers.forEach(w => {
+      w.style.transform = w.dataset.originalTransform || '';
+      w.style.marginBottom = '';
+    });
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+document.getElementById('btn-export').addEventListener('click', exportAllPages);
+
+// ============ 初始化（应用默认「宣纸」主题，含背景/Logo/字体/字号/间距）============
+applyTheme('');
+</script>
+
+</body>
+</html>
