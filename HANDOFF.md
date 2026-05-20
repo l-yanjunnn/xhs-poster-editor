@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 2 脚手架完成**（Vite + React + TS + Tailwind v4 + shadcn/ui + Tiptap），最小可运行版本已跑通，等价功能逐步从 `editor.html` 迁过来。
-> 最后更新：2026-05-21
+> **当前进度：Step 2 脚手架完成**（Vite + React + TS + Tailwind v4 + shadcn/ui + Tiptap），最小可运行版本已跑通，等价功能逐步从 `editor.html` 迁过来。补完了无序/有序列表区分。
+> 最后更新：2026-05-21（含列表 list-style 修复）
 
 > 📌 版本历史由 git 管理：`git log -- HANDOFF.md` 查所有改动；`git show <commit>:HANDOFF.md` 看某次提交时的版本。不需要手动 v1/v2/v3 命名。
 
@@ -53,7 +53,7 @@ React 项目：app/    ← Step 2 的工作目录
 | 间距密度 4 档 | ✅ | `DENSITY_MAP` 注入到 :root |
 
 ### Tiptap 编辑器（src/components/Editor/Editor.tsx）
-- StarterKit（H1/H2/H3、正文、引用、代码块、列表、分隔线、加粗、撤销、重做）
+- StarterKit（H1/H2/H3、正文、引用、代码块、无序列表、有序列表、分隔线、加粗、撤销、重做）
 - 屏幕样式与画布同字体族但缩小到 16px 可读字号
 
 ### 9:16 画布预览（src/components/Preview/Preview.tsx）
@@ -100,6 +100,7 @@ app/
 2. **TS 6 废弃了 `baseUrl`**：paths 别名直接写 `"@/*": ["./src/*"]`，不要加 baseUrl
 3. **shadcn Nova preset 是完整 landing 模板**：会生成 App.tsx + App.css 示例和 src/assets/，需要手动清掉。也没自动生成 lib/utils.ts，得自己补
 4. **Tiptap 空段落 `<p></p>` 在画布上高度为 0**：CSS 加 `.content p:empty::before { content: '​' }` 和 `min-height: calc(var(--fs-body) * var(--lh-body))` 撑高度
+5. **Tailwind v4 preflight 把 `ul/ol` 的 `list-style` 清成 `none`**：所有显示列表的地方都要主动声明 `list-style: disc`（ul）和 `list-style: decimal`（ol），否则有序/无序列表的视觉一模一样。canvas.css 和 editor.css 都要管
 
 ## 用户偏好（重要）
 

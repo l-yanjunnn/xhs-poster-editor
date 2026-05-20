@@ -234,8 +234,17 @@
   color: var(--c-text-primary);
 }
 
-.content ul,
+/* Tailwind preflight 清了 list-style，画布也要补回 */
+.content ul {
+  list-style: disc;
+  padding-left: 36px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--c-text-primary);
+  font-family: var(--font-body);
+}
 .content ol {
+  list-style: decimal;
   padding-left: 36px;
   font-size: var(--fs-body);
   line-height: var(--lh-body);

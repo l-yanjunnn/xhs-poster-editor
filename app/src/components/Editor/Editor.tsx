@@ -107,9 +107,14 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       />
       <Btn
-        label="列表"
+        label="无序列表"
         active={editor.isActive('bulletList')}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
+      />
+      <Btn
+        label="有序列表"
+        active={editor.isActive('orderedList')}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <Btn
         label="分隔线"
