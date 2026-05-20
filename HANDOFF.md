@@ -9,7 +9,8 @@
 ## 项目位置
 
 ```
-/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/
+本地：/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/
+GitHub：https://github.com/l-yanjunnn/xhs-poster-editor （public，main 分支）
 ```
 
 ## 项目目标
