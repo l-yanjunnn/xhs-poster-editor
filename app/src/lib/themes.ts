@@ -1,5 +1,5 @@
-// 主题预设、叠色映射、字体下拉数据
-// 从 editor.html 迁入，加上 TS 类型约束。
+// 主题数据模型 + 内置主题 + 共享映射表
+// 主题里只存 assetId（不存 blob URL），apply 时再 resolve，避免 session 间失效
 
 export type LogoStrategy = 'every' | 'first' | 'first-last' | 'none'
 export type OverlayKey =
@@ -11,60 +11,100 @@ export type OverlayKey =
   | 'dark-80'
 export type DensityLevel = 'compact' | 'normal' | 'relaxed' | 'loose'
 export type H1Width = '50%' | '66%' | '80%' | '100%'
+// 决定 .page div 的色彩 CSS class
+export type ThemeKey = '' | 'theme-minimal-white' | 'theme-dark-night'
 
+// 用户可保存复用的完整样式快照
 export interface Theme {
+  id: string
   name: string
-  bg: string // 素材 id，空 = 纯色背景
-  logo: string
-  logoStrategy: LogoStrategy
+  isBuiltin: boolean
+  createdAt: number
+
+  // 样式
+  themeClass: ThemeKey
   overlay: OverlayKey
   h1Width: H1Width
-  fontDisplay: string
+  fontH1: string
+  fontH2: string
+  fontH3: string
   fontBody: string
   fontSize: number
   density: DensityLevel
+  logoStrategy: LogoStrategy
+  bgAssetId: string // builtin/user asset id；'' = 纯色背景
+  logoAssetId: string
+
+  // 正文（可选）— null = 仅样式；object = 含 Tiptap doc JSON
+  contentJSON: object | null
 }
 
-export type ThemeKey = '' | 'theme-minimal-white' | 'theme-dark-night'
+// 字体 stack 必须与 fontPresets 选项 value 严格对齐，否则 select 找不到匹配会回退首项
+const DISPLAY_SERIF = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif'
+const DISPLAY_SANS = '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif'
 
-export const THEMES: Record<ThemeKey, Theme> = {
-  '': {
-    name: '宣纸（默认）',
-    bg: 'builtin-bg-xuan',
-    logo: 'builtin-logo-cat',
-    logoStrategy: 'every',
+export const BUILTIN_THEMES: Theme[] = [
+  {
+    id: 'builtin-elegant',
+    name: '雅致',
+    isBuiltin: true,
+    createdAt: 0,
+    themeClass: '',
     overlay: 'none',
     h1Width: '66%',
-    fontDisplay: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif',
-    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontH1: DISPLAY_SERIF,
+    fontH2: DISPLAY_SERIF,
+    fontH3: DISPLAY_SANS,
+    fontBody: DISPLAY_SANS,
     fontSize: 36,
     density: 'compact',
-  },
-  'theme-minimal-white': {
-    name: '极简白',
-    bg: '',
-    logo: 'builtin-logo-cat',
     logoStrategy: 'every',
+    bgAssetId: 'builtin-bg-xuan',
+    logoAssetId: 'builtin-logo-cat',
+    contentJSON: null,
+  },
+  {
+    id: 'builtin-minimal-white',
+    name: '极简白',
+    isBuiltin: true,
+    createdAt: 0,
+    themeClass: 'theme-minimal-white',
     overlay: 'none',
     h1Width: '66%',
-    fontDisplay: '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif',
-    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontH1: DISPLAY_SANS,
+    fontH2: DISPLAY_SANS,
+    fontH3: DISPLAY_SANS,
+    fontBody: DISPLAY_SANS,
     fontSize: 40,
     density: 'normal',
-  },
-  'theme-dark-night': {
-    name: '深夜黑',
-    bg: '',
-    logo: 'builtin-logo-cat',
     logoStrategy: 'every',
+    bgAssetId: '',
+    logoAssetId: 'builtin-logo-cat',
+    contentJSON: null,
+  },
+  {
+    id: 'builtin-dark-night',
+    name: '深夜黑',
+    isBuiltin: true,
+    createdAt: 0,
+    themeClass: 'theme-dark-night',
     overlay: 'dark-60',
     h1Width: '66%',
-    fontDisplay: '"Noto Serif SC", "Source Han Serif SC", serif',
-    fontBody: '"PingFang SC", "Noto Sans SC", sans-serif',
+    fontH1: DISPLAY_SERIF,
+    fontH2: DISPLAY_SERIF,
+    fontH3: DISPLAY_SANS,
+    fontBody: DISPLAY_SANS,
     fontSize: 40,
     density: 'normal',
+    logoStrategy: 'every',
+    bgAssetId: '',
+    logoAssetId: 'builtin-logo-cat',
+    contentJSON: null,
   },
-}
+]
+
+// App 启动加载的默认主题
+export const DEFAULT_THEME = BUILTIN_THEMES[0]
 
 // 叠色：[color, opacity]
 export const OVERLAY_MAP: Record<OverlayKey, [string, number]> = {

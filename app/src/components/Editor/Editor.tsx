@@ -1,7 +1,14 @@
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useEffect } from 'react'
+import Underline from '@tiptap/extension-underline'
+import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import '@/styles/editor.css'
+
+// 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON
+export interface EditorHandle {
+  setContent: (content: object | string) => void
+  getJSON: () => object | null
+}
 
 interface Props {
   onUpdate?: (html: string) => void
@@ -10,9 +17,12 @@ interface Props {
 
 const DEFAULT_CONTENT = `
 <h1>小红书风格长图</h1>
-<p>这是一段正文示例。Step 2 的 React 重构已经跑起来了，左边是 Tiptap 编辑器，右边是 9:16 画布预览。</p>
+<p>这是一段正文示例。左边是 Tiptap 编辑器，右边是 9:16 画布预览。</p>
 <h2>二级标题</h2>
 <p>切换顶部主题、字号、间距、字体，右边画布会实时更新。</p>
+<hr class="page-break">
+<h1>第二页</h1>
+<p>点击工具栏的「↓ 插入分页 ↓」按钮即可在当前位置切出新一页。</p>
 <h3>三级标题</h3>
 <blockquote>引用块的样式来自 editor.html 的同名 token。</blockquote>
 <ul>
@@ -21,12 +31,33 @@ const DEFAULT_CONTENT = `
 </ul>
 `
 
-export function EditorPane({ onUpdate, initialContent }: Props) {
+export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
+  { onUpdate, initialContent },
+  ref,
+) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      // 所有 hr 都视为分页符：注入 class="page-break"
+      // 画布层（splitIntoPages）按 hr.page-break 切割成多页
+      StarterKit.configure({
+        horizontalRule: { HTMLAttributes: { class: 'page-break' } },
+      }),
+      Underline,
+    ],
     content: initialContent ?? DEFAULT_CONTENT,
     onUpdate: ({ editor }) => onUpdate?.(editor.getHTML()),
   })
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      setContent: (c) => {
+        editor?.commands.setContent(c as never)
+      },
+      getJSON: () => editor?.getJSON() ?? null,
+    }),
+    [editor],
+  )
 
   // 首次挂载触发一次回调，保证预览不为空
   useEffect(() => {
@@ -41,7 +72,7 @@ export function EditorPane({ onUpdate, initialContent }: Props) {
       </div>
     </div>
   )
-}
+})
 
 function EditorToolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null
@@ -117,7 +148,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <Btn
-        label="分隔线"
+        label="↓ 插入分页 ↓"
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
       />
       <span className="mx-1 w-px self-stretch bg-neutral-300" />
@@ -125,6 +156,11 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         label="加粗"
         active={editor.isActive('bold')}
         onClick={() => editor.chain().focus().toggleBold().run()}
+      />
+      <Btn
+        label="下划线"
+        active={editor.isActive('underline')}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
       />
       <Btn label="撤销" onClick={() => editor.chain().focus().undo().run()} />
       <Btn label="重做" onClick={() => editor.chain().focus().redo().run()} />

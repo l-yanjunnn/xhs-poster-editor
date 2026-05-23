@@ -79,6 +79,10 @@
   color: #2563eb;
 }
 
+.tiptap-editor u {
+  text-decoration: underline;
+}
+
 /* Tailwind preflight 把 list-style 清成了 none，要主动补回，否则 ul/ol 视觉一样 */
 .tiptap-editor ul {
   list-style: disc;

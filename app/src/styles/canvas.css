@@ -14,8 +14,11 @@
   --logo-offset-x: 60px;
   --logo-offset-y: 60px;
 
-  /* 字体（webfont 优先 + local 回退） */
-  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  /* 字体（webfont 优先 + local 回退）
+   * H1/H2/H3 各自独立可调，H3 默认沿用 body 字体保留原视觉层级 */
+  --font-h1: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-h2: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-h3: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif;
   --font-body: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
   --font-en: "Inter", "Helvetica Neue", sans-serif;
@@ -148,7 +151,7 @@
 }
 
 .content h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-h1);
   font-size: var(--fs-h1);
   line-height: var(--lh-display);
   font-weight: 700;
@@ -163,7 +166,7 @@
 }
 
 .content h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-h2);
   font-size: var(--fs-h2);
   line-height: var(--lh-display);
   font-weight: 700;
@@ -189,7 +192,7 @@
 }
 
 .content h3 {
-  font-family: var(--font-body);
+  font-family: var(--font-h3);
   font-size: var(--fs-h3);
   line-height: var(--lh-display);
   font-weight: 600;
@@ -254,6 +257,12 @@
 .content ul li,
 .content ol li {
   margin-bottom: 8px;
+}
+
+.content u {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.06em;
 }
 
 .content hr {
