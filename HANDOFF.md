@@ -6,20 +6,21 @@
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
-## ⚠️ 已知 bug（需下次深挖）
+## ✅ 已解决（部署后自动好）：dev 环境 file picker 不弹
 
-**素材库 / 字体库的「选择文件」按钮点击不弹 Finder（拖拽 work）**
+**素材库 / 字体库的「选择文件」按钮**：dev server 下点击不弹 Finder（拖拽 work），但**生产环境（Cloudflare 部署后）自动正常**。2026-05-24 用户在线上发现 picker 完全可用。
 
-- 试过的方案都没用：
-  1. `ref.click()` + `<input hidden>` —— 不弹
-  2. `<label htmlFor>` + asChild Button + sr-only input —— 也不弹
-- `<input type="file">` 在 Radix Dialog Portal 内被某种机制拦截，但根因未知
-- 当前 UI 保留按钮（视觉占位），但点击无反应；提示文字写「拖拽 ... 到这里，或」按钮配合
-- 下次开窗口的诊断路径：让用户在 5175 浏览器 DevTools Console 跑下面这段，把 console.table 结果贴回来：
-  ```js
-  // 见 git log 找上次的诊断脚本：检查 input.disabled / pointer-events / parent chain / label htmlFor 匹配
-  ```
-- 兜底方案：如果根因实在挖不出，换成永远可见的原生 `<input type="file">`（Tailwind file: 修饰符美化）。原生 input 必然能弹 picker
+### 可能根因（未实证，按概率排序）
+
+1. 🥇 **React StrictMode 双调用**：dev 下 StrictMode 让 effect/handler 双跑，`input.click()` 被快速触发两次，第二次被浏览器认为不是 user gesture，吞掉 picker。production build 禁用 StrictMode 双调用
+2. 🥈 **Vite HMR 客户端干扰**：dev server 注入的 WebSocket client / overlay 在 Radix Portal 层级里干扰 user gesture 时序
+3. 🥉 **浏览器扩展拦截 localhost** 上某些 file API
+
+### 教训（重要）
+
+> **dev 行为 ≠ prod 行为**。Radix Portal 这类涉及 DOM 层级 + user gesture 的功能，dev 下卡住时**先 build 一次 production 跑 `pnpm preview` 看是否还卡**——可能根本不是代码问题，而是 dev server 的副作用。
+
+下次类似怪事：先 `cd app && ./node_modules/.bin/vite build && ./node_modules/.bin/vite preview` 复现一遍，再去深挖。
 
 > 📌 版本历史由 git 管理：`git log -- HANDOFF.md` 查所有改动；`git show <commit>:HANDOFF.md` 看某次提交时的版本。不需要手动 v1/v2/v3 命名。
 
@@ -364,7 +365,7 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 11. ~~**导出 PNG zip**（Step 7）~~ ✅ 2026-05-24 完成（html2canvas-pro + jszip + 重命名弹窗）
 12. **其余字体本地化（可选）**：ZCOOL / Ma Shan Zheng / Long Cang 现在还走 Google Fonts。如果大陆访问也卡，可继续 fontsource 化
 13. ~~**部署 Cloudflare Pages**（Step 8）~~ ✅ 2026-05-24 完成（Cloudflare Workers Static Assets + GitHub auto-deploy）
-14. **修 file picker bug**（见顶部「已知 bug」）：可优先级低，因为拖拽 work，但属于 UX 退化，最终需要修
+14. ~~**修 file picker bug**~~ ✅ 2026-05-24 自动解决（部署到生产后 picker 正常工作，dev server 副作用）
 15. **PWA 配置**：加 `vite-plugin-pwa`，让用户能"安装到主屏幕/Dock"获得类 App 体验
 16. **自定义域名**：买 `xxx.com` 绑到 Cloudflare（~¥80/年）替换默认 `*.workers.dev`
 17. **字体冗余清理**：fontsource 同时生成 `.woff` + `.woff2`，现代浏览器只用 woff2，删 woff 可让 dist 体积减半（115MB → ~60MB）
