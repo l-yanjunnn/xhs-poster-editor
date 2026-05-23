@@ -1,8 +1,10 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 2 + 素材库 + 字体库 + 字体本地化 + 下划线 + H1/H2/H3 拆分 + 分页符多页画布 + 主题库（含真图缩略图）+ shadcn Select 替换原生 + 导出 PNG zip（Step 7）**。
-> 最后更新：2026-05-24（Step 7：html2canvas-pro + jszip 导出，重命名弹窗，单页直下 PNG / 多页打 zip）
+> **当前进度：Step 7 全部功能完成 + Step 8 Cloudflare 部署上线（CI/CD 已通）**
+> 最后更新：2026-05-24（Step 8：Cloudflare Workers Static Assets 部署，git push 自动 deploy）
+>
+> 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
 ## ⚠️ 已知 bug（需下次深挖）
 
@@ -28,8 +30,11 @@
 ```
 本地：/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/
 GitHub：https://github.com/l-yanjunnn/xhs-poster-editor （public，main 分支）
+线上：https://xhs-poster-editor.l-yanjunnn.workers.dev （Cloudflare Workers Static Assets）
 React 项目：app/    ← Step 2 的工作目录
 ```
+
+> **以后改代码只需 `git push origin main`，Cloudflare 自动 build + deploy，1-3 分钟后线上更新。不要再去 Cloudflare 后台手动操作。**
 
 ## 项目目标
 
@@ -51,7 +56,7 @@ React 项目：app/    ← Step 2 的工作目录
 9. **画布尺寸**：1080×1920（默认），导出 scale: 2
 10. **分页**：手动 `<hr class="page-break">`，后续加自动分页
 11. **目录结构**：`editor.html`（旧 MVP，保留参考）+ `assets/`（旧 base64 内置素材）+ `source/`（开发用原图）+ `app/`（React 重构）+ `tools/`（打包脚本）
-12. **部署目标**：Cloudflare Pages（Step 8）
+12. **部署目标**：Cloudflare Workers Static Assets（Pages 2025 后被合并到 Workers）。CI/CD 走 GitHub auto-deploy，build script 是 `bash ci.sh`
 
 ## 当前已完成功能
 
@@ -104,6 +109,21 @@ React 项目：app/    ← Step 2 的工作目录
 - 选用后画布同步更新（`setBgSrc` / `setLogoSrc`）
 - ~~贴纸 Tab~~ 2026-05-24 已删除：用户暂时不需要画布自由拖放，YAGNI
 
+### 仓库根结构（CI/CD 相关）
+```
+xhs-poster-小红书排版/
+├── wrangler.jsonc              ← Cloudflare Workers 配置（assets directory + SPA fallback）
+├── ci.sh                       ← CI build 脚本（绕过 pnpm script runner）
+├── package.json                ← 最小根 package.json，含 packageManager 字段
+├── .npmrc                      ← frozen-lockfile=false
+├── HANDOFF.md                  ← 本文件
+├── editor.html                 ← 旧 MVP，保留参考
+├── assets/                     ← 旧 base64 内置素材
+├── source/                     ← 开发用原图，只读
+├── tools/                      ← 打包脚本（暂未启用）
+└── app/                        ← React 项目（详见下）
+```
+
 ### 文件结构（app/）
 ```
 app/
@@ -144,7 +164,8 @@ app/
 │   └── index.css                    ← Tailwind v4 + shadcn neutral 主题
 ├── index.html                       ← Google Fonts + LXGW + Inter CDN
 ├── components.json                  ← shadcn 配置
-├── package.json                     ← React 19 / Tiptap 3 / Tailwind 4 / Radix
+├── package.json                     ← React 19 / Tiptap 3 / Tailwind 4 / Radix + packageManager: pnpm@9.15.0
+├── .npmrc                           ← frozen-lockfile=false（CI 兼容用）
 ├── tsconfig.{json,app.json,node.json}
 └── vite.config.ts                   ← @tailwindcss/vite + @/ alias
 ```
@@ -259,6 +280,54 @@ app/
 - 视觉变化：macOS 上默认正文从「苹方简」变成「思源黑体」（fontsource 本地化），紧凑度略松、字形更开放但都是无衬线，差异小可接受
 - **教训**：今后所有主题预设的字体默认值，必须**直接引用** fontPresets 里某个 option 的 value（或者写测试断言两边对得上），不能手写一个新 stack
 
+## Step 8：Cloudflare 部署 + CI/CD 上线（2026-05-24 凌晨）
+
+🌐 **https://xhs-poster-editor.l-yanjunnn.workers.dev**
+
+### 架构
+
+**Cloudflare Workers Static Assets**（Pages 2025 后被合并到 Workers 体系）。GitHub auto-deploy 已配通：`git push origin main` → Cloudflare webhook 触发 → 1-3 分钟自动上线。
+
+> ✅ **以后改代码只需 push，不需要再去 Cloudflare 后台。**
+
+### 新增的部署相关文件（仓库根，**不在 app/**）
+
+| 文件 | 作用 |
+|---|---|
+| `wrangler.jsonc` | Workers 配置，`assets.directory = ./app/dist`，`not_found_handling: single-page-application` |
+| `ci.sh` | CI build 脚本，直接调 binary 绕过 pnpm script runner |
+| `package.json` | 仓库根最小 package.json，含 `packageManager: pnpm@9.15.0` |
+| `.npmrc` | `frozen-lockfile=false`，CI 兼容用 |
+| `app/.npmrc` | 同上（双份保险） |
+| `app/package.json` | 加了 `packageManager` 和 `engines.node: >=20` 字段 |
+
+### Cloudflare 后台配置（已设好不要动）
+
+- Build command: `bash ci.sh`
+- Deploy command: `npx wrangler deploy`
+- Root directory: `/`
+- Production branch: `main`
+- Non-production branch builds: Enabled
+
+### 踩坑总结（每个对应一个 CI 反直觉默认）
+
+1. **Cloudflare 把无 root package.json 的项目识为 Worker** → 加 `wrangler.jsonc` 声明这是 Static Assets 模式
+2. **CI 自动当 pnpm monorepo**（看到 app/ 有 package.json 但仓库根没有，注入空 `pnpm-workspace.yaml`）→ pnpm install 加 `--ignore-workspace`
+3. **CI 默认 pnpm 老版本读不懂 lockfileVersion 9.0**（症状：`resolved 1, downloaded 0`）→ `packageManager` 字段 + `frozen-lockfile=false`
+4. **`pnpm build` 在执行 script 前还会查 workspace 配置** → 写 `ci.sh` 直接调 `./node_modules/.bin/tsc && ./node_modules/.bin/vite build`，完全绕过 pnpm script runner
+5. **Cloudflare 「Retry build」按钮重跑当前 build 的旧 commit**，不是 main HEAD → `git commit --allow-empty -m "trigger"` push 空 commit 触发 auto-build
+
+完整复盘见 `Vault-InfoTech/07_对话录/2026-05-24_小红书排版器Cloudflare部署实战.md`
+方法论笔记见 `Vault-InfoTech/02_核心概念/持续部署CI-CD.md`
+
+### 给未来 Claude 的 build 排查指南（按顺序）
+
+1. **错误尾部是 `pnpm help install` 还是 `pnpm help run`？** 前者是依赖阶段，后者是 script runner / workspace 阶段
+2. **Build log 的 Branch 显示的 commit hash 是 main HEAD 吗？** 不是的话推空 commit 触发用最新代码
+3. **看到 "resolved 1, downloaded 0"**：pnpm 版本问题，确认根目录和 app/ 都有 `packageManager` 字段
+4. **看到 "packages field missing or empty"**：workspace 检测问题，确认 build 全程不经过 `pnpm run` / `pnpm <script>`
+5. **看到 "bash: ci.sh: No such file"**：Cloudflare 在用旧 commit 跑，那时还没有 ci.sh，推空 commit 触发 auto-build
+
 ## 用户偏好（重要）
 
 - **行为准则**：诚实优先、不偷懒、做不到直说，先查自身再考虑外部因素
@@ -294,8 +363,12 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 10. ~~**主题真图缩略图**：ThemeLibrary 卡片渲染 9:16 mini preview~~ ✅ 2026-05-24 完成
 11. ~~**导出 PNG zip**（Step 7）~~ ✅ 2026-05-24 完成（html2canvas-pro + jszip + 重命名弹窗）
 12. **其余字体本地化（可选）**：ZCOOL / Ma Shan Zheng / Long Cang 现在还走 Google Fonts。如果大陆访问也卡，可继续 fontsource 化
-13. **部署 Cloudflare Pages**（Step 8）
+13. ~~**部署 Cloudflare Pages**（Step 8）~~ ✅ 2026-05-24 完成（Cloudflare Workers Static Assets + GitHub auto-deploy）
 14. **修 file picker bug**（见顶部「已知 bug」）：可优先级低，因为拖拽 work，但属于 UX 退化，最终需要修
+15. **PWA 配置**：加 `vite-plugin-pwa`，让用户能"安装到主屏幕/Dock"获得类 App 体验
+16. **自定义域名**：买 `xxx.com` 绑到 Cloudflare（~¥80/年）替换默认 `*.workers.dev`
+17. **字体冗余清理**：fontsource 同时生成 `.woff` + `.woff2`，现代浏览器只用 woff2，删 woff 可让 dist 体积减半（115MB → ~60MB）
+18. **Tauri 打包**：把 Web 版套壳变成 macOS .app（可上架 App Store）
 
 ## 新会话开场建议
 
@@ -321,3 +394,7 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 - ❌ 不要直接用 shadcn 的 `<Dialog>` + `<Tabs>` 而不传 className —— 默认配置有坑（见上面坑 6–8），新 Modal 时必传 `sm:max-w-* + grid-cols-1`、新 Tabs 时必传 `flex-col`
 - ❌ 不要再用原生 `<select>`（macOS Chrome popup 字号巨大），统一走 `@/components/ui/select` 里的 shadcn Select
 - ❌ 主题数据里不要存 blob URL（session-bound），只存 `bgAssetId`/`logoAssetId`，apply 时再用 `resolveAssetSrc` 反查
+- ❌ 不要在 Cloudflare 后台手动改 build command —— 已设好 `bash ci.sh`，配置全在仓库代码里（wrangler.jsonc + ci.sh + packageManager 字段）
+- ❌ 不要点 Cloudflare 的「Retry build」期望用新代码 —— 它重跑当前 build 关联的旧 commit。要用新代码必须 push（实在没改动用 `git commit --allow-empty -m "trigger" && git push`）
+- ❌ 不要在仓库根加 `pnpm-workspace.yaml` —— Cloudflare CI 会覆盖成空内容，反而失败。靠 `--ignore-workspace` flag 或 `ci.sh` 绕过即可
+- ❌ 不要把 `pnpm build` 改回 build command —— pnpm 9 的 script runner 会触发 workspace 检测，必须走 `ci.sh` 里的 `./node_modules/.bin/` 直接调 binary 路径
