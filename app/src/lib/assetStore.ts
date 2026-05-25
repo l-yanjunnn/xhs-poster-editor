@@ -8,7 +8,7 @@ const DB_NAME = 'xhs-poster'
 const DB_VERSION = 1
 const STORE = 'user-assets'
 
-export type AssetKind = 'background' | 'logo' | 'sticker'
+export type AssetKind = 'background' | 'logo' | 'sticker' | 'image'
 
 // 存进 DB 的形态：blob + 元数据。读出后转 Asset 给上层用。
 interface StoredAsset {

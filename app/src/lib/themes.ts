@@ -29,6 +29,10 @@ export interface Theme {
   fontH2: string
   fontH3: string
   fontBody: string
+  // 标题加粗二态：true → 700，false → 400。后续要精细字重再升级成下拉
+  h1Bold: boolean
+  h2Bold: boolean
+  h3Bold: boolean
   fontSize: number
   density: DensityLevel
   logoStrategy: LogoStrategy
@@ -56,6 +60,9 @@ export const BUILTIN_THEMES: Theme[] = [
     fontH2: DISPLAY_SERIF,
     fontH3: DISPLAY_SANS,
     fontBody: DISPLAY_SANS,
+    h1Bold: true,
+    h2Bold: true,
+    h3Bold: true,
     fontSize: 36,
     density: 'compact',
     logoStrategy: 'every',
@@ -75,6 +82,9 @@ export const BUILTIN_THEMES: Theme[] = [
     fontH2: DISPLAY_SANS,
     fontH3: DISPLAY_SANS,
     fontBody: DISPLAY_SANS,
+    h1Bold: true,
+    h2Bold: true,
+    h3Bold: true,
     fontSize: 40,
     density: 'normal',
     logoStrategy: 'every',
@@ -94,6 +104,9 @@ export const BUILTIN_THEMES: Theme[] = [
     fontH2: DISPLAY_SERIF,
     fontH3: DISPLAY_SANS,
     fontBody: DISPLAY_SANS,
+    h1Bold: true,
+    h2Bold: true,
+    h3Bold: true,
     fontSize: 40,
     density: 'normal',
     logoStrategy: 'every',

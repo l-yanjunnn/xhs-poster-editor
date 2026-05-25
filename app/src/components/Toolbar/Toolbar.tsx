@@ -36,6 +36,9 @@ interface Props {
   fontH2: string
   fontH3: string
   fontBody: string
+  h1Bold: boolean
+  h2Bold: boolean
+  h3Bold: boolean
   fontSize: number
   density: DensityLevel
   h1Width: H1Width
@@ -46,6 +49,9 @@ interface Props {
   onFontH2: (v: string) => void
   onFontH3: (v: string) => void
   onFontBody: (v: string) => void
+  onH1Bold: (v: boolean) => void
+  onH2Bold: (v: boolean) => void
+  onH3Bold: (v: boolean) => void
   onFontSize: (v: number) => void
   onDensity: (v: DensityLevel) => void
   onH1Width: (v: H1Width) => void
@@ -55,7 +61,20 @@ interface Props {
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
   onExport: () => void
+  // 图片宽度：选中编辑器中的图片时启用
+  imageActive: boolean
+  imageWidth: string | null
+  onImageWidth: (width: string | null) => void
 }
+
+// 图片宽度下拉档位；__default__ = 原大小（清空 attribute）
+const IMAGE_WIDTH_OPTIONS: { value: string; label: string }[] = [
+  { value: '__default__', label: '原大小' },
+  { value: '33%', label: '小 33%' },
+  { value: '50%', label: '中 50%' },
+  { value: '75%', label: '大 75%' },
+  { value: '100%', label: '全宽 100%' },
+]
 
 // 顶部全局工具栏。Select 用 Radix（shadcn）替代原生 select，规避 macOS Chrome
 // 原生 select popup 字号过大、无法 CSS 控制的问题
@@ -115,6 +134,7 @@ export function Toolbar(p: Props) {
           fonts={DISPLAY_FONTS}
           userFontFamilies={p.userFontFamilies}
         />
+        <BoldToggle active={p.h1Bold} onClick={() => p.onH1Bold(!p.h1Bold)} />
         <IconButton onClick={p.onOpenFontLibrary} title="管理字体" />
       </Group>
 
@@ -125,6 +145,7 @@ export function Toolbar(p: Props) {
           fonts={DISPLAY_FONTS}
           userFontFamilies={p.userFontFamilies}
         />
+        <BoldToggle active={p.h2Bold} onClick={() => p.onH2Bold(!p.h2Bold)} />
         <IconButton onClick={p.onOpenFontLibrary} title="管理字体" />
       </Group>
 
@@ -135,6 +156,7 @@ export function Toolbar(p: Props) {
           fonts={DISPLAY_FONTS}
           userFontFamilies={p.userFontFamilies}
         />
+        <BoldToggle active={p.h3Bold} onClick={() => p.onH3Bold(!p.h3Bold)} />
         <IconButton onClick={p.onOpenFontLibrary} title="管理字体" />
       </Group>
 
@@ -161,6 +183,17 @@ export function Toolbar(p: Props) {
           value={p.h1Width}
           onValueChange={(v) => p.onH1Width(v as H1Width)}
           options={H1_WIDTH_OPTIONS}
+        />
+      </Group>
+
+      <Group label={p.imageActive ? '图片宽度' : '图片宽度（先选图）'}>
+        <SimpleSelect
+          value={p.imageActive ? p.imageWidth ?? '__default__' : '__default__'}
+          onValueChange={(v) =>
+            p.onImageWidth(v === '__default__' ? null : v)
+          }
+          options={IMAGE_WIDTH_OPTIONS}
+          disabled={!p.imageActive}
         />
       </Group>
 
@@ -222,6 +255,30 @@ function Group({
   )
 }
 
+function BoldToggle({
+  active,
+  onClick,
+}: {
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={active ? '取消加粗' : '加粗'}
+      aria-pressed={active}
+      className={
+        'cursor-pointer rounded border px-2 py-1 text-[13px] font-bold transition ' +
+        (active
+          ? 'border-blue-600 bg-blue-900/40 text-blue-200'
+          : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:bg-neutral-700')
+      }
+    >
+      B
+    </button>
+  )
+}
+
 function IconButton({
   onClick,
   title,
@@ -246,13 +303,15 @@ function SimpleSelect({
   value,
   onValueChange,
   options,
+  disabled,
 }: {
   value: string
   onValueChange: (v: string) => void
   options: { value: string; label: string }[]
+  disabled?: boolean
 }) {
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className="min-w-[120px]">
         <SelectValue />
       </SelectTrigger>

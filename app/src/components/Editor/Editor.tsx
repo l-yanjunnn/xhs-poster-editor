@@ -1,18 +1,52 @@
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import Image from '@tiptap/extension-image'
 import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import '@/styles/editor.css'
 
-// 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON
+// 扩展 Image，加 width attribute 走 inline style（百分比，画布按宽度自适应）
+// 默认 null = 原大小（CSS max-width:100% 兜底，不会溢出）
+const ResizableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        renderHTML: (attrs) => {
+          if (!attrs.width) return {}
+          return { style: `width: ${attrs.width}` }
+        },
+        parseHTML: (element) =>
+          (element as HTMLElement).style.width || null,
+      },
+    }
+  },
+})
+
+// 上抛给 App 的图片状态，Toolbar 拿来渲染下拉
+export interface ImageState {
+  active: boolean
+  width: string | null
+}
+
+// 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON；
+// 插入图片需要让 App 持有的素材库回调能把 src 喂回编辑器；
+// setImageWidth 给顶部 Toolbar 的「图片宽度」下拉用
 export interface EditorHandle {
   setContent: (content: object | string) => void
   getJSON: () => object | null
+  insertImage: (src: string) => void
+  setImageWidth: (width: string | null) => void
 }
 
 interface Props {
   onUpdate?: (html: string) => void
   initialContent?: string
+  // 编辑器内点「插入图片」时通知 App 打开素材库到 image tab
+  onInsertImageClick?: () => void
+  // selection 变化或图片属性变化时上抛，Toolbar 据此显示当前图片宽度
+  onImageStateChange?: (state: ImageState) => void
 }
 
 const DEFAULT_CONTENT = `
@@ -32,7 +66,7 @@ const DEFAULT_CONTENT = `
 `
 
 export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
-  { onUpdate, initialContent },
+  { onUpdate, initialContent, onInsertImageClick, onImageStateChange },
   ref,
 ) {
   const editor = useEditor({
@@ -43,10 +77,24 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         horizontalRule: { HTMLAttributes: { class: 'page-break' } },
       }),
       Underline,
+      // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
+      ResizableImage.configure({ inline: false, allowBase64: true }),
     ],
     content: initialContent ?? DEFAULT_CONTENT,
-    onUpdate: ({ editor }) => onUpdate?.(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      onUpdate?.(editor.getHTML())
+      // 改属性（如调宽度）也走 onUpdate，需同步上抛
+      reportImageState(editor)
+    },
+    onSelectionUpdate: ({ editor }) => reportImageState(editor),
   })
+
+  function reportImageState(ed: Editor) {
+    onImageStateChange?.({
+      active: ed.isActive('image'),
+      width: (ed.getAttributes('image').width as string | null) || null,
+    })
+  }
 
   useImperativeHandle(
     ref,
@@ -55,6 +103,12 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         editor?.commands.setContent(c as never)
       },
       getJSON: () => editor?.getJSON() ?? null,
+      insertImage: (src) => {
+        editor?.chain().focus().setImage({ src }).run()
+      },
+      setImageWidth: (width) => {
+        editor?.chain().focus().updateAttributes('image', { width }).run()
+      },
     }),
     [editor],
   )
@@ -66,7 +120,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
 
   return (
     <div className="flex h-full flex-col bg-[#fafaf8]">
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor} onInsertImageClick={onInsertImageClick} />
       <div className="flex-1 overflow-y-auto px-10 py-8">
         <EditorContent editor={editor} className="tiptap-editor" />
       </div>
@@ -74,7 +128,13 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   )
 })
 
-function EditorToolbar({ editor }: { editor: Editor | null }) {
+function EditorToolbar({
+  editor,
+  onInsertImageClick,
+}: {
+  editor: Editor | null
+  onInsertImageClick?: () => void
+}) {
   if (!editor) return null
   const Btn = ({
     label,
@@ -151,6 +211,9 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         label="↓ 插入分页 ↓"
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
       />
+      {onInsertImageClick && (
+        <Btn label="🖼 插入图片" onClick={onInsertImageClick} />
+      )}
       <span className="mx-1 w-px self-stretch bg-neutral-300" />
       <Btn
         label="加粗"
@@ -167,3 +230,4 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
     </div>
   )
 }
+

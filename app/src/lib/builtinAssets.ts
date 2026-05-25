@@ -27,6 +27,9 @@ export const BUILTIN_LOGOS: Asset[] = [
   },
 ]
 
+// 插入图片的内置素材（暂空，用户上传为主）
+export const BUILTIN_IMAGES: Asset[] = []
+
 export function findAssetById(list: Asset[], id: string): Asset | undefined {
   return list.find((a) => a.id === id)
 }

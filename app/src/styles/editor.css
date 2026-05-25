@@ -16,13 +16,13 @@
 
 .tiptap-editor h1 {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: var(--fw-h1, 700);
   margin: 12px 0;
 }
 
 .tiptap-editor h2 {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: var(--fw-h2, 700);
   margin: 18px 0 8px;
   padding-left: 12px;
   border-left: 4px solid #1a1a1a;
@@ -30,7 +30,7 @@
 
 .tiptap-editor h3 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--fw-h3, 600);
   margin: 14px 0 6px;
 }
 
@@ -81,6 +81,19 @@
 
 .tiptap-editor u {
   text-decoration: underline;
+}
+
+/* 编辑器中的图片：限定屏幕宽度可读尺寸 */
+.tiptap-editor img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px 0;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+.tiptap-editor img.ProseMirror-selectednode {
+  outline: 2px solid #2563eb;
 }
 
 /* Tailwind preflight 把 list-style 清成了 none，要主动补回，否则 ul/ol 视觉一样 */

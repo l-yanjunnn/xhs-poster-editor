@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 7 全部功能完成 + Step 8 Cloudflare 部署上线（CI/CD 已通）**
-> 最后更新：2026-05-24（Step 8：Cloudflare Workers Static Assets 部署，git push 自动 deploy）
+> **当前进度：Step 9 标题加粗 toggle + 插入图片 + 图片宽度档位**
+> 最后更新：2026-05-25（标题加粗 toggle；Tiptap Image 扩展 + 素材库 image tab；图片宽度 5 档下拉）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -321,6 +321,63 @@ app/
 完整复盘见 `Vault-InfoTech/07_对话录/2026-05-24_小红书排版器Cloudflare部署实战.md`
 方法论笔记见 `Vault-InfoTech/02_核心概念/持续部署CI-CD.md`
 
+## Step 9：标题加粗 toggle + 编辑器插入图片（2026-05-24）
+
+### 标题加粗 toggle（轻便方案）
+- **决策**：不做字重下拉，三个标题各加一个 B toggle 按钮（粗/常规二态）。覆盖 90% 场景，UI 最轻。未来需要 ExtraLight/Black 等精细字重再升级（fontsource 已载入 9 档）
+- **数据模型**（`themes.ts`）：`Theme` 接口加 `h1Bold` / `h2Bold` / `h3Bold` boolean 字段。所有内置主题默认 true，保持现有视觉
+- **CSS var**（`canvas.css`）：新增 `--fw-h1` / `--fw-h2` / `--fw-h3`（默认 700/700/600 保 fallback）。`.content h1/h2/h3` 的 `font-weight` 改用 var
+- **注入**（`App.tsx::useEffect`）：state 写 `--fw-hN` 为 `700` 或 `400`
+- **UI**（`Toolbar.tsx::BoldToggle`）：新增组件，三个标题 Group 内 FontSelect 旁边一个 B 按钮，蓝高亮 = 加粗中。**正文 Group 不加 B**（编辑器内部有 `<strong>` 处理 inline 加粗，正文整段不需要全局 toggle）
+- **主题序列化**：applyTheme / saveCurrentAsTheme 都跟着加三个字段；customize 包装 `setH1Bold` 等让用户点击后脱离当前主题
+- **editor.css 同步**：`.tiptap-editor h1/h2/h3` 也改用 `var(--fw-hN, fallback)`，编辑器和画布字重保持一致
+
+### 编辑器插入图片
+- **新依赖**：`@tiptap/extension-image`（3.23.6）。安装时遇到 store 冲突坑见下文
+- **Tiptap 配置**（`Editor.tsx`）：`Image.configure({ inline: false, allowBase64: true })`。inline=false 让图片成为 block 节点，跟段落/标题流式排版对齐
+- **EditorHandle 加 `insertImage(src)`**：用 `editor.chain().focus().setImage({ src }).run()`
+- **素材库 image kind**（`AssetLibrary.tsx`）：
+  - `KindTab` 加 `'image'`，新增第三个 Tab「图片」
+  - `Props` 加 `onPickImage?` 和 `initialKind?`（让上游可指定打开时落到哪个 tab）
+  - `useEffect` 监听 `p.initialKind` 切 kind
+  - image kind 自动跳到「我的上传」（`BUILTIN_IMAGES = []` 空，省一次点击）
+  - image kind 不参与「当前选中高亮」（src 为空）
+- **App.tsx 连线**：
+  - 新增 `assetLibInitialKind` state
+  - 编辑器工具栏「🖼 插入图片」按钮 → App 把 `assetLibInitialKind` 设为 `'image'` + 打开素材库
+  - 主题/Logo 按钮触发素材库时 `assetLibInitialKind` 设回 `undefined`，保持默认 background tab
+  - `handlePickImage(asset)` → `editorRef.current?.insertImage(asset.src)`
+- **样式**：`canvas.css` 加 `.content img { max-width: 100%; height: auto; display: block; border-radius: 8px }`；`editor.css` 同步加 img 样式 + `ProseMirror-selectednode` 选中蓝框
+- **AssetKind 加 'image'**（`assetStore.ts`）：保留旧 `'sticker'` 类型不影响已有数据
+
+### 装包踩坑：pnpm corepack store 冲突
+- **症状**：`pnpm add @tiptap/extension-image` 报 `ERR_PNPM_UNEXPECTED_STORE`，node_modules 是 store v11（brew 装的 pnpm 11.1.3），但 `packageManager: pnpm@9.15.0` 字段让 corepack 切到 pnpm 9，9 用 store v3
+- **绕过**：临时删除 `app/package.json` 的 `packageManager` 字段 → 直接用 brew 的 pnpm 11 跑 `pnpm install --ignore-workspace` → 装完恢复字段
+- **教训**：corepack + brew pnpm 双装是矛盾来源。`packageManager` 字段必须保留给 CI 用，本地装包时临时去掉是最简洁路径
+
+### 验证方式
+- `./node_modules/.bin/tsc -b` 通过 + `vite build` 通过
+- 起 `vite preview --port 4173`，playwright MCP：
+  - 看到 H1/H2/H3 三个 B 按钮（默认 pressed=true，蓝高亮）
+  - 点 H1 B 按钮后 `computedStyle(.content h1).fontWeight = 400`，CSS var `--fw-h1 = 400`
+  - 编辑器工具栏「🖼 插入图片」点击 → 素材库自动开到 image tab + 「我的上传」
+  - 程序化上传 logo-cat-ring.png 走 IndexedDB → 卡片显示 → 点卡片 → 编辑器和右侧画布都渲染出 525px 自然宽度图片
+
+### 图片宽度下拉（顶部 Toolbar）
+- **位置**：顶部全局工具栏「H1 宽度」旁边，与其它宽度/字号控件并列
+  - 第一版做在编辑器内部 toolbar 是设计错误：用户的 mental model 是「跟 H1 宽度类似」，那就该在同一行。改到顶部
+- **5 档**：原大小 / 33% / 50% / 75% / 100%
+  - 「原大小」= 清空 `width` attribute，回到 CSS `max-width: 100%` 兜底（小图原大小，大图等比缩到 100% 内容区）
+  - 其它百分比 = 写入 image 节点的 `width` attribute → 渲染为 `<img style="width: 50%">`
+- **Tiptap 扩展**：`Image.extend({ addAttributes })` 加 `width` attribute，`renderHTML` 把 `width` 输出到 style，`parseHTML` 从 `element.style.width` 反序列化（重新打开/setContent 时保留）
+- **状态同步**：
+  - Editor 通过 `onSelectionUpdate` + `onUpdate` 双钩子上抛 `ImageState = { active, width }` 给 App
+  - App 持有 `imageState` state，传给 Toolbar 渲染
+  - Toolbar 下拉的 onChange 通过 `onImageWidth(width)` 回调 → App → `editorRef.current?.setImageWidth(width)`
+  - EditorHandle 加 `setImageWidth(width: string | null)` 暴露给 App
+- **disabled 提示**：未选中图片时下拉灰掉，**Group label 改写为「图片宽度（先选图）」**——这比单独靠 hover title 更显式；选中后变回「图片宽度」
+- **SimpleSelect 加 disabled 支持**：Toolbar 已有的 SimpleSelect 封装加 disabled prop（Radix Select 原生支持）
+
 ### 给未来 Claude 的 build 排查指南（按顺序）
 
 1. **错误尾部是 `pnpm help install` 还是 `pnpm help run`？** 前者是依赖阶段，后者是 script runner / workspace 阶段
@@ -366,7 +423,13 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 12. **其余字体本地化（可选）**：ZCOOL / Ma Shan Zheng / Long Cang 现在还走 Google Fonts。如果大陆访问也卡，可继续 fontsource 化
 13. ~~**部署 Cloudflare Pages**（Step 8）~~ ✅ 2026-05-24 完成（Cloudflare Workers Static Assets + GitHub auto-deploy）
 14. ~~**修 file picker bug**~~ ✅ 2026-05-24 自动解决（部署到生产后 picker 正常工作，dev server 副作用）
-15. **PWA 配置**：加 `vite-plugin-pwa`，让用户能"安装到主屏幕/Dock"获得类 App 体验
+15. ~~**标题加粗 toggle**（Step 9）~~ ✅ 2026-05-24 完成（H1/H2/H3 各一个 B 按钮二态切换）
+16. ~~**编辑器插入图片**（Step 9）~~ ✅ 2026-05-24 完成（Tiptap Image + 素材库 image tab）
+17. **标题字重升级成下拉**（如二态不够用）：把 `h1Bold` 等 boolean 改成 `h1Weight: 100-900` 数字字段，B 按钮换成 select（fontsource 已载入 9 档思源黑）
+18. ~~**图片宽度档位**~~ ✅ 2026-05-25 完成（顶部 Toolbar 下拉，5 档：原大小/33/50/75/100）
+19. **图片对齐**（左/中/右）：当前默认 block 居左，可加 align attribute 支持居中/居右
+20. **图片拖拽手柄缩放**（如档位不够用）：装社区 image-resize 扩展或自写 NodeView，鼠标拖四角自由调整
+21. **PWA 配置**：加 `vite-plugin-pwa`，让用户能"安装到主屏幕/Dock"获得类 App 体验
 16. **自定义域名**：买 `xxx.com` 绑到 Cloudflare（~¥80/年）替换默认 `*.workers.dev`
 17. **字体冗余清理**：fontsource 同时生成 `.woff` + `.woff2`，现代浏览器只用 woff2，删 woff 可让 dist 体积减半（115MB → ~60MB）
 18. **Tauri 打包**：把 Web 版套壳变成 macOS .app（可上架 App Store）
@@ -399,3 +462,5 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 - ❌ 不要点 Cloudflare 的「Retry build」期望用新代码 —— 它重跑当前 build 关联的旧 commit。要用新代码必须 push（实在没改动用 `git commit --allow-empty -m "trigger" && git push`）
 - ❌ 不要在仓库根加 `pnpm-workspace.yaml` —— Cloudflare CI 会覆盖成空内容，反而失败。靠 `--ignore-workspace` flag 或 `ci.sh` 绕过即可
 - ❌ 不要把 `pnpm build` 改回 build command —— pnpm 9 的 script runner 会触发 workspace 检测，必须走 `ci.sh` 里的 `./node_modules/.bin/` 直接调 binary 路径
+- ❌ 本地装包遇 `ERR_PNPM_UNEXPECTED_STORE` 不要去改全局 store-dir —— 临时删 `app/package.json` 的 `packageManager` 字段，让 brew 的 pnpm 11 直接生效，装完恢复字段就行
+- ❌ 不要在主题数据里硬编码 `font-weight: 700`，已经改用 `--fw-hN` CSS var；想加新标题字重档位，从 `h1Bold` boolean 升级成数字字段，别再回到 CSS 写死

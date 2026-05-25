@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
   BUILTIN_BACKGROUNDS,
+  BUILTIN_IMAGES,
   BUILTIN_LOGOS,
   type Asset,
 } from '@/lib/builtinAssets'
@@ -28,14 +29,28 @@ interface Props {
   // 传完整 Asset 而不是单纯 src，让上层能同时保存 assetId（用于主题序列化）
   onPickBackground: (asset: Asset) => void
   onPickLogo: (asset: Asset) => void
+  // 插入到编辑器（image kind），可选
+  onPickImage?: (asset: Asset) => void
+  // 打开时初始 tab，编辑器「插入图片」按钮直接落到 image 用
+  initialKind?: KindTab
 }
 
 type SourceTab = 'builtin' | 'user'
-type KindTab = 'background' | 'logo'
+type KindTab = 'background' | 'logo' | 'image'
 
 export function AssetLibrary(p: Props) {
-  const [kind, setKind] = useState<KindTab>('background')
+  const [kind, setKind] = useState<KindTab>(p.initialKind ?? 'background')
   const [source, setSource] = useState<SourceTab>('builtin')
+
+  // 用 initialKind 切换打开的 tab（每次开启素材库都生效）
+  useEffect(() => {
+    if (p.open && p.initialKind) setKind(p.initialKind)
+  }, [p.open, p.initialKind])
+
+  // image kind 内置为空，自动跳到「我的上传」省一次点击
+  useEffect(() => {
+    if (kind === 'image') setSource('user')
+  }, [kind])
   const [userAssets, setUserAssets] = useState<Asset[]>([])
   const [uploading, setUploading] = useState(false)
   // Why: 用 label htmlFor 关联 input 触发 file picker，比 ref.click() 稳。
@@ -70,11 +85,23 @@ export function AssetLibrary(p: Props) {
   function handlePick(asset: Asset) {
     if (kind === 'background') p.onPickBackground(asset)
     else if (kind === 'logo') p.onPickLogo(asset)
+    else if (kind === 'image') p.onPickImage?.(asset)
     p.onOpenChange(false)
   }
 
-  const builtinList = kind === 'background' ? BUILTIN_BACKGROUNDS : BUILTIN_LOGOS
-  const currentSrc = kind === 'background' ? p.currentBgSrc : p.currentLogoSrc
+  const builtinList =
+    kind === 'background'
+      ? BUILTIN_BACKGROUNDS
+      : kind === 'logo'
+        ? BUILTIN_LOGOS
+        : BUILTIN_IMAGES
+  // image 是插入到正文，不存在「当前选中」概念，不高亮
+  const currentSrc =
+    kind === 'background'
+      ? p.currentBgSrc
+      : kind === 'logo'
+        ? p.currentLogoSrc
+        : ''
 
   return (
     <Dialog open={p.open} onOpenChange={p.onOpenChange}>
@@ -92,10 +119,11 @@ export function AssetLibrary(p: Props) {
           <TabsList className="w-full">
             <TabsTrigger value="background">背景</TabsTrigger>
             <TabsTrigger value="logo">Logo</TabsTrigger>
+            <TabsTrigger value="image">图片</TabsTrigger>
           </TabsList>
 
-          {/* 背景 + Logo 共用同一份 UI */}
-          {(['background', 'logo'] as const).map((k) => (
+          {/* 三种 kind 共用同一份 UI */}
+          {(['background', 'logo', 'image'] as const).map((k) => (
             <TabsContent key={k} value={k} className="mt-4">
               {/* 二级 Tab：内置 / 我的 */}
               <Tabs
@@ -136,7 +164,8 @@ export function AssetLibrary(p: Props) {
                   <div className="mt-4">
                     {userAssets.length === 0 ? (
                       <div className="py-8 text-center text-sm text-neutral-500">
-                        还没有上传任何{k === 'background' ? '背景' : 'Logo'}
+                        还没有上传任何
+                        {k === 'background' ? '背景' : k === 'logo' ? 'Logo' : '图片'}
                       </div>
                     ) : (
                       <AssetGrid

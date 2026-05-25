@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EditorPane, type EditorHandle } from '@/components/Editor/Editor'
+import { EditorPane, type EditorHandle, type ImageState } from '@/components/Editor/Editor'
 import { Preview } from '@/components/Preview/Preview'
 import { Toolbar } from '@/components/Toolbar/Toolbar'
 import { AssetLibrary } from '@/components/AssetLibrary/AssetLibrary'
@@ -46,6 +46,9 @@ function App() {
   const [fontH2, setFontH2] = useState(DEFAULT_THEME.fontH2)
   const [fontH3, setFontH3] = useState(DEFAULT_THEME.fontH3)
   const [fontBody, setFontBody] = useState(DEFAULT_THEME.fontBody)
+  const [h1Bold, setH1Bold] = useState(DEFAULT_THEME.h1Bold)
+  const [h2Bold, setH2Bold] = useState(DEFAULT_THEME.h2Bold)
+  const [h3Bold, setH3Bold] = useState(DEFAULT_THEME.h3Bold)
   const [fontSize, setFontSize] = useState(DEFAULT_THEME.fontSize)
   const [density, setDensity] = useState<DensityLevel>(DEFAULT_THEME.density)
   const [h1Width, setH1Width] = useState<H1Width>(DEFAULT_THEME.h1Width)
@@ -73,6 +76,10 @@ function App() {
   )
 
   const [assetLibOpen, setAssetLibOpen] = useState(false)
+  // 素材库打开时切到哪个 tab；编辑器「插入图片」按钮设为 'image'，主题/Logo 按钮 undefined 保持默认
+  const [assetLibInitialKind, setAssetLibInitialKind] = useState<
+    'background' | 'logo' | 'image' | undefined
+  >(undefined)
   const [fontLibOpen, setFontLibOpen] = useState(false)
   const [themeLibOpen, setThemeLibOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -81,6 +88,8 @@ function App() {
   const [userFontFamilies, setUserFontFamilies] = useState<string[]>([])
   // 用户保存的主题列表，由 App 集中维护，同时供 Toolbar 下拉和 ThemeLibrary 卡片使用
   const [userThemes, setUserThemes] = useState<Theme[]>([])
+  // 当前光标下图片节点的状态，Toolbar「图片宽度」下拉据此显示当前值/启用
+  const [imageState, setImageState] = useState<ImageState>({ active: false, width: null })
 
   useEffect(() => {
     loadAllUserFonts().then(setUserFontFamilies)
@@ -117,6 +126,9 @@ function App() {
     setFontH2(theme.fontH2)
     setFontH3(theme.fontH3)
     setFontBody(theme.fontBody)
+    setH1Bold(theme.h1Bold)
+    setH2Bold(theme.h2Bold)
+    setH3Bold(theme.h3Bold)
     setFontSize(theme.fontSize)
     setDensity(theme.density)
     setH1Width(theme.h1Width)
@@ -146,6 +158,9 @@ function App() {
       fontH2,
       fontH3,
       fontBody,
+      h1Bold,
+      h2Bold,
+      h3Bold,
       fontSize,
       density,
       logoStrategy,
@@ -183,6 +198,12 @@ function App() {
     setLogoSrc(asset.src)
     setCurrentThemeId(null)
   }
+  function handlePickImage(asset: Asset) {
+    editorRef.current?.insertImage(asset.src)
+  }
+  function handleImageWidthChange(width: string | null) {
+    editorRef.current?.setImageWidth(width)
+  }
 
   // CSS var 注入
   useEffect(() => {
@@ -191,6 +212,9 @@ function App() {
     root.style.setProperty('--font-h2', fontH2)
     root.style.setProperty('--font-h3', fontH3)
     root.style.setProperty('--font-body', fontBody)
+    root.style.setProperty('--fw-h1', h1Bold ? '700' : '400')
+    root.style.setProperty('--fw-h2', h2Bold ? '700' : '400')
+    root.style.setProperty('--fw-h3', h3Bold ? '700' : '400')
     root.style.setProperty('--h1-max-width', h1Width)
 
     for (const [k, v] of Object.entries(computeFontSizeVars(fontSize))) {
@@ -203,7 +227,7 @@ function App() {
     const [color, opacity] = OVERLAY_MAP[overlay]
     root.style.setProperty('--c-overlay-color', color)
     root.style.setProperty('--c-overlay-opacity', String(opacity))
-  }, [fontH1, fontH2, fontH3, fontBody, fontSize, density, h1Width, overlay])
+  }, [fontH1, fontH2, fontH3, fontBody, h1Bold, h2Bold, h3Bold, fontSize, density, h1Width, overlay])
 
   const pages = useMemo(() => splitIntoPages(content), [content])
 
@@ -235,6 +259,9 @@ function App() {
         fontH2={fontH2}
         fontH3={fontH3}
         fontBody={fontBody}
+        h1Bold={h1Bold}
+        h2Bold={h2Bold}
+        h3Bold={h3Bold}
         fontSize={fontSize}
         density={density}
         h1Width={h1Width}
@@ -245,12 +272,21 @@ function App() {
         onFontH2={customize(setFontH2)}
         onFontH3={customize(setFontH3)}
         onFontBody={customize(setFontBody)}
+        onH1Bold={customize(setH1Bold)}
+        onH2Bold={customize(setH2Bold)}
+        onH3Bold={customize(setH3Bold)}
         onFontSize={customize(setFontSize)}
         onDensity={customize(setDensity)}
         onH1Width={customize(setH1Width)}
         onOverlay={customize(setOverlay)}
         onLogoStrategy={customize(setLogoStrategy)}
-        onOpenAssetLibrary={() => setAssetLibOpen(true)}
+        onOpenAssetLibrary={() => {
+          setAssetLibInitialKind(undefined)
+          setAssetLibOpen(true)
+        }}
+        imageActive={imageState.active}
+        imageWidth={imageState.width}
+        onImageWidth={handleImageWidthChange}
         onOpenFontLibrary={() => setFontLibOpen(true)}
         onOpenThemeLibrary={() => setThemeLibOpen(true)}
         onExport={() => setExportOpen(true)}
@@ -263,6 +299,8 @@ function App() {
         currentLogoSrc={logoSrc}
         onPickBackground={handlePickBackground}
         onPickLogo={handlePickLogo}
+        onPickImage={handlePickImage}
+        initialKind={assetLibInitialKind}
       />
 
       <FontLibrary
@@ -292,7 +330,15 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* 左：编辑器 */}
         <div className="w-[45%] border-r-2 border-neutral-800">
-          <EditorPane ref={editorRef} onUpdate={setContent} />
+          <EditorPane
+            ref={editorRef}
+            onUpdate={setContent}
+            onInsertImageClick={() => {
+              setAssetLibInitialKind('image')
+              setAssetLibOpen(true)
+            }}
+            onImageStateChange={setImageState}
+          />
         </div>
 
         {/* 右：预览（多页纵向滚动） */}
