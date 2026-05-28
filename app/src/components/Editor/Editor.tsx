@@ -98,7 +98,8 @@ const DEFAULT_CONTENT = `
   <li><strong>有序 / 无序列表</strong>：嵌套自如</li>
 </ul>
 <h3>两种横线</h3>
-<p>「— 分隔线 —」插入淡淡虚线装饰；「↓ 插入分页 ↓」把内容切到下一页。</p>
+<p>「— 分隔线 —」插入淡淡虚线装饰；</p>
+<p>「↓ 插入分页 ↓」把内容切到下一页。</p>
 <blockquote>分页符在编辑器内显示为蓝色虚线 + 「↓ 分页 ↓」标签，不会出现在导出图里。</blockquote>
 
 <hr class="page-break">
@@ -111,6 +112,9 @@ const DEFAULT_CONTENT = `
 <p>管理背景图、Logo、插入图片。支持拖拽上传 + IndexedDB 持久化。</p>
 <h3>主题库</h3>
 <p>保存当前样式快照（可选含正文），跨会话复用。</p>
+
+<hr class="page-break">
+
 <h3>导出 PNG</h3>
 <ul>
   <li>单页 → 直接下载 PNG，多页 → 自动打 zip</li>

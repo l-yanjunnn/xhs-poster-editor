@@ -6,13 +6,15 @@
   --canvas-w: 1080px;
   --canvas-h: 1920px;
   --page-padding-x: 80px;
-  --page-padding-top: 260px;
-  --page-padding-bottom: 120px;
+  /* 小红书全屏展示是 9:15（不是 9:16），上下各裁约 60px。
+   * 在原 padding 基础上再往内收 100px 作为安全余量，避开出血区。 */
+  --page-padding-top: 360px;
+  --page-padding-bottom: 220px;
 
   /* Logo */
   --logo-size: 120px;
   --logo-offset-x: 60px;
-  --logo-offset-y: 60px;
+  --logo-offset-y: 160px;
 
   /* 字体（webfont 优先 + local 回退）
    * H1/H2/H3 各自独立可调，H3 默认沿用 body 字体保留原视觉层级 */
@@ -175,7 +177,8 @@
 }
 .page-tag {
   position: absolute;
-  bottom: 30px;
+  /* 避开 9:15 下出血（约 60px）+ 视觉余量 */
+  bottom: 130px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 18px;

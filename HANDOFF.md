@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程**
-> 最后更新：2026-05-28（首页中心 4:3 安全区适配；参考线 toggle；Divider 节点恢复淡虚线；ExportDialog 同名序号记忆 + 60s revoke 防文件损坏；DEFAULT_CONTENT 改成 4 页使用教程）
+> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程 + 9:15 出血适配**
+> 最后更新：2026-05-28（首页中心 4:3 安全区适配；参考线 toggle；Divider 节点恢复淡虚线；ExportDialog 同名序号记忆 + 60s revoke 防文件损坏；DEFAULT_CONTENT 改成 5 页使用教程；普通页所有上下边缘元素 +100px 避开 9:15 出血；雅致主题默认改为字号 40/间距标准）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -413,12 +413,25 @@ app/
 - **🚨 文件损坏 bug**：用户报「Chrome 下载条目存在但点击显示不了文件」。**根因**：`exportPng.ts::triggerDownload` 中 `URL.revokeObjectURL` 在 `a.click()` 后 1 秒就 revoke，11MB PNG 还能赶上，44MB zip 经常被截断 → 下载到一半文件就坏。**修法**：revoke 延迟从 1000ms → **60000ms**。
 - **教训**：blob URL 的生命周期要覆盖整个真实下载过程；Playwright 测试不踩这个坑因为它直接拷 blob 不走浏览器下载管线。
 
-### DEFAULT_CONTENT 改成「使用教程」（4 页样张）
+### DEFAULT_CONTENT 改成「使用教程」（5 页样张）
 - 第 1 页（封面）：H1 + 副标题 + 分隔线 + 段落 + 引用 + 段落
 - 第 2 页：顶部工具栏说明，覆盖 H2 + 列表 + 分隔线
 - 第 3 页：编辑器排版说明，覆盖 H2 + H3 + 列表 + 引用
-- 第 4 页：素材与导出，覆盖 4 个 H3 子节 + 列表 + 引用
+- 第 4 页：素材与导出（参考线/素材库/主题库 3 个 H3）
+- 第 5 页：导出 PNG（单独一页，含列表 + 引用 + 结束语）
 - **作用**：新用户开箱即用即时看到完整功能演示样张；同时作为「样张+教程」两用。
+- 2026-05-28 用户调整：BUILTIN_THEMES[0] 雅致默认改成 `fontSize=40` / `density='normal'`（原 36/compact）；「两种横线」段落在分号后拆为两段；「主题库」后新增 page-break，原 4 页变 5 页（导出 PNG 独立一页）。
+
+### 普通页 9:15 出血适配（所有上下边缘元素 +100px）
+- **背景**：小红书全屏展示是 **9:15**（不是 9:16），用户实测截图确认。9:16 上传后，上下各裁约 60px。
+- **方案**：普通页所有"上下边缘元素"在原值基础上 +100px 作为安全余量（出血 60 + 余量 100 ≈ 160），最初做的是 +50 视觉上还偏松，迭代到 +100）：
+  - `--page-padding-top`: 260 → **360**（H1 起始位置下移）
+  - `--page-padding-bottom`: 120 → **220**（内容底边界上移）
+  - `--logo-offset-y`: 60 → **160**（普通页右上角 logo 下移）
+  - `.page-tag bottom`: 30 → **130**（页码角标上移）
+- **副作用**：单页内容区高度 1540 → 1340px（少 13%），每页能容纳的字数减少。如果觉得过紧可适度回调。
+- **首页（`.page--first`）保持不动**：它的 padding-top=555 / logo-offset-y=355 是为「首图 4:3 缩略裁切」设计的，本来就远在 9:15 出血外。但首页底部 `padding-bottom` 没单独 override，跟随默认值变成 170 也正确（首页底部也要避开 9:15 下出血）。
+- **参考线公式不变**（`padding-bottom + 50px`）——参考线表达的是「建议不超过的舒适内容区」，独立于"避开出血"逻辑，padding 改了它跟着移即可。
 
 ### Dev 模式 editor 挂 window（方便 E2E）
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
