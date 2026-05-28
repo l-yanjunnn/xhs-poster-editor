@@ -10,8 +10,6 @@ async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
     scale: 2,
     backgroundColor: null,
     useCORS: true,
-    // 默认 15s，调高一档防止真实浏览器并发负载下 html2canvas 内部 img 加载 timeout
-    imageTimeout: 30000,
     onclone: (clonedDoc) => {
       // 撤掉所有 page-wrapper 的预览缩放
       clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
@@ -30,71 +28,6 @@ async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
       'image/png',
     )
   })
-}
-
-// 把单个 url（含 blob: / http: / same-origin）转成 data URL
-async function fetchAsDataURL(src: string): Promise<string> {
-  if (src.startsWith('data:')) return src
-  const res = await fetch(src)
-  const blob = await res.blob()
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('FileReader 失败'))
-    reader.readAsDataURL(blob)
-  })
-}
-
-// 把所有 page 内 <img> 的 src 临时换成 data URL，返回还原函数。
-// Why：html2canvas-pro clone DOM 后会重新触发 <img> 的 load（CORS 模式下浏览器缓存键变了，
-// 真实环境用户多 tab + 网络抖动下偶发 timeout，结果某些页的 bg/logo 没截上，
-// 导出的 PNG 只剩白底+空 logo 占位。data URL 是同步可用的 inline 数据，从根上消除 fetch race。
-async function inlineImagesAsDataURL(
-  pages: HTMLElement[],
-): Promise<() => void> {
-  const srcSet = new Set<string>()
-  pages.forEach((p) =>
-    p.querySelectorAll('img').forEach((img) => {
-      if (img.src && !img.src.startsWith('data:')) srcSet.add(img.src)
-    }),
-  )
-  // 并发预取所有唯一 src
-  const cache = new Map<string, string>()
-  await Promise.all(
-    Array.from(srcSet).map(async (src) => {
-      try {
-        cache.set(src, await fetchAsDataURL(src))
-      } catch {
-        // 单张失败就保留原 src，让 html2canvas 走老路径
-      }
-    }),
-  )
-  // 替换 src 并记录还原信息
-  const swapped: Array<{ img: HTMLImageElement; original: string }> = []
-  pages.forEach((p) =>
-    p.querySelectorAll('img').forEach((img) => {
-      const dataURL = cache.get(img.src)
-      if (dataURL) {
-        swapped.push({ img, original: img.src })
-        img.src = dataURL
-      }
-    }),
-  )
-  // 等所有 swap 后的 img 解码完成，再进入截图阶段
-  await Promise.all(
-    swapped.map(async ({ img }) => {
-      try {
-        await img.decode()
-      } catch {
-        // decode 偶发失败不致命，继续
-      }
-    }),
-  )
-  return () => {
-    swapped.forEach(({ img, original }) => {
-      img.src = original
-    })
-  }
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -123,25 +56,20 @@ export async function exportPages(
   if (pages.length === 0) return
   // 等所有 webfont 加载完，避免截图时还是 fallback 字体
   await document.fonts.ready
-  // 把图片 inline 成 data URL，规避 html2canvas clone 时的 img 加载竞态
-  const restore = await inlineImagesAsDataURL(pages)
-  try {
-    if (pages.length === 1) {
-      const blob = await pageToPngBlob(pages[0])
-      triggerDownload(blob, `${filename}.png`)
-      return
-    }
 
-    const zip = new JSZip()
-    for (let i = 0; i < pages.length; i++) {
-      const blob = await pageToPngBlob(pages[i])
-      zip.file(`${filename}-${i + 1}.png`, blob)
-    }
-    const zipBlob = await zip.generateAsync({ type: 'blob' })
-    triggerDownload(zipBlob, `${filename}.zip`)
-  } finally {
-    restore()
+  if (pages.length === 1) {
+    const blob = await pageToPngBlob(pages[0])
+    triggerDownload(blob, `${filename}.png`)
+    return
   }
+
+  const zip = new JSZip()
+  for (let i = 0; i < pages.length; i++) {
+    const blob = await pageToPngBlob(pages[i])
+    zip.file(`${filename}-${i + 1}.png`, blob)
+  }
+  const zipBlob = await zip.generateAsync({ type: 'blob' })
+  triggerDownload(zipBlob, `${filename}.zip`)
 }
 
 // 从 Tiptap HTML 里提取首个 H1 文本作为默认文件名；没有 H1 则回退到日期
