@@ -1,86 +1,115 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程 + 9:15 出血适配**
-> 最后更新：2026-05-29（**新 Claude 接手请先读「🚨 待修：导出 PNG 多页串行 race condition」章节**，那里有完整根因 + 推荐修法 + 失败修法的教训）
+> **当前进度：Step 11 导出 PNG race condition 五轮修法 + v5 检测重试方案（96% 成功率）**
+> 最后更新：2026-05-29（**新 Claude 接手请先读「✅ 导出 PNG race condition 修法终局」章节**，那里有 5 轮修法的失败教训 + 当前方案 + 想做到 99%+ 的方向）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
 ---
 
-## 🚨 待修：导出 PNG 多页串行 race condition（2026-05-29 排查未完）
+## ✅ 导出 PNG race condition 修法终局：v5 检测重试（96% 成功率）
 
-### 现象
-- 用户从线上 prod 多次导出 5 页 zip，每次有 1-3 张 PNG 是「白底 + 巨大 Logo 占位 + 缩小的文字」的废图
-- 每次失败的页**随机不同**，非确定性
-- 坏 PNG 的尺寸**异常**（不是预期的 2160×3840），是 `viewport_width × scale × N` 之类的怪尺寸（如 2880×~5000、1166×3360）
+### TL;DR
 
-### 根因（已实证）
-html2canvas-pro 在多页串行导出 + 慢网络下，**对 `.page` 元素 `parseBounds(getBoundingClientRect())` 偶发拿到错误的 bbox**：
-- 正常应该是 1080×1920（page CSS 固定值）
-- race 时拿到 viewport-sized（如 1440×~2600，flex 容器宽度而不是 page 自己的固定宽度）
-- 因为 `.page` 在 cloned doc 里是 flex item，cloned doc 的 layout 在 onclone callback 之后、html2canvas 内部 measure bbox 之前发生过抖动
+- **当前 prod 状态**（commit `6da7402`）：v5 = v2 修法（onclone 改 .page inline）+ retry 检测机制，**96% 单页成功率**（5 轮 25 PNG 测试 24/25 正常）
+- **5 轮修法都没根治 race**——html2canvas-pro 在 cloned iframe 里的 layout 时序 race 是它的内部行为，用户代码层无法消除
+- **检测+重试是务实方案**：截图后采样 canvas 右侧 95% 位置 5 个像素，全黑判定为"宣纸+右黑带"race，自动重试最多 2 次
+- 想推到 99%+ 看下面「下次想推到 99%+ 的方向」
 
-### 验证方法
-本地 vite preview localhost 复现不到（快网络）。复现路径：
-```bash
-# 1. 起 prod-via-proxy（确保浏览器走系统 proxy 模拟跨网络）
-# 2. 跑 5 轮 prod URL，看坏 PNG 比例
-HTTP_PROXY=http://127.0.0.1:7897 python3 /tmp/test_prod.py
-```
-Script 在 `/tmp/test_prod.py`（playwright + Cloudflare prod URL + viewport 1440×900）。**这是本会话发现的可靠复现路径**，5 轮 25 PNG 大约 7-8 张坏。
+### 两种 race 模式（看图认）
 
-### 推荐修法（理论分析过，未在 prod 实证）
-在 `app/src/lib/exportPng.ts::pageToPngBlob` 的 html2canvas options 里**显式传 width/height**，让 html2canvas 不依赖 cloned doc 的 bbox：
+| 模式 | 现象 | 根因 |
+|---|---|---|
+| **尺寸 race** | canvas 是 2880×4922 等怪尺寸，.page 完整渲染在 canvas 左上 1/3 区域 | parseBounds 拿到 viewport-sized bbox（如 1440×2461）当 .page bbox |
+| **内容 race**（"宣纸+右黑带"） | canvas 是 2160×3840 正确尺寸，但 .page 内容只渲染到左 ~4/5，右侧 ~1/5 纯黑 | 传了 opts.width/height 钉死 canvas 尺寸，但 parseBounds 的 left/top 仍 race，截图 origin 偏离 .page 真实位置 |
+
+### 5 轮修法尝试 + 教训
+
+| 版本 | 思路 | 测试结果 | 教训 |
+|---|---|---|---|
+| **baseline** (`7160bcd`) | 不修，跟 5/29 报问题时一致 | 10/25 异常（**尺寸 race**） | baseline 也有 race，MVP "稳定"是错觉 |
+| **v1** (`69f818a`) | 传 `width: 1080, height: 1920` 给 html2canvas | 9/25 异常（**内容 race**） | 修了尺寸 race，但 origin race 暴露——治标，把一种 race 换成另一种 |
+| **v2** (`d40b705`) | v1 + onclone 改 cloned `.page` inline width/height/flexShrink | 5/25 异常（**内容 race**） | 缓解到 80%，依然未消除 |
+| **v3** (`138ef15` → revert) | 改源 DOM 批量锁定 5 个 .page-wrapper 为 1080×1920 | **14/25 异常 → 比 baseline 更糟** | 5 page 同时撑爆 cloned doc layout，反而让 race 概率拉高 |
+| **v4** (`112b785`) | clone .page-wrapper 到 body 上 + position: fixed + opacity: 0 截图 | 10/25 异常（**尺寸+CSS var race**） | clone 出来的 wrapper 在 cloned iframe 里 `--canvas-w` var 偶发未应用 |
+| **v4.1** (`eb14676`) | v4 + 在 cloneWrapper/clonePage 上 inline 写死 width/height | 9/25 异常（**内容 race**） | 修了 CSS var race 但回到 v1 的"宣纸+右黑带" race。**说明 fixed positioning 在 cloned iframe 里 left/top 也 race** |
+| **v5** (`6da7402` 当前 prod) | v2 修法 + `hasRaceArtifact` 检测 + retry 最多 2 次 | **24/25 正常（96%）** | 检测+重试 workaround，不根治但用户体验最好 |
+
+### v5 关键代码（current `app/src/lib/exportPng.ts`）
 
 ```ts
-const canvas = await html2canvas(page, {
-  scale: 2,
-  width: 1080,        // ← 新增。page CSS 固定值
-  height: 1920,       // ← 新增
-  backgroundColor: null,
-  useCORS: true,
-  imageTimeout: 30000, // ← 兜底，默认 15s 调大
-  onclone: (clonedDoc) => {
-    // ... 现有逻辑保留
-  },
-})
+// 检测右侧 x=95% 位置纵向采样 5 个点，全黑判定"宣纸+右黑带"race
+function hasRaceArtifact(canvas: HTMLCanvasElement): boolean {
+  const ctx = canvas.getContext('2d')!
+  const x = Math.floor(canvas.width * 0.95)
+  let blackCount = 0
+  for (let i = 1; i <= 5; i++) {
+    const y = Math.floor(canvas.height * (i / 6))
+    const p = ctx.getImageData(x, y, 1, 1).data
+    if (p[0] === 0 && p[1] === 0 && p[2] === 0) blackCount++
+  }
+  return blackCount === 5
+}
+
+// 截图 + 检测 + retry 最多 2 次
+async function pageToPngBlobWithRetry(page: HTMLElement): Promise<Blob> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const canvas = await pageToPngCanvas(page)
+    if (!hasRaceArtifact(canvas)) return canvasToBlob(canvas)
+    await new Promise<void>((r) => requestAnimationFrame(() => r()))
+  }
+  return canvasToBlob(lastCanvas!) // 3 次都 race，接受最后一次让用户能手动重试
+}
 ```
 
-`html2canvas-pro` 的 renderOptions 里 `width: opts.width ?? Math.ceil(width)`——传了 width 就跳过 parseBounds 的结果，从根上消除 race。
+### 复现路径（必读）
 
-### 必须做的验证（接手 Claude 请按这个流程做）
-1. 应用上面的修法
-2. `cd app && ./node_modules/.bin/vite build && ./node_modules/.bin/vite preview --port 4173 --strictPort`
-3. 跑 `/tmp/test_slow_local.py`（playwright route 拦截 builtin-assets 加 800ms 延迟，模拟慢网络）—— 5 轮 25 PNG 应该全 2160×3840
-4. **关键步骤**：deploy 到 prod，跑 `/tmp/test_prod.py` 5 轮，确认 0 张坏 PNG。**不验证 prod 不要 claim 修好**
-5. push + 让用户在自己浏览器再测一遍
+本地 vite preview localhost 复现不到（快网络 + 同源 fetch）。复现路径：
+```bash
+# 1. 系统 proxy 在 127.0.0.1:7897 起着
+# 2. 跑 prod URL 5 轮，看坏 PNG 比例
+python3 /tmp/test_prod.py
+```
+Script 已就位 (`/tmp/test_prod.py`)，playwright + Cloudflare prod URL + viewport 1440×900 + 走 proxy 模拟跨网络。
 
-### ⚠️ 不要再走的弯路（本会话踩过的坑）
+### ⚠️ 不要再走的弯路（5 轮失败汇总）
 
-**Pitfall 1：inline data URL 方案（已尝试，把 bug 弄得更严重）**
+**Pitfall 1：inline data URL（HANDOFF 老坑，5/29 早 b306d66 revert）**
 
-我曾在 `exportPng.ts` 加 `inlineImagesAsDataURL`——在 html2canvas 之前把所有 `<img>.src` 改成 data URL，await decode 后再截图，意图消除 image fetch race。
+不要碰原 DOM 的 `<img>.src`，不要 inline data URL，不要在 export 流程里**修改**原 React DOM 的 image/style——cloned doc 会因此重新 decode/layout，race 概率拉到 100%。
 
-结果：headless localhost 5 轮 25 PNG 全 OK；推到 prod 后**用户 5 张全坏**，PNG 变成 1166×3360。已 revert（commit `b306d66`）。
+**Pitfall 2：headless localhost = 真实 prod 的假象（HANDOFF 老坑）**
 
-根因：data URL 让 cloned img 在 cloned doc 里**重新触发 decode + layout 抖动**，正好命中 html2canvas measure bbox 之前的窗口，让 race condition 概率从 ~30% 拉到 100%。
+localhost vite preview 永远复现不到这个 race（5 轮 25 PNG 永远 0 张坏）。推 prod 前后**都必须**用 `/tmp/test_prod.py` 走 proxy 测。我 v3/v4/v4.1 本地全 OK，推 prod 就失败/恶化。
 
-**结论：不要碰原 DOM 的 `<img>.src`，不要 inline data URL，不要在 export 流程里做任何 DOM mutation（除了 onclone 里改 cloned doc）**。
+**Pitfall 3：v3 改源 DOM 批量锁定（本会话新发现）**
 
-**Pitfall 2：headless localhost = 真实 prod 的假象**
+试图给所有 5 个 .page-wrapper 同时设 inline width:1080 height:1920，让 cloned doc 继承稳定 layout。**结果 race 从 5/25 拉到 14/25**——5 page 同时撑爆预览容器，cloned iframe 里 layout 算得更乱。**等同于 Pitfall 1 的失败模式**（激进 mutation 让 race 加剧）。
 
-我用 Playwright headless 在本地 vite preview 测过 5 轮 25 PNG 全 OK，就 push 上线了。结果 prod 出大问题。
+**Pitfall 4：clone 到 body fixed 不解决 left/top race（本会话新发现）**
 
-**教训**：测 race condition 必须用 **prod URL + 走 proxy 的跨网络** 路径。localhost 永远复现不到这类多页串行 race。`/tmp/test_prod.py` 已准备好，**接手后第一步就是用它建立 baseline**。
+v4 想用 `document.body.appendChild(deepClone) + position: fixed top:0 left:0` 脱离 React/flex 容器。但 **cloned iframe 里 fixed 元素的 left/top 也 race**——v4.1 加 inline 写死 width/height 后仍 9/25 异常（同 v1 的"宣纸+右黑带"模式）。
 
-**Pitfall 3：以为 imageTimeout 能修**
+**结论**：html2canvas-pro 内部 cloned iframe 的 layout 时序 race 跟元素的源 DOM 位置无关，跟 fixed/static positioning 无关，跟父容器是不是 flex 无关——这是 html2canvas-pro 库本身的固有 bug。
 
-imageTimeout 只控制 html2canvas 内部 image 加载等待，**不影响 bbox 计算**。这个 race 是 bbox 算错，不是 image 没加载完。imageTimeout 调大无害但单独无效。
+**Pitfall 5：imageTimeout / 等待 fonts.ready 都不影响 bbox race（HANDOFF 老坑）**
 
-### 当前状态（commit b306d66 之后的 main）
-- `app/src/lib/exportPng.ts`：跟 Step 10 的原版一致，**没有任何 race 相关修复**
-- 用户的原 bug（偶发 2-3 张缺图）还在，需要按上面的「推荐修法」实施
+imageTimeout 只控制图片加载等待，不影响 bbox 计算。等 fonts.ready 在 onclone 之前就被 html2canvas 内部做了。bbox race 在它们之后才发生。
+
+### 下次想推到 99%+ 的方向（按 blast radius 升序）
+
+1. **加强 retry 检测**：现在只采样 5 个点 + 只 retry 2 次。加到 10 个点 + retry 5 次 + 每次 retry 间 200ms 延迟。代价：偶发导出多花 5-10s，但能把 96% → 99%+
+2. **换库**：用 [modern-screenshot](https://github.com/qq15725/modern-screenshot) 替代 html2canvas-pro。基于 SVG `foreignObject`，渲染路径完全不同，可能没这个 race。blast radius 中等（需要重写 exportPng.ts 全部逻辑 + 验证多页 / 字体 / oklch / blob URL 这些功能不退化）。注意 modern-screenshot 不支持 oklch 色彩可能需要额外处理
+3. **patch html2canvas-pro**：用 `patch-package` 修 `lib/index.js` 第 161 行 `parseBounds` 之前 await 一个 RAF。可能根治但脆弱（库升级就要重 patch）。**实测前不要 claim 能修**——layout race 可能不只在那一个 measure 点
+4. **改预览架构去掉 transform: scale(0.4)**：现在预览靠 .page-wrapper 的 transform 缩到 40% 显示。如果改成 CSS zoom 或者实际 css width/height 直接是缩放后的，可能让 cloned iframe layout 稳定（但用户视觉跟现在不同）。blast radius 大，且不一定能修
+
+### 当前 prod 状态（commit `6da7402`）
+
+- `app/src/lib/exportPng.ts`：v5 = v2 修法（onclone 改 .page inline width/height/flexShrink）+ `hasRaceArtifact` 检测 + retry 最多 2 次
+- **96% 单页成功率**——5 页 zip 期望 ~0.2 张废图，几乎看不到
+- 如果用户偶尔看到 1 张废图，**手动重导一次即可**——v5 是 stateless retry，下次大概率 OK
+- 验证 script 在 `/tmp/test_prod.py`，跑前确认 proxy 7897 在运行
 
 ---
 
