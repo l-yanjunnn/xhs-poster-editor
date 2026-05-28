@@ -29,6 +29,9 @@ async function pageToPngBlob(originalPage: HTMLElement): Promise<Blob> {
   cloneWrapper.style.left = '0'
   cloneWrapper.style.transform = 'none'
   cloneWrapper.style.margin = '0'
+  // inline 写死 width/height，绕过 var(--canvas-w/h) 在 cloned iframe 里的 race
+  cloneWrapper.style.width = '1080px'
+  cloneWrapper.style.height = '1920px'
   // 用户看不到，但仍参与 layout（visibility: hidden 会让 layout 算 0×0）
   cloneWrapper.style.opacity = '0'
   cloneWrapper.style.pointerEvents = 'none'
@@ -41,6 +44,9 @@ async function pageToPngBlob(originalPage: HTMLElement): Promise<Blob> {
     document.body.removeChild(cloneWrapper)
     throw new Error('clone .page-wrapper 后找不到 .page')
   }
+  // 同样 inline 写死 .page，不依赖 CSS var
+  clonePage.style.width = '1080px'
+  clonePage.style.height = '1920px'
 
   // 强制一次 reflow，确保 fixed 定位生效
   void cloneWrapper.offsetHeight
