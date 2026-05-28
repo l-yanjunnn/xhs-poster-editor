@@ -1,38 +1,20 @@
 import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
 
 // 把 .page 截成 PNG Blob。
 // scale: 2 是为了输出 2160×3840 的高清图（小红书也用得上）。
 // onclone 钩子里去掉外层 page-wrapper 的 transform:scale(0.4)——
 // 否则 html2canvas 会按缩放后的尺寸截图，得到一张缩小图
-//
-// 显式传 width/height: 多页串行 + 慢网络下，html2canvas-pro 偶发对 .page 的
-// parseBounds(getBoundingClientRect()) 拿到 viewport-sized bbox（race condition，
-// .page 在 cloned doc 里是 flex item，layout 在 measure 之前抖动）。
-// 传 width/height 让 html2canvas 跳过 parseBounds，从根上消除 race
 async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
   const canvas = await html2canvas(page, {
     scale: 2,
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
     backgroundColor: null,
     useCORS: true,
-    imageTimeout: 30_000,
     onclone: (clonedDoc) => {
       // 撤掉所有 page-wrapper 的预览缩放
       clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
         w.style.transform = 'none'
         w.style.marginBottom = '0'
-      })
-      // 强制 .page inline width/height: 父容器是 flex flex-col items-center，
-      // cloned doc 里 .page 作为 flex item 偶发被压缩到非 1080 宽（CSS var 或
-      // flex layout race），导致 canvas 尺寸对、但内部内容只渲染到左侧约 4/5，
-      // 右侧填黑。inline style 优先级最高，跳过所有父容器/var 计算
-      clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
-        p.style.width = `${CANVAS_WIDTH}px`
-        p.style.height = `${CANVAS_HEIGHT}px`
-        p.style.flexShrink = '0'
       })
       // 参考线只服务于预览，不进入导出图：直接 remove DOM 节点
       // （早期版本用 .page--guides::before/::after，但 html2canvas 处理伪元素早于 onclone，
