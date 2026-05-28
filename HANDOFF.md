@@ -2,9 +2,87 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程 + 9:15 出血适配**
-> 最后更新：2026-05-28（首页中心 4:3 安全区适配；参考线 toggle；Divider 节点恢复淡虚线；ExportDialog 同名序号记忆 + 60s revoke 防文件损坏；DEFAULT_CONTENT 改成 5 页使用教程；普通页所有上下边缘元素 +100px 避开 9:15 出血；雅致主题默认改为字号 40/间距标准）
+> 最后更新：2026-05-29（**新 Claude 接手请先读「🚨 待修：导出 PNG 多页串行 race condition」章节**，那里有完整根因 + 推荐修法 + 失败修法的教训）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
+
+---
+
+## 🚨 待修：导出 PNG 多页串行 race condition（2026-05-29 排查未完）
+
+### 现象
+- 用户从线上 prod 多次导出 5 页 zip，每次有 1-3 张 PNG 是「白底 + 巨大 Logo 占位 + 缩小的文字」的废图
+- 每次失败的页**随机不同**，非确定性
+- 坏 PNG 的尺寸**异常**（不是预期的 2160×3840），是 `viewport_width × scale × N` 之类的怪尺寸（如 2880×~5000、1166×3360）
+
+### 根因（已实证）
+html2canvas-pro 在多页串行导出 + 慢网络下，**对 `.page` 元素 `parseBounds(getBoundingClientRect())` 偶发拿到错误的 bbox**：
+- 正常应该是 1080×1920（page CSS 固定值）
+- race 时拿到 viewport-sized（如 1440×~2600，flex 容器宽度而不是 page 自己的固定宽度）
+- 因为 `.page` 在 cloned doc 里是 flex item，cloned doc 的 layout 在 onclone callback 之后、html2canvas 内部 measure bbox 之前发生过抖动
+
+### 验证方法
+本地 vite preview localhost 复现不到（快网络）。复现路径：
+```bash
+# 1. 起 prod-via-proxy（确保浏览器走系统 proxy 模拟跨网络）
+# 2. 跑 5 轮 prod URL，看坏 PNG 比例
+HTTP_PROXY=http://127.0.0.1:7897 python3 /tmp/test_prod.py
+```
+Script 在 `/tmp/test_prod.py`（playwright + Cloudflare prod URL + viewport 1440×900）。**这是本会话发现的可靠复现路径**，5 轮 25 PNG 大约 7-8 张坏。
+
+### 推荐修法（理论分析过，未在 prod 实证）
+在 `app/src/lib/exportPng.ts::pageToPngBlob` 的 html2canvas options 里**显式传 width/height**，让 html2canvas 不依赖 cloned doc 的 bbox：
+
+```ts
+const canvas = await html2canvas(page, {
+  scale: 2,
+  width: 1080,        // ← 新增。page CSS 固定值
+  height: 1920,       // ← 新增
+  backgroundColor: null,
+  useCORS: true,
+  imageTimeout: 30000, // ← 兜底，默认 15s 调大
+  onclone: (clonedDoc) => {
+    // ... 现有逻辑保留
+  },
+})
+```
+
+`html2canvas-pro` 的 renderOptions 里 `width: opts.width ?? Math.ceil(width)`——传了 width 就跳过 parseBounds 的结果，从根上消除 race。
+
+### 必须做的验证（接手 Claude 请按这个流程做）
+1. 应用上面的修法
+2. `cd app && ./node_modules/.bin/vite build && ./node_modules/.bin/vite preview --port 4173 --strictPort`
+3. 跑 `/tmp/test_slow_local.py`（playwright route 拦截 builtin-assets 加 800ms 延迟，模拟慢网络）—— 5 轮 25 PNG 应该全 2160×3840
+4. **关键步骤**：deploy 到 prod，跑 `/tmp/test_prod.py` 5 轮，确认 0 张坏 PNG。**不验证 prod 不要 claim 修好**
+5. push + 让用户在自己浏览器再测一遍
+
+### ⚠️ 不要再走的弯路（本会话踩过的坑）
+
+**Pitfall 1：inline data URL 方案（已尝试，把 bug 弄得更严重）**
+
+我曾在 `exportPng.ts` 加 `inlineImagesAsDataURL`——在 html2canvas 之前把所有 `<img>.src` 改成 data URL，await decode 后再截图，意图消除 image fetch race。
+
+结果：headless localhost 5 轮 25 PNG 全 OK；推到 prod 后**用户 5 张全坏**，PNG 变成 1166×3360。已 revert（commit `b306d66`）。
+
+根因：data URL 让 cloned img 在 cloned doc 里**重新触发 decode + layout 抖动**，正好命中 html2canvas measure bbox 之前的窗口，让 race condition 概率从 ~30% 拉到 100%。
+
+**结论：不要碰原 DOM 的 `<img>.src`，不要 inline data URL，不要在 export 流程里做任何 DOM mutation（除了 onclone 里改 cloned doc）**。
+
+**Pitfall 2：headless localhost = 真实 prod 的假象**
+
+我用 Playwright headless 在本地 vite preview 测过 5 轮 25 PNG 全 OK，就 push 上线了。结果 prod 出大问题。
+
+**教训**：测 race condition 必须用 **prod URL + 走 proxy 的跨网络** 路径。localhost 永远复现不到这类多页串行 race。`/tmp/test_prod.py` 已准备好，**接手后第一步就是用它建立 baseline**。
+
+**Pitfall 3：以为 imageTimeout 能修**
+
+imageTimeout 只控制 html2canvas 内部 image 加载等待，**不影响 bbox 计算**。这个 race 是 bbox 算错，不是 image 没加载完。imageTimeout 调大无害但单独无效。
+
+### 当前状态（commit b306d66 之后的 main）
+- `app/src/lib/exportPng.ts`：跟 Step 10 的原版一致，**没有任何 race 相关修复**
+- 用户的原 bug（偶发 2-3 张缺图）还在，需要按上面的「推荐修法」实施
+
+---
 
 ## ✅ 已解决（部署后自动好）：dev 环境 file picker 不弹
 
