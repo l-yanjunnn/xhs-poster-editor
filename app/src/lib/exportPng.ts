@@ -25,6 +25,15 @@ async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
         w.style.transform = 'none'
         w.style.marginBottom = '0'
       })
+      // 强制 .page inline width/height: 父容器是 flex flex-col items-center，
+      // cloned doc 里 .page 作为 flex item 偶发被压缩到非 1080 宽（CSS var 或
+      // flex layout race），导致 canvas 尺寸对、但内部内容只渲染到左侧约 4/5，
+      // 右侧填黑。inline style 优先级最高，跳过所有父容器/var 计算
+      clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
+        p.style.width = `${CANVAS_WIDTH}px`
+        p.style.height = `${CANVAS_HEIGHT}px`
+        p.style.flexShrink = '0'
+      })
       // 参考线只服务于预览，不进入导出图：直接 remove DOM 节点
       // （早期版本用 .page--guides::before/::after，但 html2canvas 处理伪元素早于 onclone，
       // class 移除后伪元素仍被截到 canvas，故改成真实子节点）
