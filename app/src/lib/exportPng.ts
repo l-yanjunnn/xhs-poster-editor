@@ -4,13 +4,8 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
 
 // 把 .page 截成 PNG Blob。
 // scale: 2 是为了输出 2160×3840 的高清图（小红书也用得上）。
-// onclone 钩子里去掉外层 page-wrapper 的 transform:scale(0.4)——
-// 否则 html2canvas 会按缩放后的尺寸截图，得到一张缩小图
-//
-// 显式传 width/height: 多页串行 + 慢网络下，html2canvas-pro 偶发对 .page 的
-// parseBounds(getBoundingClientRect()) 拿到 viewport-sized bbox（race condition，
-// .page 在 cloned doc 里是 flex item，layout 在 measure 之前抖动）。
-// 传 width/height 让 html2canvas 跳过 parseBounds，从根上消除 race
+// 假设调用方已经锁定 .page-wrapper 和 .page 的 inline width/height
+// （见 exportPages 顶层的 lockPagesForExport），cloned doc 因此继承稳定 layout
 async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
   const canvas = await html2canvas(page, {
     scale: 2,
@@ -20,20 +15,6 @@ async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
     useCORS: true,
     imageTimeout: 30_000,
     onclone: (clonedDoc) => {
-      // 撤掉所有 page-wrapper 的预览缩放
-      clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
-        w.style.transform = 'none'
-        w.style.marginBottom = '0'
-      })
-      // 强制 .page inline width/height: 父容器是 flex flex-col items-center，
-      // cloned doc 里 .page 作为 flex item 偶发被压缩到非 1080 宽（CSS var 或
-      // flex layout race），导致 canvas 尺寸对、但内部内容只渲染到左侧约 4/5，
-      // 右侧填黑。inline style 优先级最高，跳过所有父容器/var 计算
-      clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
-        p.style.width = `${CANVAS_WIDTH}px`
-        p.style.height = `${CANVAS_HEIGHT}px`
-        p.style.flexShrink = '0'
-      })
       // 参考线只服务于预览，不进入导出图：直接 remove DOM 节点
       // （早期版本用 .page--guides::before/::after，但 html2canvas 处理伪元素早于 onclone，
       // class 移除后伪元素仍被截到 canvas，故改成真实子节点）
@@ -66,6 +47,44 @@ function triggerDownload(blob: Blob, filename: string) {
   }, 60_000)
 }
 
+// 锁定所有 .page-wrapper 和 .page 的 inline 尺寸，消除 cloned doc 里的 layout race。
+//
+// Why 改源 DOM 而不是 cloned DOM:
+// 之前在 onclone 钩子里改 cloned doc 的 .page inline style，prod 上 5/25 张依然
+// race（异常 PNG = 宣纸背景 + 右侧黑带 + 内容全无）。根因是 html2canvas-pro 内部
+// parseBounds(.page) 拿 left/top 作 render origin，opts.width 只钉死 canvas
+// 尺寸，但 origin 还是来自错的 bbox → canvas 视口偏移，内容被画到画面外。
+//
+// 改源 DOM 后 cloned doc 直接继承正确 layout，parseBounds 拿到的 bbox 就是对的。
+// 返回 restore 函数，调用方在 finally 块里调用恢复原状
+function lockPagesForExport(pages: HTMLElement[]): () => void {
+  const restoreFns: Array<() => void> = []
+  for (const page of pages) {
+    const wrapper = page.parentElement // .page-wrapper
+    const pageStyle = page.style.cssText
+    const wrapperStyle = wrapper?.style.cssText
+    page.style.width = `${CANVAS_WIDTH}px`
+    page.style.height = `${CANVAS_HEIGHT}px`
+    page.style.flexShrink = '0'
+    if (wrapper) {
+      wrapper.style.transform = 'none'
+      wrapper.style.marginBottom = '0'
+      wrapper.style.width = `${CANVAS_WIDTH}px`
+      wrapper.style.height = `${CANVAS_HEIGHT}px`
+      wrapper.style.flexShrink = '0'
+    }
+    restoreFns.push(() => {
+      page.style.cssText = pageStyle
+      if (wrapper && wrapperStyle !== undefined) {
+        wrapper.style.cssText = wrapperStyle
+      }
+    })
+  }
+  // 强制一次 reflow，确保新 layout 在 html2canvas 读取之前已经生效
+  void document.body.offsetHeight
+  return () => restoreFns.forEach((fn) => fn())
+}
+
 // 单页直下 PNG，多页打 zip。filename 不含扩展名
 export async function exportPages(
   pages: HTMLElement[],
@@ -75,19 +94,24 @@ export async function exportPages(
   // 等所有 webfont 加载完，避免截图时还是 fallback 字体
   await document.fonts.ready
 
-  if (pages.length === 1) {
-    const blob = await pageToPngBlob(pages[0])
-    triggerDownload(blob, `${filename}.png`)
-    return
-  }
+  const restore = lockPagesForExport(pages)
+  try {
+    if (pages.length === 1) {
+      const blob = await pageToPngBlob(pages[0])
+      triggerDownload(blob, `${filename}.png`)
+      return
+    }
 
-  const zip = new JSZip()
-  for (let i = 0; i < pages.length; i++) {
-    const blob = await pageToPngBlob(pages[i])
-    zip.file(`${filename}-${i + 1}.png`, blob)
+    const zip = new JSZip()
+    for (let i = 0; i < pages.length; i++) {
+      const blob = await pageToPngBlob(pages[i])
+      zip.file(`${filename}-${i + 1}.png`, blob)
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    triggerDownload(zipBlob, `${filename}.zip`)
+  } finally {
+    restore()
   }
-  const zipBlob = await zip.generateAsync({ type: 'blob' })
-  triggerDownload(zipBlob, `${filename}.zip`)
 }
 
 // 从 Tiptap HTML 里提取首个 H1 文本作为默认文件名；没有 H1 则回退到日期
