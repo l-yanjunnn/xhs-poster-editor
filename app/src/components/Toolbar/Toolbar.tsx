@@ -61,6 +61,9 @@ interface Props {
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
   onExport: () => void
+  // 参考线 toggle：辅助预览对齐，导出 PNG 时自动隐藏
+  guidesOn: boolean
+  onToggleGuides: () => void
   // 图片宽度：选中编辑器中的图片时启用
   imageActive: boolean
   imageWidth: string | null
@@ -217,6 +220,19 @@ export function Toolbar(p: Props) {
       </Group>
 
       <div className="ml-auto flex gap-2">
+        <button
+          onClick={p.onToggleGuides}
+          aria-pressed={p.guidesOn}
+          title={p.guidesOn ? '关闭参考线' : '显示参考线（仅预览，不进入导出）'}
+          className={
+            'cursor-pointer rounded border px-3 py-1.5 text-[13px] transition ' +
+            (p.guidesOn
+              ? 'border-blue-500 bg-blue-700/50 text-blue-100'
+              : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:bg-neutral-700')
+          }
+        >
+          参考线
+        </button>
         <button
           onClick={p.onOpenThemeLibrary}
           className="cursor-pointer rounded border border-blue-700 bg-blue-900/40 px-3 py-1.5 text-[13px] text-blue-200 hover:bg-blue-800/50"

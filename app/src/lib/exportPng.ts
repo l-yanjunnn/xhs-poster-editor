@@ -16,6 +16,10 @@ async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
         w.style.transform = 'none'
         w.style.marginBottom = '0'
       })
+      // 参考线只服务于预览，不进入导出图：直接 remove DOM 节点
+      // （早期版本用 .page--guides::before/::after，但 html2canvas 处理伪元素早于 onclone，
+      // class 移除后伪元素仍被截到 canvas，故改成真实子节点）
+      clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
     },
   })
   return new Promise<Blob>((resolve, reject) => {
@@ -35,11 +39,13 @@ function triggerDownload(blob: Blob, filename: string) {
   a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
-  // 给浏览器一点时间消化 click 再清理
+  // Why 60s 而不是 1s：导出 PNG 单页 ~11MB、多页 zip ~50MB+，Chrome 写入磁盘需要时间。
+  // 早期 1s 后就 revokeObjectURL，blob 被释放，Chrome 下载条目存在但文件已损坏，
+  // 用户点击「在文件夹中显示」时找不到完整文件
   setTimeout(() => {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-  }, 1000)
+  }, 60_000)
 }
 
 // 单页直下 PNG，多页打 zip。filename 不含扩展名

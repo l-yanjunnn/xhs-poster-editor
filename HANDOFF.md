@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 9 标题加粗 toggle + 插入图片 + 图片宽度档位**
-> 最后更新：2026-05-25（标题加粗 toggle；Tiptap Image 扩展 + 素材库 image tab；图片宽度 5 档下拉）
+> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程**
+> 最后更新：2026-05-28（首页中心 4:3 安全区适配；参考线 toggle；Divider 节点恢复淡虚线；ExportDialog 同名序号记忆 + 60s revoke 防文件损坏；DEFAULT_CONTENT 改成 4 页使用教程）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -386,6 +386,44 @@ app/
 4. **看到 "packages field missing or empty"**：workspace 检测问题，确认 build 全程不经过 `pnpm run` / `pnpm <script>`
 5. **看到 "bash: ci.sh: No such file"**：Cloudflare 在用旧 commit 跑，那时还没有 ci.sh，推空 commit 触发 auto-build
 
+## Step 10：首图 4:3 适配 + 参考线 + 分隔线恢复 + 导出修复 + 默认教程（2026-05-28）
+
+### 首图中心 4:3 适配（`.page--first` modifier）
+- **背景**：小红书首图缩略不是「裁下方留上方」，而是**中心对齐 4:3**。9:16=1080×1920，4:3=1080×810，上下各裁 555px。安全区 y ∈ [555, 1365]。
+- **方案**：CSS modifier `.page--first` override 两个 var，让首页 Logo + H1 落进安全区：
+  - `--page-padding-top: 555px`（H1 顶贴安全区上沿）
+  - `--logo-offset-y: 355px`（Logo→H1 间距 = 80px，与其他页一致）
+- **Preview.tsx**：`pageIndex===0` 时附加 `page--first` class。
+- **教训**：和用户对齐布局时数学要算清，"上方 4:3 裁切" vs "中心 4:3 裁切" 差 555px。
+
+### 参考线工具（`.guide-v` / `.guide-h`，可 toggle）
+- **位置**：左竖线 = `--page-padding-x`（80px，padding-left 内边界）；下横线 = `calc(var(--page-padding-bottom) + 50px)`（距底 170px，比 padding-bottom 120 更保守，留视觉呼吸）。
+- **实现**：Toolbar「参考线」按钮 toggle `guidesOn` state → Preview 条件渲染两个 `<div class="guide guide-v/h">`。
+- **🚨 大坑**：第一版用 `.page--guides::before/::after`，发现 onclone 移除 class 后 **html2canvas 仍把伪元素截到 canvas**（实测像素采样 x=80 处仍是蓝色 RGB(108,175,248)）。**根因**：html2canvas 处理伪元素时机早于 onclone 钩子。**修法**：改成真实 DOM 子节点（`<div class="guide">`），`onclone` 里 `g.remove()` 节点就生效（像素采样验证 31 个点全为背景灰）。
+- **教训**：要在 html2canvas 导出时排除某些视觉元素，**用真实 DOM + onclone remove() 节点**，别用 ::before/::after。
+
+### Divider 节点（淡虚线分隔线，与分页符分离）
+- **背景**：旧 HTML 编辑器有"分隔线"功能，Tiptap 重构时丢了——StarterKit 的 HorizontalRule 被配置成分页符（`class="page-break"`），普通分隔线无处可去。
+- **方案**：新建 `Divider` Node，渲染 `<hr class="divider">`，与 `<hr class="page-break">` 区分。`splitPages` 只切 hr.page-break，hr.divider 进画布走 CSS 默认 dashed 样式。
+- **parseHTML priority=1000**：让 `hr.divider` 优先匹配 Divider 而不是 StarterKit 的 HorizontalRule（默认 priority=50）。
+- **import 坑**：`Node` 不要从 `@tiptap/core` 引（dev 依赖没 hoist），从 `@tiptap/react` re-export 引：`import { Node } from '@tiptap/react'`。
+
+### ExportDialog 文件名序号记忆 + 修复导出文件损坏
+- **同名覆盖 bug**：用户报「二次修改后只能导出第一版」。本地复现：代码层每次导出 hash 都不同，反映最新内容。**真因**是同名下载（filename 默认取 H1，H1 不变 → 反复同名 → macOS Downloads 静默把后续重命名为 `xxx 2.png`、`xxx 3.png`，用户打开的还是第一版）。**修法**：ExportDialog 内 `useRef<Set<string>>` 记忆已用 filename，再次打开时如已用过则追加 `-2`/`-3` 序号。
+- **🚨 文件损坏 bug**：用户报「Chrome 下载条目存在但点击显示不了文件」。**根因**：`exportPng.ts::triggerDownload` 中 `URL.revokeObjectURL` 在 `a.click()` 后 1 秒就 revoke，11MB PNG 还能赶上，44MB zip 经常被截断 → 下载到一半文件就坏。**修法**：revoke 延迟从 1000ms → **60000ms**。
+- **教训**：blob URL 的生命周期要覆盖整个真实下载过程；Playwright 测试不踩这个坑因为它直接拷 blob 不走浏览器下载管线。
+
+### DEFAULT_CONTENT 改成「使用教程」（4 页样张）
+- 第 1 页（封面）：H1 + 副标题 + 分隔线 + 段落 + 引用 + 段落
+- 第 2 页：顶部工具栏说明，覆盖 H2 + 列表 + 分隔线
+- 第 3 页：编辑器排版说明，覆盖 H2 + H3 + 列表 + 引用
+- 第 4 页：素材与导出，覆盖 4 个 H3 子节 + 列表 + 引用
+- **作用**：新用户开箱即用即时看到完整功能演示样张；同时作为「样张+教程」两用。
+
+### Dev 模式 editor 挂 window（方便 E2E）
+- `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
+- 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
+
 ## 用户偏好（重要）
 
 - **行为准则**：诚实优先、不偷懒、做不到直说，先查自身再考虑外部因素
@@ -427,7 +465,12 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 16. ~~**编辑器插入图片**（Step 9）~~ ✅ 2026-05-24 完成（Tiptap Image + 素材库 image tab）
 17. **标题字重升级成下拉**（如二态不够用）：把 `h1Bold` 等 boolean 改成 `h1Weight: 100-900` 数字字段，B 按钮换成 select（fontsource 已载入 9 档思源黑）
 18. ~~**图片宽度档位**~~ ✅ 2026-05-25 完成（顶部 Toolbar 下拉，5 档：原大小/33/50/75/100）
-19. **图片对齐**（左/中/右）：当前默认 block 居左，可加 align attribute 支持居中/居右
+19. ~~**首图 4:3 中心适配**~~ ✅ 2026-05-28 完成（`.page--first` modifier）
+20. ~~**参考线工具**~~ ✅ 2026-05-28 完成（左竖 + 下横，可 toggle，导出剥离）
+21. ~~**分隔线功能恢复**~~ ✅ 2026-05-28 完成（Divider 节点，hr.divider）
+22. ~~**导出文件损坏 / 同名覆盖**~~ ✅ 2026-05-28 完成（filename 序号记忆 + 60s revoke）
+23. ~~**默认教程内容**~~ ✅ 2026-05-28 完成（4 页样张兼教程）
+24. **图片对齐**（左/中/右）：当前默认 block 居左，可加 align attribute 支持居中/居右
 20. **图片拖拽手柄缩放**（如档位不够用）：装社区 image-resize 扩展或自写 NodeView，鼠标拖四角自由调整
 21. **PWA 配置**：加 `vite-plugin-pwa`，让用户能"安装到主屏幕/Dock"获得类 App 体验
 16. **自定义域名**：买 `xxx.com` 绑到 Cloudflare（~¥80/年）替换默认 `*.workers.dev`
@@ -464,3 +507,7 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 - ❌ 不要把 `pnpm build` 改回 build command —— pnpm 9 的 script runner 会触发 workspace 检测，必须走 `ci.sh` 里的 `./node_modules/.bin/` 直接调 binary 路径
 - ❌ 本地装包遇 `ERR_PNPM_UNEXPECTED_STORE` 不要去改全局 store-dir —— 临时删 `app/package.json` 的 `packageManager` 字段，让 brew 的 pnpm 11 直接生效，装完恢复字段就行
 - ❌ 不要在主题数据里硬编码 `font-weight: 700`，已经改用 `--fw-hN` CSS var；想加新标题字重档位，从 `h1Bold` boolean 升级成数字字段，别再回到 CSS 写死
+- ❌ 想在导出 PNG 时排除某个视觉元素，**不要**用 `::before/::after` + onclone 改 class —— html2canvas 处理伪元素早于 onclone，class 移除后仍被截到 canvas。用真实 DOM 子节点 + onclone `remove()` 节点（参考线就是这么做的）
+- ❌ `URL.revokeObjectURL` 别在 `a.click()` 后立刻 / 1 秒内 revoke —— 大 blob（如 zip 多页）真实下载需要时间，过早 revoke 会截断文件让 Chrome 下载条目可见但实际文件损坏。延迟 60s 为底线
+- ❌ 不要让 ExportDialog filename 永远等于 `H1 文本`——同名下载会被 macOS Downloads 静默重命名为 `xxx 2.png`，用户以为还是第一版。已加 `usedNamesRef` 自动追 -2/-3 序号
+- ❌ Tiptap `Node` 不要从 `@tiptap/core` 引（项目没装 core 包，dev 依赖也没 hoist）；从 `@tiptap/react` re-export 引：`import { Node } from '@tiptap/react'`

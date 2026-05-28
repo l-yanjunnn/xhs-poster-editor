@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -27,11 +27,20 @@ export function ExportDialog({
 }: Props) {
   const [filename, setFilename] = useState(defaultFilename)
   const [exporting, setExporting] = useState(false)
+  // Why: 用户常保留同一个 H1（filename 来自 H1），多次导出会同名覆盖到 Downloads，
+  // macOS 会静默重命名成 `xxx 2.png`，用户以为还是第一版。记忆已用过的 name 自动加序号
+  const usedNamesRef = useRef<Set<string>>(new Set())
 
-  // 每次弹窗打开时用最新的 defaultFilename 重置输入框
+  // 每次弹窗打开时用最新的 defaultFilename 重置输入框；如果默认名已用过，自动加 -2/-3 序号
   useEffect(() => {
     if (open) {
-      setFilename(defaultFilename)
+      let candidate = defaultFilename
+      let n = 2
+      while (usedNamesRef.current.has(candidate)) {
+        candidate = `${defaultFilename}-${n}`
+        n++
+      }
+      setFilename(candidate)
       setExporting(false)
     }
   }, [open, defaultFilename])
@@ -47,6 +56,7 @@ export function ExportDialog({
     setExporting(true)
     try {
       await onExport(trimmed)
+      usedNamesRef.current.add(trimmed)
       onOpenChange(false)
     } catch (e) {
       console.error('导出失败', e)

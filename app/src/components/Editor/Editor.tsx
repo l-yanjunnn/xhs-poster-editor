@@ -1,9 +1,24 @@
-import { useEditor, EditorContent, type Editor } from '@tiptap/react'
+import { useEditor, EditorContent, Node, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Image from '@tiptap/extension-image'
 import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import '@/styles/editor.css'
+
+// 分隔线：渲染成 <hr class="divider">，与 horizontalRule（分页符，class="page-break"）区分。
+// Why 单独建节点而不是给 hr 加 attribute：splitPages 按 hr.page-break 切页，
+// 让分隔线走另一个节点类型最干净，schema 上不会冲突。
+// parseHTML priority=1000 让 hr.divider 优先匹配 Divider 而不是默认的 horizontalRule
+const Divider = Node.create({
+  name: 'divider',
+  group: 'block',
+  parseHTML() {
+    return [{ tag: 'hr.divider', priority: 1000 }]
+  },
+  renderHTML() {
+    return ['hr', { class: 'divider' }]
+  },
+})
 
 // 扩展 Image，加 width attribute 走 inline style（百分比，画布按宽度自适应）
 // 默认 null = 原大小（CSS max-width:100% 兜底，不会溢出）
@@ -50,19 +65,59 @@ interface Props {
 }
 
 const DEFAULT_CONTENT = `
-<h1>小红书风格长图</h1>
-<p>这是一段正文示例。左边是 Tiptap 编辑器，右边是 9:16 画布预览。</p>
-<h2>二级标题</h2>
-<p>切换顶部主题、字号、间距、字体，右边画布会实时更新。</p>
+<h1>小红书长图排版工具</h1>
+<p>使用指南 · 给非技术朋友的开箱即用工具</p>
+<hr class="divider">
+<p>写文字 → 选样式 → 一键导出 PNG，三步搞定小红书图文长图。</p>
+<blockquote>编辑器左侧打字，右侧实时看 9:16 画布效果。所见即所得，不用懂代码。</blockquote>
+<p>四页教程，跟着右滑划完，你就上手了。</p>
+
 <hr class="page-break">
-<h1>第二页</h1>
-<p>点击工具栏的「↓ 插入分页 ↓」按钮即可在当前位置切出新一页。</p>
-<h3>三级标题</h3>
-<blockquote>引用块的样式来自 editor.html 的同名 token。</blockquote>
+
+<h1>顶部工具栏</h1>
+<p>全局样式控制，决定整篇长图的视觉基调。</p>
+<h2>核心选项</h2>
 <ul>
-  <li>列表项 1</li>
-  <li>列表项 2</li>
+  <li><strong>主题</strong>：雅致 / 极简白 / 深夜黑，一键切换整体配色和字体</li>
+  <li><strong>字体</strong>：H1/H2/H3/正文 各自独立可选，覆盖思源宋/黑、ZCOOL 等</li>
+  <li><strong>字号</strong>：5 档联动，整体放大缩小</li>
+  <li><strong>间距</strong>：紧凑 / 标准 / 宽松 / 极宽</li>
+  <li><strong>Logo 策略</strong>：每页 / 仅首页 / 首尾 / 不显示</li>
 </ul>
+<hr class="divider">
+<p>右上「主题」按钮可保存当前样式快照，下次直接调用。</p>
+
+<hr class="page-break">
+
+<h1>编辑器排版</h1>
+<p>左侧工具栏控制段落级别的排版，光标所在的块会被切换样式。</p>
+<h2>支持的块</h2>
+<ul>
+  <li><strong>H1 / H2 / H3</strong>：三级标题，各有独立字体和字重</li>
+  <li><strong>正文 / 引用 / 代码块</strong>：基础文本块</li>
+  <li><strong>有序 / 无序列表</strong>：嵌套自如</li>
+</ul>
+<h3>两种横线</h3>
+<p>「— 分隔线 —」插入淡淡虚线装饰；「↓ 插入分页 ↓」把内容切到下一页。</p>
+<blockquote>分页符在编辑器内显示为蓝色虚线 + 「↓ 分页 ↓」标签，不会出现在导出图里。</blockquote>
+
+<hr class="page-break">
+
+<h1>素材与导出</h1>
+<p>右上四个蓝/绿按钮，覆盖资源管理和最终产出。</p>
+<h3>参考线</h3>
+<p>蓝色按钮，开关首图 4:3 安全区辅助线。仅预览显示，导出 PNG 自动剥离。</p>
+<h3>素材库</h3>
+<p>管理背景图、Logo、插入图片。支持拖拽上传 + IndexedDB 持久化。</p>
+<h3>主题库</h3>
+<p>保存当前样式快照（可选含正文），跨会话复用。</p>
+<h3>导出 PNG</h3>
+<ul>
+  <li>单页 → 直接下载 PNG，多页 → 自动打 zip</li>
+  <li>文件名默认取首个 H1，同名再次导出自动加 -2 / -3 序号</li>
+</ul>
+<blockquote>导出尺寸 2160 × 3840，scale 2 高清，发小红书后裁切清晰。</blockquote>
+<p>开始写你自己的内容吧 ✦</p>
 `
 
 export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
@@ -77,6 +132,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         horizontalRule: { HTMLAttributes: { class: 'page-break' } },
       }),
       Underline,
+      Divider,
       // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
       ResizableImage.configure({ inline: false, allowBase64: true }),
     ],
@@ -117,6 +173,13 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   useEffect(() => {
     if (editor) onUpdate?.(editor.getHTML())
   }, [editor, onUpdate])
+
+  // Dev 模式把 editor 挂到 window，方便控制台/E2E 测试调用 setContent 等命令
+  useEffect(() => {
+    if (import.meta.env.DEV && editor) {
+      ;(window as unknown as { __editor: Editor }).__editor = editor
+    }
+  }, [editor])
 
   return (
     <div className="flex h-full flex-col bg-[#fafaf8]">
@@ -206,6 +269,12 @@ function EditorToolbar({
         label="有序列表"
         active={editor.isActive('orderedList')}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      />
+      <Btn
+        label="— 分隔线 —"
+        onClick={() =>
+          editor.chain().focus().insertContent({ type: 'divider' }).run()
+        }
       />
       <Btn
         label="↓ 插入分页 ↓"

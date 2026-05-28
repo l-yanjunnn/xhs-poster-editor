@@ -90,6 +90,8 @@ function App() {
   const [userThemes, setUserThemes] = useState<Theme[]>([])
   // 当前光标下图片节点的状态，Toolbar「图片宽度」下拉据此显示当前值/启用
   const [imageState, setImageState] = useState<ImageState>({ active: false, width: null })
+  // 参考线开关：仅影响预览，导出 PNG 时由 onclone 钩子移除 class（见 exportPng.ts）
+  const [guidesOn, setGuidesOn] = useState(false)
 
   useEffect(() => {
     loadAllUserFonts().then(setUserFontFamilies)
@@ -290,6 +292,8 @@ function App() {
         onOpenFontLibrary={() => setFontLibOpen(true)}
         onOpenThemeLibrary={() => setThemeLibOpen(true)}
         onExport={() => setExportOpen(true)}
+        guidesOn={guidesOn}
+        onToggleGuides={() => setGuidesOn((v) => !v)}
       />
 
       <AssetLibrary
@@ -359,6 +363,7 @@ function App() {
               showLogo={shouldShowLogo(i, pages.length)}
               pageIndex={i}
               pageTotal={pages.length}
+              guidesOn={guidesOn}
             />
           ))}
         </div>

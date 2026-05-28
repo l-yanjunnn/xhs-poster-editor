@@ -106,6 +106,41 @@
   background: #fff;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
+
+/* 首页适配小红书首图「中心对齐 4:3」裁切：
+ * 9:16 = 1080×1920，中心 4:3 = 1080×810，上下各裁 555px。
+ * 4:3 安全区 y ∈ [555, 1365]。
+ * H1 顶 555（紧贴安全区上沿），Logo 底比 H1 顶高 80px（与其他页 Logo→H1 间距一致）。
+ * 其他页保持默认 padding/logo 位置不受影响。 */
+.page--first {
+  --page-padding-top: 555px;
+  --logo-offset-y: 355px;
+}
+
+/* 参考线：辅助用户对齐内容安全区。
+ * Why 用真实 DOM 元素而不是 ::before/::after：html2canvas 处理伪元素时机早于 onclone，
+ * 即使 onclone 移除 class，伪元素也已被截到 canvas 里。改成真实子节点，onclone 里
+ * 直接 remove() 节点，导出 PNG 不会包含参考线。
+ * 左竖线 @ padding-x（内容左边界），下横线 @ padding-bottom（内容底边界）。 */
+.page .guide {
+  position: absolute;
+  background: rgba(0, 122, 255, 0.55);
+  z-index: 10;
+  pointer-events: none;
+}
+.page .guide-v {
+  left: var(--page-padding-x);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+.page .guide-h {
+  left: 0;
+  right: 0;
+  /* 比 padding-bottom 更保守 50px，留出视觉呼吸空间 */
+  bottom: calc(var(--page-padding-bottom) + 50px);
+  height: 2px;
+}
 .page .bg {
   position: absolute;
   inset: 0;
