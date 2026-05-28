@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程 + 9:15 出血适配**
-> 最后更新：2026-05-28（首页中心 4:3 安全区适配；参考线 toggle；Divider 节点恢复淡虚线；ExportDialog 同名序号记忆 + 60s revoke 防文件损坏；DEFAULT_CONTENT 改成 5 页使用教程；普通页所有上下边缘元素 +100px 避开 9:15 出血；雅致主题默认改为字号 40/间距标准）
+> **当前进度：Step 10 首图 4:3 适配 + 参考线工具 + 分隔线恢复 + 导出修复 + 默认教程 + 9:15 出血适配 + 导出图片 inline data URL 修复**
+> 最后更新：2026-05-29（exportPng.ts 修复多页导出偶发某些页缺图 bug：在 html2canvas 之前把所有 page 内 `<img>` 的 src 临时换成 data URL，从根上消除 cloned img 加载竞态；同时 imageTimeout 从默认 15s 调到 30s 兜底）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -437,7 +437,24 @@ app/
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
 - 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
 
-## 用户偏好（重要）
+## Step 11：多页导出偶发缺图修复（2026-05-29）
+
+### 现象
+用户在线上多次导出 5 页 zip，每次都有 2-3 张 PNG 是「白底+只有 logo 占位圈」的废图，而且每次失败的页随机不同。Playwright headless 复现不到——5 轮 25 张 PNG byte 完全一致，dark pixel 数稳定。说明 bug 只在真实头载浏览器并发负载下触发。
+
+### 根因
+`html2canvas-pro` clone DOM 后会重新触发 `<img>` 的 load。`useCORS: true` 会让 cloned img 带 `crossOrigin="anonymous"`，**这个属性会改变浏览器缓存键** —— 主页面的 `<img>` 走的是 no-cors 版本缓存，cloned 那张缓存 miss，重新发请求。多页串行导出 = 多轮重 fetch。真实浏览器 + 多 tab + 网络抖动下偶发某次 timeout 或解码未就绪，html2canvas 就照样 draw，输出只有透明/白底+空 logo 的废页。
+
+### 修法（`lib/exportPng.ts`）
+1. 新增 `inlineImagesAsDataURL(pages)`：把所有页里所有 `<img>` 的 src 通过 `fetch → blob → readAsDataURL` 转成 data URL，**临时改写原 DOM 的 img.src**，并 `await img.decode()` 等浏览器解码完成
+2. 改完之后，html2canvas clone DOM 时 cloned img 拿到的就是同步可用的 inline data URL，零 fetch、零 race
+3. `exportPages` 结束（含报错）后用 `try/finally` 把原始 src 还原
+4. 兜底：html2canvas options 加 `imageTimeout: 30000`（默认 15s）
+
+### 教训
+- **html2canvas 的 `useCORS: true` 不是免费的**：会改变缓存键，造成 cloned img 命中率下降，间接放大多页串行导出的资源加载竞态
+- **headless 复现不到不等于没 bug**：用户头载浏览器真实环境的并发负载比 headless 高一个量级。下次类似「线上偶发 + headless 复现不到」的现象，直接走「消除竞态根因」路线，不要纠结复现
+- **要彻底消除资源加载竞态，把外部资源 inline 成 data URL 是核武器**：原 DOM 临时改写，数据 URL 与原图字节一致用户无感，导出完成 `finally` 还原
 
 - **行为准则**：诚实优先、不偷懒、做不到直说，先查自身再考虑外部因素
 - **响应风格**：简短直接，不要冗长解释
@@ -524,3 +541,4 @@ pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 - ❌ `URL.revokeObjectURL` 别在 `a.click()` 后立刻 / 1 秒内 revoke —— 大 blob（如 zip 多页）真实下载需要时间，过早 revoke 会截断文件让 Chrome 下载条目可见但实际文件损坏。延迟 60s 为底线
 - ❌ 不要让 ExportDialog filename 永远等于 `H1 文本`——同名下载会被 macOS Downloads 静默重命名为 `xxx 2.png`，用户以为还是第一版。已加 `usedNamesRef` 自动追 -2/-3 序号
 - ❌ Tiptap `Node` 不要从 `@tiptap/core` 引（项目没装 core 包，dev 依赖也没 hoist）；从 `@tiptap/react` re-export 引：`import { Node } from '@tiptap/react'`
+- ❌ 不要在 html2canvas `useCORS: true` 之外裸调（多页导出会偶发缺图）—— cloned img 重 fetch 时浏览器缓存键不同会 miss，真实浏览器并发负载下偶发某页只截到白底+空 logo。已加 `inlineImagesAsDataURL` 在截图前把 img.src 临时换 data URL，根除 race。新增图片源（比如做装饰素材自动嵌入）要确保走这条 inline 路径，别绕过
