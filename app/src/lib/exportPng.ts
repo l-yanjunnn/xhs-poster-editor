@@ -3,31 +3,67 @@ import JSZip from 'jszip'
 
 // 把 .page 截成 PNG Blob。
 // scale: 2 是为了输出 2160×3840 的高清图（小红书也用得上）。
-// onclone 钩子里去掉外层 page-wrapper 的 transform:scale(0.4)——
-// 否则 html2canvas 会按缩放后的尺寸截图，得到一张缩小图
-async function pageToPngBlob(page: HTMLElement): Promise<Blob> {
-  const canvas = await html2canvas(page, {
-    scale: 2,
-    backgroundColor: null,
-    useCORS: true,
-    onclone: (clonedDoc) => {
-      // 撤掉所有 page-wrapper 的预览缩放
-      clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
-        w.style.transform = 'none'
-        w.style.marginBottom = '0'
-      })
-      // 参考线只服务于预览，不进入导出图：直接 remove DOM 节点
-      // （早期版本用 .page--guides::before/::after，但 html2canvas 处理伪元素早于 onclone，
-      // class 移除后伪元素仍被截到 canvas，故改成真实子节点）
-      clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
-    },
-  })
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('toBlob 返回 null'))),
-      'image/png',
-    )
-  })
+//
+// 修法 v4：deep clone .page-wrapper 到 document.body 上 + position: fixed +
+// opacity: 0，让截图对象完全脱离原 React 渲染树的 flex 父容器和 transform: scale(0.4)
+// 干扰。html2canvas 内部 parseBounds 拿到的 bbox 因此稳定为 (0, 0, 1080, 1920)，
+// 不再受 cloned iframe 里 layout race 影响。
+//
+// 历史失败修法：
+// - v1 传 width/height: canvas 尺寸对了，但 parseBounds 的 left/top 仍 race，
+//   内容渲染到画面外 → 9/25 异常
+// - v2 onclone 改 cloned .page inline: cloned doc 里 measure 时机和 onclone 之间
+//   layout 不稳定，依然 race → 5/25 异常
+// - v3 改源 DOM 锁所有 page-wrapper: 5 个 page 同时撑满让 cloned doc layout 更乱
+//   → 14/25 异常（比 baseline 更差）
+async function pageToPngBlob(originalPage: HTMLElement): Promise<Blob> {
+  const originalWrapper = originalPage.parentElement
+  if (!originalWrapper) {
+    throw new Error('page 没有 .page-wrapper 父容器')
+  }
+  // 深 clone .page-wrapper 整个子树（含 .page 和所有 children）
+  const cloneWrapper = originalWrapper.cloneNode(true) as HTMLElement
+  // 脱离任何父容器布局：fixed + 左上角 + 取消 scale + 取消 margin
+  cloneWrapper.style.position = 'fixed'
+  cloneWrapper.style.top = '0'
+  cloneWrapper.style.left = '0'
+  cloneWrapper.style.transform = 'none'
+  cloneWrapper.style.margin = '0'
+  // 用户看不到，但仍参与 layout（visibility: hidden 会让 layout 算 0×0）
+  cloneWrapper.style.opacity = '0'
+  cloneWrapper.style.pointerEvents = 'none'
+  // 藏在所有内容下，避免万一 opacity: 0 不阻断 hit-test
+  cloneWrapper.style.zIndex = '-1'
+  document.body.appendChild(cloneWrapper)
+
+  const clonePage = cloneWrapper.querySelector<HTMLElement>('.page')
+  if (!clonePage) {
+    document.body.removeChild(cloneWrapper)
+    throw new Error('clone .page-wrapper 后找不到 .page')
+  }
+
+  // 强制一次 reflow，确保 fixed 定位生效
+  void cloneWrapper.offsetHeight
+
+  try {
+    const canvas = await html2canvas(clonePage, {
+      scale: 2,
+      backgroundColor: null,
+      useCORS: true,
+      onclone: (clonedDoc) => {
+        // 参考线只服务于预览，不进入导出图
+        clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
+      },
+    })
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('toBlob 返回 null'))),
+        'image/png',
+      )
+    })
+  } finally {
+    document.body.removeChild(cloneWrapper)
+  }
 }
 
 function triggerDownload(blob: Blob, filename: string) {
