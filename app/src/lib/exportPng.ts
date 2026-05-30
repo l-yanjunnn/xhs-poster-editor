@@ -2,21 +2,47 @@ import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
 
-// v7 架构（2026-05-30）：离屏渲染
+// v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
-// 历史：v1~v6 都在跟 html2canvas-pro 的 bbox 测量时机斗争——它在 onclone 之前用
-// `getBoundingClientRect()` 测 .page 的 bbox，被 .page-wrapper 上的 transform:scale(0.4)
-// 误测成 432×768。每加一种主题/背景源就触发新的边界 case。
+// 历史：
+//   v1~v6：在 html2canvas-pro 的 onclone 里改 transform，但 onclone 晚于 bbox 测量，无效
+//   v7：把 .page deep clone 到 body 外的 fixed offscreen 容器，bbox 自然 = 1080×1920
+//       —— 本地 prod-preview 100% OK，但 prod URL 上深夜黑/极简白仍坏
 //
-// 根治：解耦预览和导出。预览继续 transform 缩放，导出走完全独立的路径：
-//   1. 在 body 直接子节点位置创建一个 fixed offscreen 容器（无任何 transform 祖先）
-//   2. deep clone 当前 .page 到容器里
-//   3. 等所有 img 解码完
-//   4. html2canvas 截 clone（bbox 自然 = 1080×1920，无 race 可能）
-//   5. finally 里移除容器
-// 源 DOM 零修改，预览零闪烁。每加新功能不再依赖 html2canvas 对边界的容忍度
+// v7 的剩余 bug 根因（playwright 在 prod URL 上抓到证据）：
+//   html2canvas-pro 内部把 cloned DOM 放进一个 about:blank iframe，CSS 通过原 doc 的
+//   `<link rel="stylesheet">` 在 iframe 里重新加载来生效。Cloudflare prod 上 iframe
+//   的 stylesheet 加载失败（CORS / origin null 不能跨域 fetch CSS），cloned doc 里
+//   .page 走默认浏览器样式渲染——logo 按 PNG 自然尺寸画在左上角、文字浏览器默认大小、
+//   背景白（缺 .theme-dark-night 的 #1a1a1a）、所有 padding/position 全部失效。
+//   雅致主题 5/5 OK 是因为 `<img class="bg">` 撑满画布，掩盖了视觉破绽。
+//
+// v8 修法：onclone 里把当前 doc 的 *所有* stylesheet.cssRules 转成 text 注入 cloned
+// doc 的 <head>，绕开 iframe 的 stylesheet 加载路径。所有 CSS（包括 @font-face、
+// CSS vars、theme class、tailwind utility）都打包进 inline <style>，不依赖网络。
+//
+// 为什么对未来主题也鲁棒：用户新建主题 = App 改 CSS var + theme class 名，
+// CSS 文件本身不变。getComputedStyle 和 styleSheets.cssRules 都包含所有规则，
+// v8 全量复制 → 无论新主题怎么加，CSS 都生效
+
+// 收集当前 document 的全部 CSS 规则成一段 text，用于在 cloned iframe 里 inline
+function collectAllCss(): string {
+  const parts: string[] = []
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        parts.push(rule.cssText)
+      }
+    } catch (e) {
+      // 跨域 stylesheet 不可读时跳过（我们的应用只有同源 CSS，正常不会触发）
+      console.warn('[exportPng] skipping cross-origin stylesheet:', e)
+    }
+  }
+  return parts.join('\n')
+}
+
 async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
-  // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，确保无 transform 祖先
+  // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
   const stage = document.createElement('div')
   stage.setAttribute('data-export-stage', '')
   stage.style.cssText = [
@@ -35,15 +61,13 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
   try {
     // 2. deep clone .page
     const cloned = page.cloneNode(true) as HTMLElement
-    // 清掉 inline transform/width/height 让 CSS 自然生效；参考线只服务预览，剥掉
     cloned.style.transform = 'none'
     cloned.style.width = `${CANVAS_WIDTH}px`
     cloned.style.height = `${CANVAS_HEIGHT}px`
     cloned.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
     stage.appendChild(cloned)
 
-    // 3. 等所有 img 解码完。preview 里 img 已加载过，clone 用同 src 走浏览器缓存，
-    // 一般几 ms 就 decode 完。给 5s 兜底，防止极端情况卡死
+    // 3. 等 img 解码
     const imgs = Array.from(cloned.querySelectorAll<HTMLImageElement>('img'))
     await Promise.all(
       imgs.map((img) => {
@@ -56,11 +80,14 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
         })
       }),
     )
-
-    // 强制 layout
     void cloned.offsetHeight
 
-    // 4. html2canvas 截 clone。bbox = 1080×1920，无 race
+    // 4. 在 onclone 钩子里注入完整 CSS + 拷贝 :root 的 inline CSS vars
+    // 这两步缺一不可：CSS 文件提供 .theme-* 类的样式定义，:root inline vars 提供
+    // 用户当前选择的字号/字体/密度等运行时值
+    const cssText = collectAllCss()
+    const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
+
     return await html2canvas(cloned, {
       scale: 2,
       width: CANVAS_WIDTH,
@@ -68,9 +95,22 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
+      onclone: (clonedDoc) => {
+        // 注入完整 CSS：iframe 不需要从网络加载 stylesheet 就能拿到所有规则
+        const styleEl = clonedDoc.createElement('style')
+        styleEl.textContent = cssText
+        clonedDoc.head.appendChild(styleEl)
+        // 拷贝 :root inline CSS vars（App.tsx 动态设置的 --font-h1 等）到 cloned <html>
+        if (rootInlineStyle) {
+          const current = clonedDoc.documentElement.getAttribute('style') ?? ''
+          clonedDoc.documentElement.setAttribute(
+            'style',
+            current ? `${current};${rootInlineStyle}` : rootInlineStyle,
+          )
+        }
+      },
     })
   } finally {
-    // 5. 清理 stage
     if (stage.parentNode) stage.parentNode.removeChild(stage)
   }
 }
