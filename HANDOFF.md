@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 12 测试基础设施（vitest）+ Export race 检测精化 + 进度反馈**
-> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 12」**，已加 31 个单测覆盖纯函数层 + 修了 `fileNameToFamily` 一个真 bug + Export PNG 加进度回调和误判修复）
+> **当前进度：Step 13 Export PNG v6 终极修法 —— 清源 DOM transform**
+> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 13」**，v6 修了一个 v1~v5 都没根治的 bug：深夜黑等无背景图主题在 prod 慢网络下 100% 导出坏图，根因是 html2canvas-pro 在 onclone 前测 bbox，被 .page-wrapper 的 scale(0.4) 误测成 432×768）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -543,6 +543,58 @@ app/
 ### Dev 模式 editor 挂 window（方便 E2E）
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
 - 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
+
+## Step 13：Export PNG v6 修法 —— 清源 DOM transform（2026-05-30）
+
+### 用户报障 + 复现
+- 用户首次测**深夜黑**主题导出 5 页 → **5/5 全坏**：logo 跑左上、文字小、白底
+- 用 playwright 在 prod URL 上跑同样流程，100% 重现：canvas 是正确的 2160×3840，但 H1 区域 360000 像素 **全部 (0,0,0,0) 透明**（在 Finder/Preview 里渲染为白）
+- 同一 build 在本地 `vite preview` 上跑：5/5 完美。**只在 Cloudflare prod 100% 坏**
+
+### 根因（用 playwright 实证）
+html2canvas-pro 在 onclone 钩子**之前**调用 `parseBounds(.page.getBoundingClientRect())` 拿 bbox：
+- `.page-wrapper` 上的 `transform: scale(0.4)` 让 .page 的 visible bbox = **432×768**（而非 CSS 写的 1080×1920）
+- bbox 决定 html2canvas 渲染哪片区域 → 实际画出 432×768 的小图
+- 显式传 `width: 1080, height: 1920` 只控制 canvas 尺寸（2160×3840）不控制渲染区域
+- 结果：小图绘制在 2160×3840 canvas 的左上角，右下大片透明
+- onclone 里恢复 transform 太晚——bbox 已定，onclone 的修改对最终渲染范围没影响
+
+### 为什么之前的 v1~v5 都没根治
+- v1（显式传 width/height）：修了 canvas 尺寸不对，没修 bbox 测量
+- v2~v4（onclone 里改 transform/width）：onclone 晚于 bbox 测量
+- v5（race 检测+重试）：检测算法只看右边缘黑带，**不看左上小图+右下透明**这种坏法
+
+### v6 修法（[exportPng.ts:12-49](app/src/lib/exportPng.ts#L12)）
+**调 html2canvas 之前先临时清掉源 DOM 的 transform**，让 bbox 测量拿到 1080×1920，截图完恢复：
+
+```ts
+const wrapper = page.parentElement
+const savedTransform = wrapper?.style.transform ?? ''
+if (wrapper) {
+  wrapper.style.transform = 'none'
+  wrapper.style.marginBottom = '0'
+  void page.offsetHeight  // 强制 reflow，bbox 立刻按新 transform 重算
+}
+try {
+  return await html2canvas(page, { ... })
+} finally {
+  if (wrapper) wrapper.style.transform = savedTransform  // 恢复预览缩放
+}
+```
+
+### 验证
+- prod build 本地 vite preview + playwright：深夜黑 5/5 完美（canvas 2160×3840，每张 H1 区域 180+ unique colors，背景 (10,10,10) + 文字 (240,240,240) RGBA alpha=255 全不透明）
+- 雅致主题也 5/5 正常，没回归
+- 预览体验：截图期间 UI 闪一下（transform 被临时清掉再恢复），但每次截图就一帧，肉眼几乎察觉不到
+
+### 关键教训
+1. **`localhost vite preview ≠ Cloudflare prod`**：bug 只在 prod 100% 触发，本地永不复现。Playwright 直接打 prod URL 是黄金调试路径
+2. **`width/height` option 只控 canvas 尺寸**，不控渲染区域。渲染区域永远是 bbox 决定的，bbox 又是 onclone 之前测的
+3. **不要碰源 DOM** 这条约束在 v3/v4 失败后被立成原则，但「在 finally 里恢复」其实安全。原则要看上下文：写到一半的 deep-clone 不安全，闭包+finally 的临时改是稳的
+
+### 历史包袱清理（保留）
+- `hasRaceArtifact` + retry 机制保留，作为兜底：v6 即使少数情况下还有别的 race，retry 还能救
+- HANDOFF 早期描述的「右黑带」race（v1~v5 主治）应该已经被 v6 顺手解决（源 DOM transform 是同一类问题的另一表现），但保留检测以防
 
 ## Step 12：测试基础设施 + Export 微调（2026-05-30）
 

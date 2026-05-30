@@ -233,12 +233,9 @@ function App() {
 
   const pages = useMemo(() => splitIntoPages(content), [content])
 
-  async function handleExport(
-    filename: string,
-    onProgress: (current: number, total: number) => void,
-  ) {
+  async function handleExport(filename: string) {
     const els = pageRefs.current.filter((el): el is HTMLDivElement => el !== null)
-    await exportPages(els, filename, onProgress)
+    await exportPages(els, filename)
   }
 
   function shouldShowLogo(pageIndex: number, total: number): boolean {

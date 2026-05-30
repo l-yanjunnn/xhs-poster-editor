@@ -13,11 +13,8 @@ interface Props {
   onOpenChange: (v: boolean) => void
   defaultFilename: string
   pageCount: number
-  // 由父组件实际调用 exportPages；onProgress 用来在弹窗里显示 N/total
-  onExport: (
-    filename: string,
-    onProgress: (current: number, total: number) => void,
-  ) => Promise<void>
+  // 由父组件实际调用 exportPages；这里只负责拿到 filename
+  onExport: (filename: string) => Promise<void>
 }
 
 // 导出弹窗：让用户重命名后点导出
@@ -30,11 +27,6 @@ export function ExportDialog({
 }: Props) {
   const [filename, setFilename] = useState(defaultFilename)
   const [exporting, setExporting] = useState(false)
-  // 进度：{current, total}。total=0 表示还未开始
-  const [progress, setProgress] = useState<{ current: number; total: number }>({
-    current: 0,
-    total: 0,
-  })
   // Why: 用户常保留同一个 H1（filename 来自 H1），多次导出会同名覆盖到 Downloads，
   // macOS 会静默重命名成 `xxx 2.png`，用户以为还是第一版。记忆已用过的 name 自动加序号
   const usedNamesRef = useRef<Set<string>>(new Set())
@@ -50,7 +42,6 @@ export function ExportDialog({
       }
       setFilename(candidate)
       setExporting(false)
-      setProgress({ current: 0, total: 0 })
     }
   }, [open, defaultFilename])
 
@@ -63,11 +54,8 @@ export function ExportDialog({
   async function handleExport() {
     if (!canExport) return
     setExporting(true)
-    setProgress({ current: 0, total: 0 })
     try {
-      await onExport(trimmed, (current, total) =>
-        setProgress({ current, total }),
-      )
+      await onExport(trimmed)
       usedNamesRef.current.add(trimmed)
       onOpenChange(false)
     } catch (e) {
@@ -128,11 +116,7 @@ export function ExportDialog({
             取消
           </Button>
           <Button onClick={handleExport} disabled={!canExport}>
-            {exporting
-              ? progress.total > 0
-                ? `导出中 ${progress.current} / ${progress.total}`
-                : '导出中…'
-              : '导出'}
+            {exporting ? '导出中…' : '导出'}
           </Button>
         </DialogFooter>
       </DialogContent>

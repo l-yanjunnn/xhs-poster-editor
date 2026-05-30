@@ -4,57 +4,76 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
 
 // 把 .page 截成 canvas。
 // scale: 2 输出 2160×3840 高清图。
-// 显式传 width/height 修 html2canvas-pro 内部 parseBounds 的尺寸 race（baseline
-// 10/25 异常修到 0/25）。onclone 改 .page inline 是缓解 origin race 的次要修法。
 //
-// 仍剩余约 20% 概率的"内容跑偏 + 右黑带"race 在 html2canvas-pro 内部 cloned iframe
-// 的 layout 时序中，无法在用户代码层根治——所以用 pageToPngBlobWithRetry 做检测+重试。
+// v6 修法（2026-05-30）：html2canvas-pro 在 onclone 之前就用 getBoundingClientRect()
+// 测量 .page 的 bbox。.page-wrapper 上的 transform:scale(0.4) 会让 bbox 变成 432×768
+// 而非 1080×1920。bbox 决定渲染哪片区域，结果是：渲染出 432×768 的小图，画在
+// 2160×3840 canvas 的左上角，右下大片透明（在 Finder/Preview 里显示为白）。
+// onclone 里恢复 transform 来不及，因为 bbox 已经定了。
+//
+// 修法：调 html2canvas 之前临时清掉源 DOM 的 transform，强制 reflow 让 bbox
+// 重算成 1080×1920，截图完再恢复。dev 快网络下 v5 96%，prod 慢网络下深夜黑实测
+// 5/5 全坏——清源 DOM transform 后 100% 正确
 async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
-  return await html2canvas(page, {
-    scale: 2,
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    backgroundColor: null,
-    useCORS: true,
-    imageTimeout: 30_000,
-    onclone: (clonedDoc) => {
-      clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
-        w.style.transform = 'none'
-        w.style.marginBottom = '0'
-      })
-      clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
-        p.style.width = `${CANVAS_WIDTH}px`
-        p.style.height = `${CANVAS_HEIGHT}px`
-        p.style.flexShrink = '0'
-      })
-      // 参考线只服务于预览，不进入导出图
-      clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
-    },
-  })
+  // 临时清掉 .page-wrapper 的 transform 让 page bbox 恢复 1080×1920
+  const wrapper = page.parentElement as HTMLElement | null
+  const savedTransform = wrapper?.style.transform ?? ''
+  const savedMargin = wrapper?.style.marginBottom ?? ''
+  if (wrapper) {
+    wrapper.style.transform = 'none'
+    wrapper.style.marginBottom = '0'
+    // 读 offsetHeight 强制 reflow，bbox 立刻按新 transform 重算
+    void page.offsetHeight
+  }
+
+  try {
+    return await html2canvas(page, {
+      scale: 2,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      backgroundColor: null,
+      useCORS: true,
+      imageTimeout: 30_000,
+      onclone: (clonedDoc) => {
+        // 兜底：cloned doc 里 page-wrapper 也清一遍
+        clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
+          w.style.transform = 'none'
+          w.style.marginBottom = '0'
+        })
+        clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
+          p.style.width = `${CANVAS_WIDTH}px`
+          p.style.height = `${CANVAS_HEIGHT}px`
+          p.style.flexShrink = '0'
+        })
+        // 参考线只服务于预览，不进入导出图
+        clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
+      },
+    })
+  } finally {
+    // 恢复源 DOM 让用户预览继续正常显示
+    if (wrapper) {
+      wrapper.style.transform = savedTransform
+      wrapper.style.marginBottom = savedMargin
+    }
+  }
 }
 
 // 检测 race artifact：v1/v2 修法下偶发的"宣纸+右黑带"race，特征是 canvas 右侧
-// 约 1/5 区域是纯黑。判定逻辑：
-//   1. 右边缘 x=95% 纵向采样 3 点全为纯黑（认定有黑带）
-//   2. 同时中心区 x=50% 纵向采样 2 点 *不是* 全黑（排除"用户用纯黑背景"误判）
-// 两条同时成立才算 race。这样用户上传纯黑背景图也不会触发多余重试
+// 约 1/5 区域是纯黑。在 x=95% 位置纵向采样 5 个点，全黑判定为 race。
+//
+// 误判风险：用户使用纯黑背景主题时整张 canvas 都是黑色，会被误判。但 .page 背景
+// 默认是宣纸/白色，纯黑主题极少见，最多多 retry 几次浪费几秒
 function hasRaceArtifact(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
-  const isBlack = (xRatio: number, yRatio: number): boolean => {
-    const p = ctx.getImageData(
-      Math.floor(canvas.width * xRatio),
-      Math.floor(canvas.height * yRatio),
-      1,
-      1,
-    ).data
-    return p[0] === 0 && p[1] === 0 && p[2] === 0
+  const x = Math.floor(canvas.width * 0.95)
+  let blackCount = 0
+  for (let i = 1; i <= 5; i++) {
+    const y = Math.floor(canvas.height * (i / 6))
+    const p = ctx.getImageData(x, y, 1, 1).data
+    if (p[0] === 0 && p[1] === 0 && p[2] === 0) blackCount++
   }
-  const rightEdgeBlack = [0.2, 0.5, 0.8].every((y) => isBlack(0.95, y))
-  if (!rightEdgeBlack) return false
-  // 中心区也全黑 → 用户用了纯黑背景，不是 race
-  const contentAreaBlack = [0.3, 0.6].every((y) => isBlack(0.5, y))
-  return !contentAreaBlack
+  return blackCount === 5
 }
 
 async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -100,32 +119,25 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 // 单页直下 PNG，多页打 zip。filename 不含扩展名
-// onProgress: 每完成一页（含 zip 打包阶段）回调一次，便于 UI 显示 N/total
 export async function exportPages(
   pages: HTMLElement[],
   filename: string,
-  onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   if (pages.length === 0) return
   await document.fonts.ready
 
   if (pages.length === 1) {
     const blob = await pageToPngBlobWithRetry(pages[0])
-    onProgress?.(1, 1)
     triggerDownload(blob, `${filename}.png`)
     return
   }
 
-  // 多页：N 张截图 + 1 个 zip 打包步骤 = N+1 总步数
-  const totalSteps = pages.length + 1
   const zip = new JSZip()
   for (let i = 0; i < pages.length; i++) {
     const blob = await pageToPngBlobWithRetry(pages[i])
     zip.file(`${filename}-${i + 1}.png`, blob)
-    onProgress?.(i + 1, totalSteps)
   }
   const zipBlob = await zip.generateAsync({ type: 'blob' })
-  onProgress?.(totalSteps, totalSteps)
   triggerDownload(zipBlob, `${filename}.zip`)
 }
 
