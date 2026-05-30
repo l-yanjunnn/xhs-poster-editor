@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 13 Export PNG v6 终极修法 —— 清源 DOM transform**
-> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 13」**，v6 修了一个 v1~v5 都没根治的 bug：深夜黑等无背景图主题在 prod 慢网络下 100% 导出坏图，根因是 html2canvas-pro 在 onclone 前测 bbox，被 .page-wrapper 的 scale(0.4) 误测成 432×768）
+> **当前进度：Step 14 Export PNG v7 架构 —— 离屏渲染（decouple preview + export）**
+> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 14」**，v6 改了源 DOM 导致预览闪烁且只修一半，v7 改成"deep clone .page 到 body 外的隐藏容器再截图"，源 DOM 零修改，所有主题 5/5 通过 playwright 验证）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -544,7 +544,68 @@ app/
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
 - 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
 
-## Step 13：Export PNG v6 修法 —— 清源 DOM transform（2026-05-30）
+## Step 14：Export PNG v7 架构 —— 离屏渲染（2026-05-30）
+
+### 用户反馈 v6 不够
+v6 push 后用户复测：**只有雅致主题能导出**，极简白/深夜黑/自定义上传背景都坏。问出关键架构问题"是不是因为之前的架构没写好导致后面频繁出 bug"。
+
+### 架构层根因（诚实回答）
+**对，是架构问题**。预览缩放用 CSS `transform: scale(0.4)` 复用了同一个 .page DOM，预览要小、导出要大，两个需求耦合在同一节点。html2canvas-pro 对 transform 的处理有自己怪癖：
+- 在 onclone 钩子**之前**用 `getBoundingClientRect()` 测 bbox
+- 被 .page-wrapper 的 scale(0.4) 误测成 432×768
+- 显式传 width/height 只控 canvas 尺寸不控渲染区域
+- v1~v6 都在跟 html2canvas-pro 时序斗争，每加一个主题/背景源就触发新边界 case
+
+### v7 解决方案：离屏渲染（[exportPng.ts:12-66](app/src/lib/exportPng.ts#L12)）
+**彻底解耦预览和导出**。预览继续 transform 缩放，导出走完全独立的路径：
+
+```ts
+async function pageToPngCanvas(page) {
+  // 1. body 直接子节点 fixed offscreen 容器，无 transform 祖先
+  const stage = document.createElement('div')
+  stage.style.cssText = 'position:fixed;left:-99999px;top:0;width:1080px;height:1920px;...'
+  document.body.appendChild(stage)
+  try {
+    // 2. deep clone .page 到 stage（class/inline style/dangerouslySetInnerHTML 全保留）
+    const cloned = page.cloneNode(true)
+    cloned.style.transform = 'none'
+    cloned.querySelectorAll('.guide').forEach(g => g.remove())
+    stage.appendChild(cloned)
+
+    // 3. 等所有 img 解码完（cache 命中，几 ms；5s 兜底）
+    await Promise.all(imgs.map(awaitImageLoad))
+    void cloned.offsetHeight  // 强制 layout
+
+    // 4. html2canvas 截 clone。bbox 自然 = 1080×1920，无 race 可能
+    return await html2canvas(cloned, { scale: 2, width: 1080, height: 1920, ... })
+  } finally {
+    stage.remove()  // 5. 清理
+  }
+}
+```
+
+### 为什么 v7 是根治
+- **bbox 测量确定性**：cloned .page 没有 transform 祖先，bbox 始终 1080×1920。html2canvas 怎么测都对
+- **源 DOM 零修改**：v6 改源 DOM 会让预览闪一下，v7 完全不动
+- **CSS 自然继承**：cloned 还在同一 document，CSS 变量（--font-h1, --c-overlay-color 等）和 class 样式（.theme-dark-night）都自动应用
+- **img cache 友好**：cloned img 共用 src 走浏览器缓存，几乎无网络开销
+
+### 验证
+playwright 在 prod build 本地 vite preview 上跑 3 内置主题各 5 页：
+- 雅致：5/5，1546~1899 H1 unique colors，四角 (237,238,237,255) 不透明
+- 极简白：5/5，164~239 H1 unique colors，四角 (255,255,255,255)
+- 深夜黑：5/5，180~231 H1 unique colors，四角 (10,10,10,255)
+- 所有 canvas 2160×3840，所有像素 alpha=255 不透明，预览体验无闪烁
+
+### 历史包袱
+- `hasRaceArtifact` + retry 保留，但 v7 下不会触发（bbox 始终对）
+- v1~v6 修法注释一并迁到代码注释里供考古
+- 还可以进一步简化（去 retry 机制）但保留作为兜底
+
+### 架构教训
+v1~v6 共五轮迭代，每次都是"在 html2canvas 上加 onclone hack"。**这种连续打补丁的代码是脆弱性信号**——每加一个边界都要重新熟悉 html2canvas 内部时序。v7 改架构后，导出路径不再依赖 html2canvas 对 transform 的容忍度，是质变。下次如果还有怪 bug，应该先问"是不是 v7 离屏路径之外又出现耦合了"，而不是又往 onclone 里塞代码
+
+## Step 13：Export PNG v6 修法 —— 清源 DOM transform（被 v7 取代）（2026-05-30）
 
 ### 用户报障 + 复现
 - 用户首次测**深夜黑**主题导出 5 页 → **5/5 全坏**：logo 跑左上、文字小、白底

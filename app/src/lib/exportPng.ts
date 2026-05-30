@@ -2,59 +2,76 @@ import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
 
-// 把 .page 截成 canvas。
-// scale: 2 输出 2160×3840 高清图。
+// v7 架构（2026-05-30）：离屏渲染
 //
-// v6 修法（2026-05-30）：html2canvas-pro 在 onclone 之前就用 getBoundingClientRect()
-// 测量 .page 的 bbox。.page-wrapper 上的 transform:scale(0.4) 会让 bbox 变成 432×768
-// 而非 1080×1920。bbox 决定渲染哪片区域，结果是：渲染出 432×768 的小图，画在
-// 2160×3840 canvas 的左上角，右下大片透明（在 Finder/Preview 里显示为白）。
-// onclone 里恢复 transform 来不及，因为 bbox 已经定了。
+// 历史：v1~v6 都在跟 html2canvas-pro 的 bbox 测量时机斗争——它在 onclone 之前用
+// `getBoundingClientRect()` 测 .page 的 bbox，被 .page-wrapper 上的 transform:scale(0.4)
+// 误测成 432×768。每加一种主题/背景源就触发新的边界 case。
 //
-// 修法：调 html2canvas 之前临时清掉源 DOM 的 transform，强制 reflow 让 bbox
-// 重算成 1080×1920，截图完再恢复。dev 快网络下 v5 96%，prod 慢网络下深夜黑实测
-// 5/5 全坏——清源 DOM transform 后 100% 正确
+// 根治：解耦预览和导出。预览继续 transform 缩放，导出走完全独立的路径：
+//   1. 在 body 直接子节点位置创建一个 fixed offscreen 容器（无任何 transform 祖先）
+//   2. deep clone 当前 .page 到容器里
+//   3. 等所有 img 解码完
+//   4. html2canvas 截 clone（bbox 自然 = 1080×1920，无 race 可能）
+//   5. finally 里移除容器
+// 源 DOM 零修改，预览零闪烁。每加新功能不再依赖 html2canvas 对边界的容忍度
 async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
-  // 临时清掉 .page-wrapper 的 transform 让 page bbox 恢复 1080×1920
-  const wrapper = page.parentElement as HTMLElement | null
-  const savedTransform = wrapper?.style.transform ?? ''
-  const savedMargin = wrapper?.style.marginBottom ?? ''
-  if (wrapper) {
-    wrapper.style.transform = 'none'
-    wrapper.style.marginBottom = '0'
-    // 读 offsetHeight 强制 reflow，bbox 立刻按新 transform 重算
-    void page.offsetHeight
-  }
+  // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，确保无 transform 祖先
+  const stage = document.createElement('div')
+  stage.setAttribute('data-export-stage', '')
+  stage.style.cssText = [
+    'position:fixed',
+    'left:-99999px',
+    'top:0',
+    `width:${CANVAS_WIDTH}px`,
+    `height:${CANVAS_HEIGHT}px`,
+    'overflow:hidden',
+    'pointer-events:none',
+    'z-index:-1',
+    'background:transparent',
+  ].join(';')
+  document.body.appendChild(stage)
 
   try {
-    return await html2canvas(page, {
+    // 2. deep clone .page
+    const cloned = page.cloneNode(true) as HTMLElement
+    // 清掉 inline transform/width/height 让 CSS 自然生效；参考线只服务预览，剥掉
+    cloned.style.transform = 'none'
+    cloned.style.width = `${CANVAS_WIDTH}px`
+    cloned.style.height = `${CANVAS_HEIGHT}px`
+    cloned.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
+    stage.appendChild(cloned)
+
+    // 3. 等所有 img 解码完。preview 里 img 已加载过，clone 用同 src 走浏览器缓存，
+    // 一般几 ms 就 decode 完。给 5s 兜底，防止极端情况卡死
+    const imgs = Array.from(cloned.querySelectorAll<HTMLImageElement>('img'))
+    await Promise.all(
+      imgs.map((img) => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+        return new Promise<void>((resolve) => {
+          const done = () => resolve()
+          img.addEventListener('load', done, { once: true })
+          img.addEventListener('error', done, { once: true })
+          setTimeout(done, 5000)
+        })
+      }),
+    )
+
+    // 强制 layout
+    void cloned.offsetHeight
+
+    // 4. html2canvas 截 clone。bbox = 1080×1920，无 race
+    return await html2canvas(cloned, {
       scale: 2,
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
-      onclone: (clonedDoc) => {
-        // 兜底：cloned doc 里 page-wrapper 也清一遍
-        clonedDoc.querySelectorAll<HTMLElement>('.page-wrapper').forEach((w) => {
-          w.style.transform = 'none'
-          w.style.marginBottom = '0'
-        })
-        clonedDoc.querySelectorAll<HTMLElement>('.page').forEach((p) => {
-          p.style.width = `${CANVAS_WIDTH}px`
-          p.style.height = `${CANVAS_HEIGHT}px`
-          p.style.flexShrink = '0'
-        })
-        // 参考线只服务于预览，不进入导出图
-        clonedDoc.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
-      },
     })
   } finally {
-    // 恢复源 DOM 让用户预览继续正常显示
-    if (wrapper) {
-      wrapper.style.transform = savedTransform
-      wrapper.style.marginBottom = savedMargin
-    }
+    // 5. 清理 stage
+    if (stage.parentNode) stage.parentNode.removeChild(stage)
   }
 }
 
