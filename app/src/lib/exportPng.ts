@@ -34,21 +34,27 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
 }
 
 // 检测 race artifact：v1/v2 修法下偶发的"宣纸+右黑带"race，特征是 canvas 右侧
-// 约 1/5 区域是纯黑。在 x=95% 位置纵向采样 5 个点，全黑判定为 race。
-//
-// 误判风险：用户使用纯黑背景主题时整张 canvas 都是黑色，会被误判。但 .page 背景
-// 默认是宣纸/白色，纯黑主题极少见，最多多 retry 几次浪费几秒
+// 约 1/5 区域是纯黑。判定逻辑：
+//   1. 右边缘 x=95% 纵向采样 3 点全为纯黑（认定有黑带）
+//   2. 同时中心区 x=50% 纵向采样 2 点 *不是* 全黑（排除"用户用纯黑背景"误判）
+// 两条同时成立才算 race。这样用户上传纯黑背景图也不会触发多余重试
 function hasRaceArtifact(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
-  const x = Math.floor(canvas.width * 0.95)
-  let blackCount = 0
-  for (let i = 1; i <= 5; i++) {
-    const y = Math.floor(canvas.height * (i / 6))
-    const p = ctx.getImageData(x, y, 1, 1).data
-    if (p[0] === 0 && p[1] === 0 && p[2] === 0) blackCount++
+  const isBlack = (xRatio: number, yRatio: number): boolean => {
+    const p = ctx.getImageData(
+      Math.floor(canvas.width * xRatio),
+      Math.floor(canvas.height * yRatio),
+      1,
+      1,
+    ).data
+    return p[0] === 0 && p[1] === 0 && p[2] === 0
   }
-  return blackCount === 5
+  const rightEdgeBlack = [0.2, 0.5, 0.8].every((y) => isBlack(0.95, y))
+  if (!rightEdgeBlack) return false
+  // 中心区也全黑 → 用户用了纯黑背景，不是 race
+  const contentAreaBlack = [0.3, 0.6].every((y) => isBlack(0.5, y))
+  return !contentAreaBlack
 }
 
 async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -94,25 +100,32 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 // 单页直下 PNG，多页打 zip。filename 不含扩展名
+// onProgress: 每完成一页（含 zip 打包阶段）回调一次，便于 UI 显示 N/total
 export async function exportPages(
   pages: HTMLElement[],
   filename: string,
+  onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   if (pages.length === 0) return
   await document.fonts.ready
 
   if (pages.length === 1) {
     const blob = await pageToPngBlobWithRetry(pages[0])
+    onProgress?.(1, 1)
     triggerDownload(blob, `${filename}.png`)
     return
   }
 
+  // 多页：N 张截图 + 1 个 zip 打包步骤 = N+1 总步数
+  const totalSteps = pages.length + 1
   const zip = new JSZip()
   for (let i = 0; i < pages.length; i++) {
     const blob = await pageToPngBlobWithRetry(pages[i])
     zip.file(`${filename}-${i + 1}.png`, blob)
+    onProgress?.(i + 1, totalSteps)
   }
   const zipBlob = await zip.generateAsync({ type: 'blob' })
+  onProgress?.(totalSteps, totalSteps)
   triggerDownload(zipBlob, `${filename}.zip`)
 }
 

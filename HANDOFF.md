@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 11 导出 PNG race condition 五轮修法 + v5 检测重试方案（96% 成功率）**
-> 最后更新：2026-05-29（**新 Claude 接手请先读「✅ 导出 PNG race condition 修法终局」章节**，那里有 5 轮修法的失败教训 + 当前方案 + 想做到 99%+ 的方向）
+> **当前进度：Step 12 测试基础设施（vitest）+ Export race 检测精化 + 进度反馈**
+> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 12」**，已加 31 个单测覆盖纯函数层 + 修了 `fileNameToFamily` 一个真 bug + Export PNG 加进度回调和误判修复）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -544,6 +544,43 @@ app/
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
 - 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
 
+## Step 12：测试基础设施 + Export 微调（2026-05-30）
+
+### 测试基础设施（vitest + happy-dom）
+- **新依赖**：`vitest` 4.1 + `happy-dom` 20.9 + `@vitest/ui`，devDependencies
+- **配置**：`vite.config.ts` 改成 `import { defineConfig } from 'vitest/config'`，加 `test: { environment: 'happy-dom', include: ['src/**/*.test.ts'] }`
+- **scripts**：`pnpm test`（一次性跑）/ `pnpm test:watch`
+- **覆盖范围（档位 A，4 个文件 31 个测试，~80 行代码，跑完 ~450ms）**：
+  - `lib/splitPages.test.ts`（7）：切页边界、divider 不切页、连续/首尾 page-break、混合 divider+page-break
+  - `lib/fontSize.test.ts`（4）：基准 + 等比缩放
+  - `lib/suggestFilename.test.ts`（10）：H1 提取、非法字符过滤、超长截断、嵌套标签、回退日期
+  - `lib/fontStore.test.ts`（10）：fileNameToFamily 各种后缀剥离 + 大小写 + 中文 + 多后缀
+- **为什么先做档位 A**：纯函数全在 lib 层，0 React 依赖，写测试成本 < 收益。**档位 B（hasRaceArtifact）和档位 C（IndexedDB round-trip）暂不做**——前者等 race 修法稳定后加，后者等 schema migration 时再加
+
+### 第一次跑测试就捕到一个 bug：`fileNameToFamily` 尾部空格
+- **症状**：`fileNameToFamily('  MyFont.ttf  ')` 返回 `'MyFont.ttf'` 而不是 `'MyFont'`
+- **根因**：原实现 `fileName.replace(/\.(ttf|otf|...)$/i, '').trim()` —— 先 replace 后 trim，但 `$` 锚定让 `.ttf  `（尾部空格）后缀无法匹配，replace 不生效，trim 也只能剥掉空格留下后缀
+- **修法**：调换顺序 `fileName.trim().replace(...)`（[fontStore.ts:39](app/src/lib/fontStore.ts#L39)）
+- **教训**：**正则 `$` 锚定 + 字符串方法链顺序敏感**。今后写"先清洗再匹配"的字符串处理，trim 一律放最前面
+
+### Export PNG P1：`hasRaceArtifact` 加内容区交叉判定
+- **背景**：v5 修法用"右边缘 x=95% 纵向 5 个采样点全黑"判定 race，注释里承认"用户用纯黑背景会误判，最多多 retry 几次浪费几秒"
+- **改进**：现在右边缘只采 3 点（0.2/0.5/0.8），**同时检查中心区 x=50% 两点 (0.3/0.6)**。两条同时成立才判 race：「右边缘黑 AND 中心非黑」
+- **代码位置**：[exportPng.ts:42](app/src/lib/exportPng.ts#L42)
+- **副作用**：用户上传纯黑背景图也不会触发多余重试。3 次重试理论成功率不变（99.2%），但**误判路径消除了**
+
+### Export PNG P2：导出进度回调
+- **背景**：5 页 × 最多 3 次重试 × ~2s = 最坏 30 秒 UI 无反馈，用户只看到「导出中…」
+- **接口**：`exportPages(pages, filename, onProgress?)` 加可选第三参 `(current, total) => void`
+- **进度协议**：单页 → `(1,1)`；多页 → N 张截图 + 1 个 zip 打包步骤 = N+1 总步数，每完成一步回调一次
+- **UI**：ExportDialog 按钮显示 `导出中 3 / 6`，关闭弹窗时 progress state 自动 reset
+- **改动文件**：`lib/exportPng.ts`、`components/ExportDialog/ExportDialog.tsx`、`App.tsx::handleExport` 透传
+
+### 验证方式
+- `pnpm test` → 31/31 通过
+- `./node_modules/.bin/tsc -b` → 类型检查通过（注意 `vite.config.ts` 必须 import 自 `vitest/config`，否则 tsc 不认 `test` 字段）
+- `./node_modules/.bin/vite build` → build 通过
+
 ## 用户偏好（重要）
 
 - **行为准则**：诚实优先、不偷懒、做不到直说，先查自身再考虑外部因素
@@ -561,6 +598,8 @@ app/
 cd app
 ./node_modules/.bin/vite              # 启动 dev server（绕过 pnpm 的 deps check）
 ./node_modules/.bin/tsc -b            # 类型检查
+pnpm test                             # 跑单测一次（vitest，<1s）
+pnpm test:watch                       # vitest watch 模式
 pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件（button/dialog/select 等）
 pnpm add <pkg>                        # 加依赖（pnpm 本体没问题）
 ```

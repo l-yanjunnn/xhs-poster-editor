@@ -35,9 +35,9 @@ function tx(db: IDBDatabase, mode: IDBTransactionMode) {
   return db.transaction(STORE, mode).objectStore(STORE)
 }
 
-// 文件名 → 默认 family：去后缀、trim
+// 文件名 → 默认 family：先 trim 再去后缀，否则尾部空格会让 $ 锚定失败
 export function fileNameToFamily(fileName: string): string {
-  return fileName.replace(/\.(ttf|otf|woff2?|ttc)$/i, '').trim()
+  return fileName.trim().replace(/\.(ttf|otf|woff2?|ttc)$/i, '')
 }
 
 // put 而非 add：同 family 覆盖
