@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> **当前进度：Step 14 Export PNG v7 架构 —— 离屏渲染（decouple preview + export）**
-> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 14」**，v6 改了源 DOM 导致预览闪烁且只修一半，v7 改成"deep clone .page 到 body 外的隐藏容器再截图"，源 DOM 零修改，所有主题 5/5 通过 playwright 验证）
+> **当前进度：Step 15 Export PNG v8 终局 —— 离屏渲染 + onclone 注入完整 CSS**
+> 最后更新：2026-05-30（**新 Claude 接手前先扫一眼「Step 15」**，v7 只解决 bbox 测量 race，CSS 在 Cloudflare prod 上仍然不应用导致深夜黑/极简白裸渲染。v8 在 onclone 里把全部 styleSheets.cssRules 转 text 注入 cloned doc，绕开 iframe 的 stylesheet 网络加载。**playwright 在 prod URL 实测雅致/极简白/深夜黑 各 5/5 全 OK**）
 >
 > 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
 
@@ -544,7 +544,94 @@ app/
 - `import.meta.env.DEV && (window as any).__editor = editor` —— 控制台/Playwright 能直接 `window.__editor.commands.setContent(...)`，prod build 被 Vite tree-shake。
 - 这种 dev-only 引用对 E2E 测试很顺手，可以复用到别的项目。
 
-## Step 14：Export PNG v7 架构 —— 离屏渲染（2026-05-30）
+## Step 15：Export PNG v8 终局 —— 离屏渲染 + CSS 注入（2026-05-30）
+
+### v7 在 prod 上仍坏（用户反馈 + playwright 实证）
+v7 push 后用户测：雅致 5/5 OK，但深夜黑 2/5 OK（其余 3 张坏）、极简白 0/5 OK。
+用户精准描述症状："只导出了素材、文字、PNG，但没排版到一起，也没字体"。
+
+playwright 在 prod URL 上抓证据：所有坏图 canvas 都是 2160×3840 没错，但 4 角落
+中 3 个 alpha=0（完全透明）、左上有像素是 (0,0,0,238)——cat logo PNG 边缘抗锯齿。
+结论：logo 按 PNG 原始 480×480 尺寸渲染在左上角，文字默认浏览器字号，**CSS 一条
+都没生效**。
+
+### 根因（终局诊断）
+html2canvas-pro 内部把 cloned DOM 放进 about:blank iframe 截图。CSS 通过 iframe
+重新加载父 doc 的 `<link rel="stylesheet">` 生效。Cloudflare prod 上 iframe
+origin=null，跨域 fetch `/assets/index-XXX.css` 被 CORS 拦掉，cloned doc 走默认
+浏览器样式渲染——所有 padding/position/bg/字号 全部失效。
+
+**为什么本地 vite preview 不复现**：本地服务的 CSS 可能因为某些 origin 容忍度
+或 iframe 加载策略不同，stylesheet 能加载到 iframe。这也是为什么 v1~v7 本地总
+是 "看起来修好了" 推到 prod 就翻车——本地 preview ≠ Cloudflare prod 的根本差异
+所在，且**只能在 prod URL 上实测才能发现**。
+
+**为什么雅致 5/5 OK**：雅致主题有 `<img class="bg" src="/builtin-assets/bg-xuan-paper.png">`。
+即使 CSS 没生效，这张 img 按 HTML 默认行为也会渲染。它撑满左上掩盖了视觉破绽，
+让人误以为雅致是"修好了"。**深夜黑和极简白无 bg img，全靠 CSS bg color，CSS 不
+生效就立刻暴露**。
+
+### v8 修法（[exportPng.ts:12-130](app/src/lib/exportPng.ts#L12)）
+在 v7 离屏渲染基础上，**onclone 里把当前 doc 的全部 styleSheets.cssRules 转 text
+注入 cloned doc 的 head 作为 inline `<style>`**：
+
+```ts
+function collectAllCss(): string {
+  const parts: string[] = []
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) parts.push(rule.cssText)
+    } catch (e) { /* 跨域跳过 */ }
+  }
+  return parts.join('\n')
+}
+
+html2canvas(cloned, {
+  ...
+  onclone: (clonedDoc) => {
+    // CSS inline 进 head，绕开 iframe stylesheet 加载
+    const styleEl = clonedDoc.createElement('style')
+    styleEl.textContent = collectAllCss()
+    clonedDoc.head.appendChild(styleEl)
+    // App.tsx 动态设的 :root inline CSS vars (--font-h1 等) 也要拷过去
+    const rootStyle = document.documentElement.getAttribute('style')
+    if (rootStyle) clonedDoc.documentElement.setAttribute('style', rootStyle)
+  },
+})
+```
+
+### 为什么对未来主题鲁棒（这次不是治标）
+用户新建主题/上传背景 = App 改 CSS var + theme class 名 + asset URL，**CSS 文件
+本身不变**。`collectAllCss()` 全量复制 document.styleSheets 所有规则，不依赖具体
+主题名/类名/资源类型。无论用户：
+- 新建主题（用现有 CSS class）
+- 上传新背景（blob URL）
+- 切换字体（用 fontsource 已载入或用户字体库）
+- 调字号/间距/叠色
+
+只要走的还是"改 CSS var + theme class"这条路径，v8 都自动覆盖。**这次修的是
+"CSS 进不了 iframe" 这个底层架构缺陷**，不是某个具体主题的特例。
+
+### 验证（playwright 实测）
+**prod URL 上实测**（不再被本地 preview 误导）：
+- 雅致：5/5 OK，4 角落 (237,238,237, 255)
+- 极简白：5/5 OK，4 角落 (255,255,255, 255)
+- 深夜黑：5/5 OK，4 角落 (10,10,10, 255)
+
+所有 canvas 2160×3840，所有角落 alpha=255 不透明，下载 zip 里 page 2 + page 5
+（之前用户截图证明坏的那两张）现在视觉完美：深色铺满、文字位置对、H1/H2/H3/ul/
+blockquote 都按 CSS 渲染。
+
+### 关键工程教训
+1. **html2canvas-pro 的 iframe stylesheet 加载是不可靠的**——任何 onclone 修改
+   都必须假设 stylesheet 加载会失败，自己 inline 所有 CSS
+2. **本地 vite preview ≠ Cloudflare prod**，**任何 export 路径的修法都必须在
+   prod URL 上 playwright 实测**才能 claim 修好。v1~v7 都吃过这个亏
+3. **像素采样诊断比看图判断准**——用户看图说"5/5 都坏"我以为是 race，
+   playwright 采样 4 角落 alpha 才确认是 CSS 没应用（透明像素 vs 小图坏布局
+   视觉相似但根因不同）
+
+## Step 14：Export PNG v7 架构 —— 离屏渲染（被 v8 取代）（2026-05-30）
 
 ### 用户反馈 v6 不够
 v6 push 后用户复测：**只有雅致主题能导出**，极简白/深夜黑/自定义上传背景都坏。问出关键架构问题"是不是因为之前的架构没写好导致后面频繁出 bug"。
