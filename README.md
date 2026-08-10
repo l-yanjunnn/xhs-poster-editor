@@ -18,8 +18,8 @@ Vite + React 19 + TypeScript + Tailwind v4 + shadcn/ui + Tiptap 3，纯前端无
 ├── app/                  ← React 应用（工作目录）
 ├── HANDOFF.md            ← 交接文档（接手必读）
 ├── wrangler.jsonc ci.sh  ← Cloudflare Workers 部署配置
-├── tools/export-race-repro/  ← 导出回归验证脚本
-├── editor.html demo.html assets/  ← 旧单文件 MVP，只读参考，不再维护
+├── tools/                ← 部署（deploy-oss.sh）/ 归档（archive-release.sh）/ 回归脚本
+├── archive/              ← 版本归档：每版 dist 核心快照 + 旧单文件 MVP（永不覆盖）
 └── source/               ← 内置素材原图，只读
 ```
 

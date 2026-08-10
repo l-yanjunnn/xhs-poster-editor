@@ -74,8 +74,9 @@
 3. **用户目检确认**后才部署
 4. `git push origin main`（= Cloudflare 轨）+ `bash tools/deploy-oss.sh`（= 阿里云轨，**每版必推，不允许只推一轨**）+ `git tag vX.Y.Z && git push --tags`
 5. 导出路径改动：prod URL playwright 实测（§2 第 6 步）
-6. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
-7. **公告草稿发刘彦君私聊**（含工具网址 + 本版变化摘要），用户确认后自行转发
+6. **归档**：`bash tools/archive-release.sh` → `archive/dist-vX.Y.Z/`（对齐发圈工具文件管理法：历史版本永留 archive/，同版本拒绝覆盖；归档=应用核心 ~6MB，字体走 manifest + git tag 复原）
+7. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
+8. **公告草稿发刘彦君私聊**（含工具网址 + 本版变化摘要），用户确认后自行转发
 
 与沃林工具的差异：本项目是 git 仓库，「每版新文件不覆盖」由 git 天然保证，无需复制文件。
 
@@ -113,12 +114,14 @@ xhs-poster-小红书排版/
 ├── package.json / .npmrc ← CI 兼容用（packageManager 字段 + frozen-lockfile=false）
 ├── HANDOFF.md            ← 本文件
 ├── README.md / USAGE.md  ← 开发者文档 / 用户说明
-├── editor.html demo.html assets/  ← 旧 MVP，只读参考
+├── archive/              ← 版本归档（发圈工具管理法：历史版本永留此处不覆盖）
+│   ├── dist-vX.Y.Z/             ← 每版构建产物核心快照（archive-release.sh 生成）
+│   └── 旧MVP-单文件版/           ← editor.html + demo.html + base64 素材 + 旧打包脚本
 ├── source/               ← 内置素材原图，只读
 ├── tools/
-│   ├── export-race-repro/       ← 导出回归验证脚本（test_prod.py ⭐）
-│   ├── package-for-share.sh     ← 旧 MVP 打包（已过时，线上分发用 URL）
-│   └── update-builtin-assets.sh ← 旧 MVP base64 素材生成（已过时）
+│   ├── deploy-oss.sh            ← 阿里云轨部署
+│   ├── archive-release.sh       ← 发版归档
+│   └── export-race-repro/       ← 导出回归脚本（test_prod_deep.py ⭐ / test_prod.py）
 └── app/
     ├── public/builtin-assets/   ← 内置背景/Logo
     └── src/
@@ -245,7 +248,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 ## 7. 不要做的事（速查）
 
 - ❌ 不要做用户没要求的功能（YAGNI）；不要为「以后可能用」加抽象层；不要瞎补 try/catch
-- ❌ 不要重写/维护 `editor.html`、`assets/builtin-assets.js`、`demo.html`（旧 MVP 只读）
+- ❌ 不要重写/维护旧 MVP（已入档 `archive/旧MVP-单文件版/`，只读）；不要动 `archive/` 里的任何历史版本（归档永不覆盖，改动=新版本号新归档）
 - ❌ 不要碰 `source/` 原图
 - ❌ 不要换 Tiptap；不要用原生 `<select>`（macOS Chrome popup 字号巨大）
 - ❌ 主题数据不要存 blob URL，只存 assetId
