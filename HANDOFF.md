@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-10（v1.3.0 上线闭环完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-10（v1.4.1 双轨上线闭环完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -10,14 +10,14 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.3.0**。正式代码提交 `a12d159`，tag `v1.3.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-v0W3nzMj.js`，包内版本号已核验 |
-| 本地候选 | 父级便捷预览副本：`/Users/a0000/Nutstore Files/Claude_YJ/小红书排版编辑器-v1.3.0-本地候选版/`，双击目录内 `.command` 启动器即可打开；正式归档见 `archive/dist-v1.3.0/` |
-| 状态 | **v1.3.0 双轨稳定在线**。9:15、首图 3:4 裁切参考、文字可靠性与真实草稿均已发布；继续保持手动分页 |
+| 线上版本 | **v1.4.1**。正式代码提交 `d89b927`，tag `v1.4.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-CJUSefBL.js`，页面版本号均已核验。`v1.4.1` 仅同步默认 5 页教程到新三栏界面，V1.4 功能主体提交为 `61b6a9b` / tag `v1.4.0` |
+| 本地归档 | 当前完整构建在 `app/dist/`；不可覆盖的应用核心快照在 `archive/dist-v1.4.1/`，`archive/dist-v1.4.0/` 保留首发快照；字体清单见各归档的 `FONTS-MANIFEST.txt`，完整复原走对应 tag + `bash ci.sh` |
+| 状态 | **v1.4.1 双轨稳定在线**。三栏桌面工作台、中央画布图片直接操作、对齐/缩放磁吸、排版参考线、正文荧光笔、资源恢复与导出就绪检查均已发布；默认教程已同步新操作路径；继续保持手动分页 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | v1.3.0：vitest 62/62、tsc -b、ESLint、build、diff-check、`test_v130_local.py` 全绿；2026-08-10 20:25 CST 双生产入口 `test_prod_deep.py` 均通过（三主题单页、2160×3600、自定义字体），Cloudflare `test_prod.py` 连续 5 轮 × 5 页共 25 张均为 2160×3600 |
+| 测试基线 | v1.4.1：vitest 81/81、tsc -b、ESLint、build、diff-check、`test_v140_local.py` 全绿（3 档宽度、跨页图片映射、图片手势/撤销、荧光笔、键盘、草稿边界、缺图导出）；2026-08-10 23:52 CST 双生产入口 `test_prod_deep.py` 均通过（三主题单页、2160×3600、自定义字体且加载同一 JS），两边新版 5 页教程各导出 5/5，全部为 2160×3600；V1.4 首发另完成 Cloudflare 连续 5 轮 × 5 页共 25/25 压测 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
@@ -52,7 +52,7 @@
    ```bash
    cd app
    ./node_modules/.bin/tsc -b        # 类型检查
-   ./node_modules/.bin/vitest run    # 单测（当前 62 个，<1s）
+   ./node_modules/.bin/vitest run    # 单测（当前 81 个，<1s）
    ./node_modules/.bin/vite build    # 构建
    ```
 4. **UI 改动**：`vite preview` + Playwright 截图自查 → 用户目检确认后再部署
@@ -93,14 +93,17 @@ HTTPS：CAS 免费 DV 证书（CertId 26549959，2026-08-10 签发，1 年期，
 
 | 模块 | 内容 |
 |---|---|
-| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、选中短语不拆行（≤12 字）、撤销重做、插入图片、手动分页符、分隔线；粘贴/恢复时保守清理中文粗体边界异常空格 |
-| 顶部工具栏 | 主题下拉（内置/我的）、叠色 6 档、H1/H2/H3/正文字体独立选择、H1/H2/H3 加粗 toggle、H1 宽度 4 档、正文字号 5 档（联动标题）、间距密度 4 档、图片宽度 5 档、Logo 策略 4 种、草稿状态/管理、裁切参考 toggle |
-| 画布 | 多页真实 9:15 预览（40% 缩放）、首页中心 3:4 裁切参考（上下遮罩 + 橙线，仅预览）、页码角标 |
+| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、选中短语不拆行（≤12 字）、固定 `#7B3B8B` 正文荧光笔（透明度 0%–100%）、撤销重做、插入图片、手动分页符、分隔线；粘贴/恢复时保守清理中文粗体边界异常空格；图片保存稳定 `imageId / width / align / assetId` 语义属性 |
+| 顶部全局栏 | 版本、撤销/重做、草稿保存状态与管理、裁切参考、排版参考、磁吸和唯一强 CTA「导出 PNG」；对象样式不再挤在顶栏 |
+| 中央成品画布 | 多页真实 9:15 预览（自适应缩放）；是唯一图片直接操作面：点击选图、四角等比缩放、顶部抓手左/中/右对齐、常用宽度与位置磁吸、Option/Alt 临时旁路、Esc/取消回滚；首页中心 3:4 裁切参考、独立版心参考线、页码角标均只属编辑层 |
+| 右侧上下文检查器 | 页面态显示主题、背景、Logo、字体和全局排版；文字态显示排版、短语不拆与荧光笔；图片态只显示对齐、宽度、替换、删除和溢出提示；高级字体设置按需展开 |
+| 最近操作 | 显示本会话最近 3–5 条已提交动作，不持久化、不另造历史系统；一次图片手势只生成一条动作与一个 undo 事务 |
 | 草稿库 | IndexedDB `xhs-poster-documents` 保存完整 Tiptap JSON + 15 项样式/素材 id；900ms 自动保存、同步 WAL 保护立即关页、刷新恢复、另存/切换/删除；写入串行，并用浏览器原子 Web Lock 让第二标签页只读，防旧快照覆盖新编辑 |
 | 主题库 | 内置 3（雅致/极简白/深夜黑）+ 用户主题（IndexedDB `xhs-poster-themes`），9:15 真图缩略图；v1.3 起新主题只存样式，历史含正文主题仍可兼容打开 |
 | 素材库 | 背景/Logo/图片三 tab × 内置/上传，IndexedDB `xhs-poster` 存 Blob |
 | 字体库 | 拖拽上传 ttf/otf/woff/woff2/ttc，IndexedDB `xhs-poster-fonts`，FontFace 注册，启动时全量恢复 |
-| 导出 | 单页 PNG / 多页 zip，重命名弹窗（默认取首个 H1），同名自动追 -2/-3 序号，scale 2 |
+| 导出 | 单页 PNG / 多页 zip，重命名弹窗（默认取首个 H1），同名自动追 -2/-3 序号，scale 2；导出前统一等待资源，失败项可重试或明确选择继续；选框、手柄、参考线、磁吸线、最近操作与溢出提示均不进成品 |
+| 资源可靠性 | 图片、字体、主题按资源局部降级，原位说明原因并支持重试；缺图仍保留文档结构和可恢复入口，不要求刷新或清空编辑内容 |
 | 默认内容 | 5 页「使用教程」样张，开箱即见全功能演示 |
 
 组件/模块地图见 §4 文件结构。各功能的实现细节和历史演进：`git log --oneline` + 对应 commit 的 HANDOFF 版本。
@@ -130,17 +133,19 @@ xhs-poster-小红书排版/
         ├── App.tsx              ← 主状态机：state → CSS vars、主题应用/保存、导出编排
         ├── components/
         │   ├── ui/              ← shadcn（button/dialog/tabs/select）
-        │   ├── Editor/          ← Tiptap + 编辑工具栏（forwardRef 暴露命令式 API）
-        │   ├── Preview/         ← 9:15 单页画布 + 首页 3:4 裁切参考
+        │   ├── Editor/          ← Tiptap + 编辑工具栏；ImageExtension / TextHighlight 维护语义属性
+        │   ├── Preview/         ← 9:15 多页画布 + 图片直接操作覆盖层 + 裁切/排版/磁吸辅助层
+        │   ├── Inspector/       ← 页面 / 文字 / 图片三态上下文检查器
         │   ├── DraftLibrary/    ← 草稿另存、切换、删除
-        │   ├── Toolbar/         ← 顶部全局控件
+        │   ├── Toolbar/         ← 顶部全局动作与状态
         │   ├── AssetLibrary/ FontLibrary/ ThemeLibrary/ ThemePreview/ ExportDialog/
         ├── lib/                 ← 纯逻辑层（有单测的都在这）
         │   ├── themes.ts themeStore.ts    ← 主题模型 + IndexedDB
         │   ├── assetStore.ts fontStore.ts fontRegistry.ts fontPresets.ts
         │   ├── splitPages.ts fontSize.ts density.ts canvas.ts builtinAssets.ts
+        │   ├── imageModel.ts textHighlight.ts exportReadiness.ts resolveAsset.ts
         │   └── exportPng.ts     ← ⚠️ 改前必读 §5
-        └── styles/canvas.css editor.css
+        └── styles/canvas.css editor.css workspace.css
 ```
 
 ```bash
@@ -262,15 +267,15 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ---
 
-## 8. 下一版本与后续候选
+## 8. v1.4 冻结验收基线与后续候选
 
-### v1.4.0「桌面交互与可靠性版」（2026-08-10 用户拍板；新窗口执行）
+### v1.4.0–v1.4.1「桌面交互与可靠性版」（2026-08-10 已完成并双轨上线）
 
 参考只读源：`/Users/a0000/Nutstore Files/Claude_YJ/Wallin-发圈工具/` v12.3。学习其**交互原则**，不要复制全局变量、命令式 DOM 或单 Canvas 架构；本项目继续保留 React + Tiptap + 现有分页/导出引擎。
 
-桌面 UI/UX 提案 v1：[`docs/design/v1.4.0/xhs-editor-v1.4-ui-baseline-v1.png`](docs/design/v1.4.0/xhs-editor-v1.4-ui-baseline-v1.png)。这是下一版的视觉与交互基线，不是已经完成的产品截图。用户于 2026-08-10 确认「暂时觉得不错」，v1.4 按此方向开工，细节仍可在实装截图后微调。
+桌面 UI/UX 初始提案：[`xhs-editor-v1.4-ui-baseline-v1.png`](docs/design/v1.4.0/xhs-editor-v1.4-ui-baseline-v1.png)；最终本地验收截图：[`三栏工作台`](docs/design/v1.4.0/xhs-editor-v1.4-local-shell-v1.png)、[`图片选中态`](docs/design/v1.4.0/xhs-editor-v1.4-local-image-selected-v1.png)、[`导出成品`](docs/design/v1.4.0/xhs-editor-v1.4-local-export-page-v1.png)。用户已目检确认视觉通过；v1.4.1 只修正默认教程文案，不改变该视觉与交互基线。以下内容作为 V1.4 冻结验收基线保留；线上现状与证据只看 §0。
 
-**本版必须作为一套能力同时完成，不能拆成互不衔接的几个按钮：**
+**本版已作为一套能力整体交付：**
 
 1. **图片选中与直接缩放**：点击主编辑面中的正文图片出现清晰选中框与缩放手柄；拖手柄等比缩放，宽度限制 10%–100%；一次拖动只形成一次撤销记录和一次草稿更新
 2. **图片语义对齐**：每张图片独立支持左 / 中 / 右对齐，不再只有全局宽度档；旧图片无 `align` 时按 `left` 兼容，不能改变历史草稿外观。对齐可由上下文按钮或专用横向抓手触发；若做整图横拖，松手时只能落到 `left / center / right`，未吸附则回滚，绝不产生自由坐标
@@ -284,9 +289,9 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 10. **主次操作与按需加载**：导出是唯一强文字 CTA；次级动作允许图标化但必须有中文提示和清楚禁用原因。图片面板等重功能在用户选中对象或打开面板后再预热，避免首屏为暂时不用的功能付出成本
 11. **正文荧光笔**：只对用户当前选中的文字应用，不影响整段或后续输入；本版只提供固定基色 `#7B3B8B`，不加入调色盘。透明度使用 0%–100% 无极滑杆，默认 50%，界面实时显示当前百分比；未选中文字时禁用并提示「请先选中文字」
 
-**架构边界（新窗口不要走错）：**
+**架构边界（已落实，后续继续遵守）：**
 
-- 当前图片已经是 Tiptap block node，保存 `src / assetId / width`；推荐只新增 `align: left | center | right`，继续用百分比 `width` 与 `height:auto`。历史 `width:null` 仍表示「原大小」，第一次拖动缩放时才转成百分比
+- V1.4 延续 Tiptap block image node，并在 `src / assetId / width` 上新增 `imageId / align`；继续用百分比 `width` 与 `height:auto`。历史 `width:null` 仍表示「原大小」，第一次拖动缩放时才转成百分比
 - 第一阶段做**流式文档里的横向磁吸**，不保存自由 `x / y / height / transform`，不做纵向磁吸；正文顺序和纵向占位仍由文档流决定
 - 先抽出独立 Image Extension，正式 `renderHTML` 始终保持单个根级 `<img>`。若左侧是主编辑面，再使用 React NodeView；若中央画布是主编辑面，则使用 React 覆盖层和映射桥，不在左侧再做第二套手柄。两条路线都必须在拖动时只改临时状态，`pointerup` 一次性提交属性，`pointercancel / Esc / 失焦` 可回滚
 - 不要直接启用 Tiptap 自带像素 resize：编辑区、1080 画布、40% 预览是三套尺度，必须继续存百分比
@@ -299,7 +304,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - 稳定 `imageId`、复制粘贴去重、`Preview imageId → Tiptap node position` 映射及预览比例坐标换算是 v1.4 必做；中央画布是唯一图片直接操作面，左侧不得再维护第二套独立选框/拖动状态
 - Tiptap 始终是唯一数据源，Preview DOM 不得成为持久数据源；若实装后需要改变主编辑面，必须先让用户看截图确认，不能在开发中自行退回双套交互
 
-**桌面操作界面基线：本版编码范围，不再只停留在线框图：**
+**桌面操作界面基线（已实装）：**
 
 - 桌面端学习沃林的层级：**全局动作在顶部、正文编辑在左、成品画布居中、当前对象属性在右**。顶部只留版本/撤销重做/草稿状态/参考线/导出等全局动作，不再横向塞满所有字体和图片参数
 - 右侧改为上下文检查器：未选对象时显示页面/主题；选中文字时显示排版与荧光笔；选中图片时只显示对齐、宽度、替换、删除。高级项按需展开，不让非设计用户一次看到全部控制
@@ -307,7 +312,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - 悬停、选中、吸附、保存中、已保存、保存失败六类状态必须有可区分的反馈；不能只靠 toast，也不能让提示遮住画布
 - 保持「受控自由度」：优先左中右、宽度档位、磁吸和安全边界，不把 Figma / Adobe 的自由坐标、旋转和复杂图层能力搬进本版
 
-**v1.4.0 必测：**旧草稿兼容；非法宽度/对齐归一化；`getJSON → setContent → getHTML` 后仍是单个 `<img>` 且分页不变；`resolveContentImages` 后 `width / align / assetId` 不丢；左中右与缩放在编辑器/预览/导出三处一致；缩放不触发节点重排；一次手势一次 undo 且 redo 可恢复；磁吸阈值与 Alt 旁路；Esc/失焦/pointer cancel 回滚；多图只改选中项；第二页图片不改变分页；刷新/另存恢复；资源缺失的局部降级与原地重试；导出就绪检查；所有辅助层、最近操作和溢出提示不进导出；`imageId` 复制粘贴去重、第二页映射与预览比例坐标换算。荧光笔另测：只命中选区、默认 50%、0%/100% 边界、连续调节、撤销重做、JSON/HTML 往返、草稿恢复，以及编辑器/预览/PNG 三处颜色与透明度一致。
+**v1.4.0 冻结测试矩阵：**旧草稿兼容；非法宽度/对齐归一化；`getJSON → setContent → getHTML` 后仍是单个 `<img>` 且分页不变；`resolveContentImages` 后 `width / align / assetId` 不丢；左中右与缩放在编辑器/预览/导出三处一致；缩放不触发节点重排；一次手势一次 undo 且 redo 可恢复；磁吸阈值与 Alt 旁路；Esc/失焦/pointer cancel 回滚；多图只改选中项；第二页图片不改变分页；刷新/另存恢复；资源缺失的局部降级与原地重试；导出就绪检查；所有辅助层、最近操作和溢出提示不进导出；`imageId` 复制粘贴去重、第二页映射与预览比例坐标换算。荧光笔另测：只命中选区、默认 50%、0%/100% 边界、连续调节、撤销重做、JSON/HTML 往返、草稿恢复，以及编辑器/预览/PNG 三处颜色与透明度一致。执行结果见 §0。
 
 ### v1.4.0 从沃林吸收什么、明确不照搬什么
 
@@ -316,9 +321,9 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. **完整可点击回跳的修改时间线暂不做**：Tiptap 没有现成动作标签与任意回跳能力，为它另造持久快照系统会把图片交互版本拖成历史系统重构；v1.4 先用轻量最近操作 + 原生撤销重做验证价值
 4. **独立自诊断页暂不做**：本版先完成资源就绪检查、局部降级和原地重试；只有真实故障数据证明需要时，再建设完整自诊断页
 
-### 后续版本路线（仅 v1.4.0 已拍板；其余在开工前再次确认）
+### 后续版本路线（V1.4 已完成；v1.5.0 起均为候选，开工前再次确认）
 
-1. **v1.4.0 桌面交互与可靠性版（下一版）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则
+1. **v1.4.1 桌面交互与可靠性版（已上线）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则；补丁版同步默认 5 页教程
 2. **v1.5.0 文档自动编排版**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
 3. **v1.6.0 内容模板版**：封面专属标题 + 钩子正文、模板数据结构、首个完成度高的公考官方模板；先验证一套，不承诺模板市场
 4. **v1.7.0 视觉资产质量版**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、字体与图片在预览/导出中的一致性、加载性能优化

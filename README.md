@@ -2,7 +2,12 @@
 
 把文字 + 背景图 + Logo 排成小红书风格的 9:15（3:5）全屏长图，一键导出 2160×3600 PNG。
 
-🌐 **线上版（推荐）**：https://xhs-poster-editor.l-yanjunnn.workers.dev
+🌐 **线上版 v1.4.1**：
+
+- Cloudflare：https://xhs-poster-editor.l-yanjunnn.workers.dev
+- 大陆通道：https://xhsposter.tshzchen.cn
+
+V1.4 采用「左侧正文编辑 + 中央成品画布 + 右侧上下文检查器」三栏工作台；图片可直接在中央画布缩放、对齐与磁吸，正文支持固定紫色荧光笔。
 
 - 开发者/AI 接手：先读 **[HANDOFF.md](HANDOFF.md)**（现状、SOP、坑手册全在那）
 - 用户使用说明：**[USAGE.md](USAGE.md)**
