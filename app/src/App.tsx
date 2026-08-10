@@ -337,7 +337,7 @@ function App() {
         {/* 右：预览（多页纵向滚动） */}
         <div className="flex flex-1 flex-col items-center gap-6 overflow-y-auto bg-neutral-900 p-8">
           <div className="text-xs text-neutral-500">
-            预览缩放 40% · 实际画布 1080 × 1920 · 共 {pages.length} 页
+            预览缩放 40% · 实际画布 1080 × 1920 · 共 {pages.length} 页 · v{__APP_VERSION__}
           </div>
           {pages.map((pageHtml, i) => (
             <Preview

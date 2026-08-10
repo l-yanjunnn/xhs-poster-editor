@@ -10,6 +10,7 @@
 
 | 项 | 值 |
 |---|---|
+| 版本 | **v1.1.0（本地已提交，待上线）**；线上 = v1.0.0（发版史见 git tag，页面右侧信息条显示当前版本） |
 | 状态 | **稳定已上线**。Export PNG v8 终局（离屏渲染 + onclone 注入全量 CSS），prod 实测 3 主题各 5/5 全 OK |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | Cloudflare Workers Static Assets，`git push origin main` 即自动 build + deploy（1–3 分钟），**不要碰 Cloudflare 后台** |
@@ -55,6 +56,26 @@
 5. **部署**：`git push origin main`，等 1–3 分钟自动上线
 6. **⚠️ 凡碰导出路径（exportPng.ts / canvas.css / Preview）**：部署后**必须在 prod URL 上 playwright 实测**（三主题 × 多页，采样像素而不是肉眼看图）。本地 preview 永远复现不了 prod 的 iframe CSS 问题，v1~v7 八轮全吃过这个亏。回归脚本：`tools/export-race-repro/`（test_prod.py 需系统 proxy 127.0.0.1:7897）
 7. **收尾**：更新本文件 §0 现状快照（+涉及的章节）；里程碑级进展同步 `WorkLog-Obsidian/3-Projects/xhs-poster-小红书排版编辑器.md`
+
+### 版本与上线闭环（2026-08-10 起，对齐沃林发圈工具工作流）
+
+**版本号**：语义化三段 `主.次.修`，单一来源 = `app/package.json` 的 `version` 字段（构建时注入页面信息条显示，部署后看线上版本号即确认生效）。
+
+- **主**：架构级/破坏性变更（如换导出库、数据 schema 迁移）
+- **次**：新功能、功能恢复
+- **修**：bug 修复、文案、纯文档不发版
+
+**每次发版固定闭环**（顺序不跳步）：
+
+1. bump `app/package.json` version
+2. 本地验证三连 + UI 改动 Playwright 截图自查
+3. **用户目检确认**后才部署
+4. `git push origin main`（= 部署）+ `git tag vX.Y.Z && git push --tags`
+5. 导出路径改动：prod URL playwright 实测（§2 第 6 步）
+6. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
+7. **公告草稿发刘彦君私聊**（含工具网址 + 本版变化摘要），用户确认后自行转发
+
+与沃林工具的差异：本项目是 git 仓库，「每版新文件不覆盖」由 git 天然保证，无需复制文件；无双轨部署（只有 Cloudflare 一轨）。
 
 **HANDOFF 纪律**（本次重构的起因）：「当前状态」只允许存在于 §0 一处。历史章节不要留「当前 prod」字样——2026-08 审查时发现 v5 章节还标着「当前 prod 状态」而实际已是 v8，两处「当前」互相矛盾。临时脚本一律放进 `tools/`（进 git），不要引用 `/tmp/` 路径——/tmp 会被系统清掉（test_prod.py 曾经只活在 /tmp，已丢过一次）。
 
