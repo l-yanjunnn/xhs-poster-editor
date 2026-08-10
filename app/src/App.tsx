@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EditorPane, type EditorHandle, type ImageState } from '@/components/Editor/Editor'
+import {
+  EditorPane,
+  type EditorHandle,
+  type HistoryState,
+  type ImageState,
+  type TextSelectionState,
+} from '@/components/Editor/Editor'
 import { Preview } from '@/components/Preview/Preview'
 import {
   Toolbar,
@@ -10,6 +16,10 @@ import { FontLibrary } from '@/components/FontLibrary/FontLibrary'
 import { ThemeLibrary } from '@/components/ThemeLibrary/ThemeLibrary'
 import { ExportDialog } from '@/components/ExportDialog/ExportDialog'
 import { DraftLibrary } from '@/components/DraftLibrary/DraftLibrary'
+import {
+  ContextInspector,
+  type ResourceIssue,
+} from '@/components/Inspector/ContextInspector'
 import {
   BUILTIN_THEMES,
   DEFAULT_THEME,
@@ -34,18 +44,29 @@ import {
   findAssetById,
   type Asset,
 } from '@/lib/builtinAssets'
-import { loadAllUserFonts } from '@/lib/fontRegistry'
-import { listUserFonts } from '@/lib/fontStore'
-import { resolveAssetSrc, resolveContentImages } from '@/lib/resolveAsset'
+import {
+  loadAllUserFontsWithReport,
+  type UserFontLoadReport,
+} from '@/lib/fontRegistry'
+import {
+  collectContentImageAssetIds,
+  collectResolvedContentImageSources,
+  resolveAssetSrcWithStatus,
+  resolveContentImagesWithReport,
+} from '@/lib/resolveAsset'
+import { BODY_FONTS, DISPLAY_FONTS } from '@/lib/fontPresets'
 import { splitIntoPages } from '@/lib/splitPages'
 import { exportPages, suggestFilename } from '@/lib/exportPng'
 import {
+  checkExportReadiness,
+  ExportReadinessError,
+} from '@/lib/exportReadiness'
+import {
   CANVAS_CONTENT_WIDTH,
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
 } from '@/lib/canvas'
+import type { ImageAlign } from '@/lib/imageModel'
 import {
   clearEditorDocumentRecovery,
   deleteEditorDocument,
@@ -64,6 +85,7 @@ import {
   type EditorDocumentV1,
 } from '@/lib/documentStore'
 import './styles/canvas.css'
+import './styles/workspace.css'
 
 const AUTOSAVE_DELAY_MS = 900
 const WRITER_LOCK_NAME = 'xhs-poster-editor-single-writer-v1'
@@ -72,6 +94,9 @@ const EMPTY_DOCUMENT_JSON = {
   type: 'doc',
   content: [{ type: 'paragraph' }],
 }
+const BUILTIN_FONT_STACKS = new Set(
+  [...DISPLAY_FONTS, ...BODY_FONTS].map((font) => font.value),
+)
 
 interface DraftIdentity {
   id: string
@@ -80,6 +105,24 @@ interface DraftIdentity {
 }
 
 type WriterLeaseState = 'checking' | 'owned' | 'conflict' | 'unsupported'
+type ResourceIssueScope = 'document' | 'font' | 'library'
+
+interface AppResourceIssue extends ResourceIssue {
+  scope: ResourceIssueScope
+}
+
+function resourceErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : '本地资源读取失败'
+}
+
+function primaryFontFamily(stack: string): string {
+  return stack
+    .split(',')[0]
+    .trim()
+    .replace(/^["']|["']$/g, '')
+}
 
 function styleFromTheme(theme: Theme): EditorDocumentStyleV1 {
   return {
@@ -153,6 +196,7 @@ function App() {
   const dirtyDocumentRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
   const hydratingDocumentRef = useRef(false)
+  const fontRestorePromiseRef = useRef<Promise<UserFontLoadReport> | null>(null)
 
   // 当前已应用的主题 id；null = 用户微调过、已脱离任何主题
   const [currentThemeId, setCurrentThemeId] = useState<string | null>(
@@ -160,6 +204,7 @@ function App() {
   )
 
   const [assetLibOpen, setAssetLibOpen] = useState(false)
+  const [replaceImageId, setReplaceImageId] = useState<string | null>(null)
   // 素材库打开时切到哪个 tab；编辑器「插入图片」按钮设为 'image'，主题/Logo 按钮 undefined 保持默认
   const [assetLibInitialKind, setAssetLibInitialKind] = useState<
     'background' | 'logo' | 'image' | undefined
@@ -174,9 +219,37 @@ function App() {
   // 用户保存的主题列表，由 App 集中维护，同时供 Toolbar 下拉和 ThemeLibrary 卡片使用
   const [userThemes, setUserThemes] = useState<Theme[]>([])
   // 当前光标下图片节点的状态，Toolbar「图片宽度」下拉据此显示当前值/启用
-  const [imageState, setImageState] = useState<ImageState>({ active: false, width: null })
-  // 参考线开关：仅影响预览，导出 PNG 时由 onclone 钩子移除 class（见 exportPng.ts）
-  const [guidesOn, setGuidesOn] = useState(false)
+  const [imageState, setImageState] = useState<ImageState>({
+    active: false,
+    imageId: null,
+    width: null,
+    align: 'left',
+    src: null,
+    assetId: null,
+  })
+  const [textSelectionState, setTextSelectionState] =
+    useState<TextSelectionState>({
+      active: false,
+      highlighted: false,
+      opacity: 0.5,
+    })
+  const [historyState, setHistoryState] = useState<HistoryState>({
+    canUndo: false,
+    canRedo: false,
+  })
+  // 裁切参考、排版参考和磁吸必须独立；它们只属于本会话 UI。
+  const [cropGuideOn, setCropGuideOn] = useState(false)
+  const [layoutGuidesOn, setLayoutGuidesOn] = useState(false)
+  const [snapEnabled, setSnapEnabled] = useState(true)
+  const [canvasGestureActive, setCanvasGestureActive] = useState(false)
+  const [recentActions, setRecentActions] = useState<
+    Array<{ id: string; label: string; time: number }>
+  >([])
+  const [resourceIssues, setResourceIssues] = useState<AppResourceIssue[]>([])
+  const [resourceRetrying, setResourceRetrying] = useState(false)
+  const [themeApplying, setThemeApplying] = useState(false)
+  const themeApplyRevisionRef = useRef(0)
+  const resourceOperationRevisionRef = useRef(0)
 
   const documentStyle = useMemo<EditorDocumentStyleV1>(
     () => ({
@@ -226,6 +299,19 @@ function App() {
     }),
     [fontH1, fontSize, h1Bold, h1Width],
   )
+  const previewLayoutRevision = [
+    fontH1,
+    fontH2,
+    fontH3,
+    fontBody,
+    h1Bold,
+    h2Bold,
+    h3Bold,
+    fontSize,
+    density,
+    h1Width,
+    userFontFamilies.join(','),
+  ].join('|')
 
   const selectActiveDraft = useCallback((identity: DraftIdentity) => {
     activeDraftRef.current = identity
@@ -298,15 +384,110 @@ function App() {
     [],
   )
 
+  const replaceResourceIssueScope = useCallback(
+    (scope: ResourceIssueScope, issues: AppResourceIssue[]) => {
+      setResourceIssues((previous) => [
+        ...previous.filter((issue) => issue.scope !== scope),
+        ...issues,
+      ])
+    },
+    [],
+  )
+
+  const ensureUserFontsLoaded = useCallback(() => {
+    if (!fontRestorePromiseRef.current) {
+      fontRestorePromiseRef.current = loadAllUserFontsWithReport()
+        .then((report) => {
+          setUserFontFamilies(report.families)
+          replaceResourceIssueScope(
+            'font',
+            report.failedFamilies.map((family) => ({
+              id: `font:${family}`,
+              scope: 'font',
+              label: family,
+              message: '字体文件损坏或浏览器无法解析',
+            })),
+          )
+          return report
+        })
+        .catch((error) => {
+          replaceResourceIssueScope('font', [
+            {
+              id: 'font:library',
+              scope: 'font',
+              label: '我的字体',
+              message: resourceErrorMessage(error),
+            },
+          ])
+          throw error
+        })
+    }
+    return fontRestorePromiseRef.current
+  }, [replaceResourceIssueScope])
+
   const hydrateDocument = useCallback(async (document: EditorDocumentV1) => {
+    themeApplyRevisionRef.current += 1
+    resourceOperationRevisionRef.current += 1
+    setResourceRetrying(false)
+    setThemeApplying(false)
     documentRevisionRef.current = document.revision
     pendingSnapshotRef.current = null
     dirtyDocumentRef.current = false
     const [backgroundResult, logoResult, contentResult] = await Promise.allSettled([
-      resolveAssetSrc(document.style.bgAssetId, 'background'),
-      resolveAssetSrc(document.style.logoAssetId, 'logo'),
-      resolveContentImages(document.contentJSON),
+      resolveAssetSrcWithStatus(document.style.bgAssetId, 'background'),
+      resolveAssetSrcWithStatus(document.style.logoAssetId, 'logo'),
+      resolveContentImagesWithReport(document.contentJSON),
     ])
+
+    const documentIssues: AppResourceIssue[] = []
+    if (backgroundResult.status === 'rejected') {
+      documentIssues.push({
+        id: `background:${document.style.bgAssetId || 'unknown'}`,
+        scope: 'document',
+        label: '页面背景',
+        message: resourceErrorMessage(backgroundResult.reason),
+      })
+    } else if (backgroundResult.value.missing) {
+      documentIssues.push({
+        id: `background:${document.style.bgAssetId}`,
+        scope: 'document',
+        label: '页面背景',
+        message: '素材已经被删除或暂时无法读取',
+      })
+    }
+    if (logoResult.status === 'rejected') {
+      documentIssues.push({
+        id: `logo:${document.style.logoAssetId || 'unknown'}`,
+        scope: 'document',
+        label: 'Logo',
+        message: resourceErrorMessage(logoResult.reason),
+      })
+    } else if (logoResult.value.missing) {
+      documentIssues.push({
+        id: `logo:${document.style.logoAssetId}`,
+        scope: 'document',
+        label: 'Logo',
+        message: '素材已经被删除或暂时无法读取',
+      })
+    }
+    if (contentResult.status === 'rejected') {
+      documentIssues.push({
+        id: 'image:content-read',
+        scope: 'document',
+        label: '正文插图',
+        message: resourceErrorMessage(contentResult.reason),
+      })
+    } else {
+      for (const assetId of contentResult.value.missingAssetIds) {
+        documentIssues.push({
+          id: `image:${assetId}`,
+          scope: 'document',
+          label: '正文插图',
+          message: `找不到素材 ${assetId}`,
+        })
+      }
+    }
+    replaceResourceIssueScope('document', documentIssues)
 
     setThemeClass(document.style.themeClass)
     setFontH1(document.style.fontH1)
@@ -323,13 +504,14 @@ function App() {
     setLogoStrategy(document.style.logoStrategy)
     setBgAssetId(document.style.bgAssetId)
     setLogoAssetId(document.style.logoAssetId)
-    setBgSrc(backgroundResult.status === 'fulfilled' ? backgroundResult.value : '')
-    setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value : '')
+    setBgSrc(backgroundResult.status === 'fulfilled' ? backgroundResult.value.src : '')
+    setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value.src : '')
     setCurrentThemeId(null)
     editorRef.current?.setContent(
       contentResult.status === 'fulfilled'
-        ? contentResult.value
+        ? contentResult.value.document
         : document.contentJSON,
+      { resetHistory: true },
     )
 
     const failedResolution = [backgroundResult, logoResult, contentResult].find(
@@ -342,11 +524,16 @@ function App() {
         )}`,
       )
     }
-  }, [])
+  }, [replaceResourceIssueScope])
 
   const handleEditorUpdate = useCallback((html: string) => {
     setContent(html)
     setEditorReady(true)
+    if (!hydratingDocumentRef.current) {
+      themeApplyRevisionRef.current += 1
+      resourceOperationRevisionRef.current += 1
+      setThemeApplying(false)
+    }
     if (
       draftReady &&
       writerLeaseState === 'owned' &&
@@ -633,8 +820,19 @@ function App() {
   }, [captureDocument, draftReady, persistDocument, writerLeaseState])
 
   useEffect(() => {
-    loadAllUserFonts().then(setUserFontFamilies)
-    listUserThemes().then(setUserThemes)
+    void ensureUserFontsLoaded().catch(() => undefined)
+    void listUserThemes()
+      .then(setUserThemes)
+      .catch((error) => {
+        replaceResourceIssueScope('library', [
+          {
+            id: 'library:themes',
+            scope: 'library',
+            label: '我的主题',
+            message: resourceErrorMessage(error),
+          },
+        ])
+      })
     // dev-only E2E 钩子（prod build 被 tree-shake），同 Editor 的 window.__editor
     if (import.meta.env.DEV) {
       import('@/lib/exportPng').then((m) => {
@@ -647,20 +845,196 @@ function App() {
         })
       })
     }
-  }, [])
+  }, [ensureUserFontsLoaded, replaceResourceIssueScope])
 
   const reloadUserFonts = useCallback(async () => {
-    const fonts = await listUserFonts()
-    setUserFontFamilies(fonts.map((f) => f.family))
-  }, [])
+    fontRestorePromiseRef.current = null
+    await ensureUserFontsLoaded()
+  }, [ensureUserFontsLoaded])
 
   const reloadUserThemes = useCallback(async () => {
     setUserThemes(await listUserThemes())
-  }, [])
+    replaceResourceIssueScope('library', [])
+  }, [replaceResourceIssueScope])
+
+  async function retryResources() {
+    if (resourceRetrying) return
+    themeApplyRevisionRef.current += 1
+    setThemeApplying(false)
+    setResourceRetrying(true)
+    const operationRevision = ++resourceOperationRevisionRef.current
+    const draftId = activeDraftRef.current?.id ?? null
+    const contentJSON = editorRef.current?.getJSON()
+    fontRestorePromiseRef.current = null
+    const fontLoad = ensureUserFontsLoaded()
+    const [backgroundResult, logoResult, contentResult, fontResult, themeResult] =
+      await Promise.allSettled([
+        resolveAssetSrcWithStatus(bgAssetId, 'background'),
+        resolveAssetSrcWithStatus(logoAssetId, 'logo'),
+        contentJSON
+          ? resolveContentImagesWithReport(contentJSON)
+          : Promise.resolve({ document: null, missingAssetIds: [] }),
+        fontLoad,
+        listUserThemes(),
+      ])
+
+    if (
+      operationRevision !== resourceOperationRevisionRef.current ||
+      draftId !== (activeDraftRef.current?.id ?? null)
+    ) {
+      setResourceRetrying(false)
+      return
+    }
+
+    const nextIssues: AppResourceIssue[] = []
+    if (backgroundResult.status === 'fulfilled') {
+      setBgSrc(backgroundResult.value.src)
+      if (backgroundResult.value.missing) {
+        nextIssues.push({
+          id: `background:${bgAssetId}`,
+          scope: 'document',
+          label: '页面背景',
+          message: '素材已经被删除或暂时无法读取',
+        })
+      }
+    } else {
+      nextIssues.push({
+        id: `background:${bgAssetId || 'unknown'}`,
+        scope: 'document',
+        label: '页面背景',
+        message: resourceErrorMessage(backgroundResult.reason),
+      })
+    }
+    if (logoResult.status === 'fulfilled') {
+      setLogoSrc(logoResult.value.src)
+      if (logoResult.value.missing) {
+        nextIssues.push({
+          id: `logo:${logoAssetId}`,
+          scope: 'document',
+          label: 'Logo',
+          message: '素材已经被删除或暂时无法读取',
+        })
+      }
+    } else {
+      nextIssues.push({
+        id: `logo:${logoAssetId || 'unknown'}`,
+        scope: 'document',
+        label: 'Logo',
+        message: resourceErrorMessage(logoResult.reason),
+      })
+    }
+    if (contentResult.status === 'fulfilled') {
+      if (contentResult.value.document) {
+        editorRef.current?.syncImageSources(
+          collectResolvedContentImageSources(contentResult.value.document),
+        )
+      }
+      for (const assetId of contentResult.value.missingAssetIds) {
+        nextIssues.push({
+          id: `image:${assetId}`,
+          scope: 'document',
+          label: '正文插图',
+          message: `找不到素材 ${assetId}`,
+        })
+      }
+    } else {
+      nextIssues.push({
+        id: 'image:content-read',
+        scope: 'document',
+        label: '正文插图',
+        message: resourceErrorMessage(contentResult.reason),
+      })
+    }
+    if (fontResult.status === 'fulfilled') {
+      setUserFontFamilies(fontResult.value.families)
+      nextIssues.push(
+        ...fontResult.value.failedFamilies.map((family) => ({
+          id: `font:${family}`,
+          scope: 'font' as const,
+          label: family,
+          message: '字体文件损坏或浏览器无法解析',
+        })),
+      )
+    } else {
+      nextIssues.push({
+        id: 'font:library',
+        scope: 'font',
+        label: '我的字体',
+        message: resourceErrorMessage(fontResult.reason),
+      })
+    }
+    if (themeResult.status === 'fulfilled') {
+      setUserThemes(themeResult.value)
+    } else {
+      nextIssues.push({
+        id: 'library:themes',
+        scope: 'library',
+        label: '我的主题',
+        message: resourceErrorMessage(themeResult.reason),
+      })
+    }
+    setResourceIssues(nextIssues)
+    if (nextIssues.length === 0) recordRecentAction('资源重新载入完成')
+    setResourceRetrying(false)
+  }
 
   // 应用主题：把 Theme 所有字段写回 App state；含正文则替换 editor
   async function applyTheme(theme: Theme) {
+    const revision = ++themeApplyRevisionRef.current
+    resourceOperationRevisionRef.current += 1
+    setThemeApplying(true)
     dirtyDocumentRef.current = true
+    const [backgroundResult, logoResult, contentResult] = await Promise.allSettled([
+      resolveAssetSrcWithStatus(theme.bgAssetId, 'background'),
+      resolveAssetSrcWithStatus(theme.logoAssetId, 'logo'),
+      theme.contentJSON
+        ? resolveContentImagesWithReport(theme.contentJSON)
+        : Promise.resolve(null),
+    ])
+    if (revision !== themeApplyRevisionRef.current) return
+
+    const nextIssues: AppResourceIssue[] = []
+    if (backgroundResult.status === 'rejected' || backgroundResult.value.missing) {
+      nextIssues.push({
+        id: `background:${theme.bgAssetId || 'unknown'}`,
+        scope: 'document',
+        label: '页面背景',
+        message:
+          backgroundResult.status === 'rejected'
+            ? resourceErrorMessage(backgroundResult.reason)
+            : '素材已经被删除或暂时无法读取',
+      })
+    }
+    if (logoResult.status === 'rejected' || logoResult.value.missing) {
+      nextIssues.push({
+        id: `logo:${theme.logoAssetId || 'unknown'}`,
+        scope: 'document',
+        label: 'Logo',
+        message:
+          logoResult.status === 'rejected'
+            ? resourceErrorMessage(logoResult.reason)
+            : '素材已经被删除或暂时无法读取',
+      })
+    }
+    if (contentResult.status === 'rejected') {
+      nextIssues.push({
+        id: 'image:theme-content',
+        scope: 'document',
+        label: '主题正文插图',
+        message: resourceErrorMessage(contentResult.reason),
+      })
+    } else if (contentResult.value) {
+      nextIssues.push(
+        ...contentResult.value.missingAssetIds.map((assetId) => ({
+          id: `image:${assetId}`,
+          scope: 'document' as const,
+          label: '主题正文插图',
+          message: `找不到素材 ${assetId}`,
+        })),
+      )
+    }
+    replaceResourceIssueScope('document', nextIssues)
+
     setThemeClass(theme.themeClass)
     setFontH1(theme.fontH1)
     setFontH2(theme.fontH2)
@@ -676,15 +1050,14 @@ function App() {
     setLogoStrategy(theme.logoStrategy)
     setBgAssetId(theme.bgAssetId)
     setLogoAssetId(theme.logoAssetId)
-    setBgSrc(await resolveAssetSrc(theme.bgAssetId, 'background'))
-    setLogoSrc(await resolveAssetSrc(theme.logoAssetId, 'logo'))
+    setBgSrc(backgroundResult.status === 'fulfilled' ? backgroundResult.value.src : '')
+    setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value.src : '')
     setCurrentThemeId(theme.id)
-    if (theme.contentJSON) {
+    if (theme.contentJSON && contentResult.status === 'fulfilled' && contentResult.value) {
       // 正文插图按 assetId 重新 resolve src（存储里的 blob URL 已跨会话失效）
-      editorRef.current?.setContent(
-        await resolveContentImages(theme.contentJSON),
-      )
+      editorRef.current?.setContent(contentResult.value.document)
     }
+    setThemeApplying(false)
   }
 
   // 把当前 App state 打包成新主题保存
@@ -720,6 +1093,9 @@ function App() {
   // 用户从 Toolbar 改动任何样式 → 脱离当前主题
   function customize<T>(setter: (v: T) => void): (v: T) => void {
     return (v) => {
+      themeApplyRevisionRef.current += 1
+      resourceOperationRevisionRef.current += 1
+      setThemeApplying(false)
       dirtyDocumentRef.current = true
       setter(v)
       setCurrentThemeId(null)
@@ -735,23 +1111,137 @@ function App() {
   }
 
   function handlePickBackground(asset: Asset) {
+    themeApplyRevisionRef.current += 1
+    resourceOperationRevisionRef.current += 1
+    setThemeApplying(false)
     dirtyDocumentRef.current = true
     setBgAssetId(asset.id)
     setBgSrc(asset.src)
     setCurrentThemeId(null)
+    setResourceIssues((previous) =>
+      previous.filter((issue) => !issue.id.startsWith('background:')),
+    )
   }
   function handlePickLogo(asset: Asset) {
+    themeApplyRevisionRef.current += 1
+    resourceOperationRevisionRef.current += 1
+    setThemeApplying(false)
     dirtyDocumentRef.current = true
     setLogoAssetId(asset.id)
     setLogoSrc(asset.src)
     setCurrentThemeId(null)
+    setResourceIssues((previous) =>
+      previous.filter((issue) => !issue.id.startsWith('logo:')),
+    )
   }
   function handlePickImage(asset: Asset) {
+    themeApplyRevisionRef.current += 1
+    resourceOperationRevisionRef.current += 1
+    setThemeApplying(false)
+    if (replaceImageId) {
+      if (
+        editorRef.current?.commitImageAttributes(replaceImageId, {
+          src: asset.src,
+          assetId: asset.id,
+        })
+      ) {
+        recordRecentAction('替换图片')
+      }
+      setReplaceImageId(null)
+      pruneStaleImageResourceIssues()
+      return
+    }
     // 带上 assetId：主题「包含正文」序列化后靠它跨会话重新 resolve src
     editorRef.current?.insertImage(asset.src, asset.id)
+    recordRecentAction('插入图片')
+    pruneStaleImageResourceIssues()
   }
   function handleImageWidthChange(width: string | null) {
-    editorRef.current?.setImageWidth(width)
+    const imageId = imageState.imageId
+    if (!imageId) return
+    if (editorRef.current?.commitImageAttributes(imageId, { width })) {
+      recordRecentAction(width ? `调整为 ${width}` : '恢复原图宽度')
+    }
+  }
+
+  function recordRecentAction(label: string) {
+    setRecentActions((previous) => [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        label,
+        time: Date.now(),
+      },
+      ...previous,
+    ].slice(0, 5))
+  }
+
+  function handleSelectCanvasImage(imageId: string) {
+    editorRef.current?.selectImageById(imageId)
+  }
+
+  function handleCommitCanvasImage(
+    imageId: string,
+    patch: { width?: string | null; align?: ImageAlign },
+    actionLabel: string,
+  ): boolean {
+    const committed =
+      editorRef.current?.commitImageAttributes(imageId, patch) ?? false
+    if (committed) recordRecentAction(actionLabel)
+    return committed
+  }
+
+  function handleImageAlign(align: ImageAlign) {
+    const imageId = imageState.imageId
+    if (!imageId) return
+    if (editorRef.current?.commitImageAttributes(imageId, { align })) {
+      recordRecentAction(
+        align === 'left' ? '左对齐' : align === 'center' ? '居中对齐' : '右对齐',
+      )
+    }
+  }
+
+  function handleReplaceImage() {
+    if (!imageState.imageId) return
+    setReplaceImageId(imageState.imageId)
+    setAssetLibInitialKind('image')
+    setAssetLibOpen(true)
+  }
+
+  function handleDeleteImage() {
+    if (!imageState.imageId) return
+    if (editorRef.current?.deleteImageById(imageState.imageId)) {
+      recordRecentAction('删除图片')
+      pruneStaleImageResourceIssues()
+    }
+  }
+
+  function pruneStaleImageResourceIssues() {
+    const documentJSON = editorRef.current?.getJSON()
+    if (!documentJSON) return
+    const referencedAssetIds = new Set(
+      collectContentImageAssetIds(documentJSON),
+    )
+    setResourceIssues((previous) =>
+      previous.filter((issue) => {
+        if (!issue.id.startsWith('image:')) return true
+        const assetId = issue.id.slice('image:'.length)
+        // 读取链路的通用故障不能归因到单张图片，保留到下次重试。
+        if (assetId === 'content-read' || assetId === 'theme-content') return true
+        return referencedAssetIds.has(assetId)
+      }),
+    )
+  }
+
+  function handleHighlightOpacity(opacity: number) {
+    if (editorRef.current?.setTextHighlight(opacity)) {
+      recordRecentAction(`荧光笔 ${Math.round(opacity * 100)}%`)
+    }
+  }
+
+  function handleClearHighlight() {
+    if (editorRef.current?.clearTextHighlight()) {
+      recordRecentAction('移除荧光笔')
+    }
   }
 
   function clearAutosaveTimer() {
@@ -942,13 +1432,129 @@ function App() {
     root.style.setProperty('--c-overlay-opacity', String(opacity))
   }, [fontH1, fontH2, fontH3, fontBody, h1Bold, h2Bold, h3Bold, fontSize, density, h1Width, overlay])
 
+  useEffect(() => {
+    function clearSelectedImage(event: KeyboardEvent) {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        canvasGestureActive ||
+        !imageState.active ||
+        assetLibOpen ||
+        fontLibOpen ||
+        themeLibOpen ||
+        draftLibOpen ||
+        exportOpen
+      ) {
+        return
+      }
+      event.preventDefault()
+      editorRef.current?.clearSelection()
+    }
+    window.addEventListener('keydown', clearSelectedImage)
+    return () => window.removeEventListener('keydown', clearSelectedImage)
+  }, [
+    assetLibOpen,
+    canvasGestureActive,
+    draftLibOpen,
+    exportOpen,
+    fontLibOpen,
+    imageState.active,
+    themeLibOpen,
+  ])
+
   const pages = useMemo(() => splitIntoPages(content), [content])
 
   async function handleExport(
     filename: string,
     onProgress: (current: number, total: number) => void,
+    options?: { skipReadiness?: boolean },
   ) {
-    const els = pageRefs.current.filter((el): el is HTMLDivElement => el !== null)
+    if (canvasGestureActive || themeApplying) {
+      throw new Error(
+        canvasGestureActive
+          ? '请先结束当前图片拖动，再导出成品'
+          : '主题资源仍在载入，请稍候再导出',
+      )
+    }
+    const els = pageRefs.current
+      .slice(0, pages.length)
+      .filter(
+        (el): el is HTMLDivElement => el !== null && el.isConnected,
+      )
+    if (els.length !== pages.length) {
+      throw new Error('画布仍在更新，请稍候再试')
+    }
+    if (!options?.skipReadiness) {
+      const selectedFontStacks = [fontH1, fontH2, fontH3, fontBody]
+      const customFontFamilies = new Set(
+        selectedFontStacks
+          .filter((stack) => !BUILTIN_FONT_STACKS.has(stack))
+          .map(primaryFontFamily),
+      )
+      let fontRestoreIssue: { kind: 'font'; label: string; message: string } | null =
+        null
+      let fontReport: UserFontLoadReport | null = null
+      try {
+        const result = await Promise.race([
+          ensureUserFontsLoaded().then((report) => ({
+            status: 'ready' as const,
+            report,
+          })),
+          new Promise<{ status: 'timeout'; report: null }>((resolve) =>
+            window.setTimeout(
+              () => resolve({ status: 'timeout', report: null }),
+              5_000,
+            ),
+          ),
+        ])
+        if (result.status === 'ready') fontReport = result.report
+        else if (customFontFamilies.size > 0) {
+          fontRestoreIssue = {
+            kind: 'font',
+            label: '我的字体',
+            message: '等待用户字体恢复超过 5 秒',
+          }
+        }
+      } catch (error) {
+        if (customFontFamilies.size > 0) {
+          fontRestoreIssue = {
+            kind: 'font',
+            label: '我的字体',
+            message: resourceErrorMessage(error),
+          }
+        }
+      }
+      const domIssues = await checkExportReadiness(els)
+      const knownIssues = resourceIssues
+        .filter((issue) => {
+          if (issue.scope === 'library') return false
+          if (issue.id.startsWith('logo:') && logoStrategy === 'none') return false
+          if (issue.scope === 'document') return true
+          return customFontFamilies.has(issue.id.slice('font:'.length))
+        })
+        .map((issue) => ({
+          kind: issue.scope === 'font' ? ('font' as const) : ('image' as const),
+          label: issue.label,
+          message: issue.message,
+        }))
+      const failedSelectedFonts = (fontReport?.failedFamilies ?? [])
+        .filter((family) => customFontFamilies.has(family))
+        .map((family) => ({
+          kind: 'font' as const,
+          label: family,
+          message: '字体文件损坏或浏览器无法解析',
+        }))
+      const issueMap = new Map(
+        [
+          ...knownIssues,
+          ...failedSelectedFonts,
+          ...(fontRestoreIssue ? [fontRestoreIssue] : []),
+          ...domIssues,
+        ].map((issue) => [`${issue.kind}:${issue.label}:${issue.message}`, issue]),
+      )
+      const issues = Array.from(issueMap.values())
+      if (issues.length > 0) throw new ExportReadinessError(issues)
+    }
     await exportPages(els, filename, onProgress)
   }
 
@@ -985,166 +1591,205 @@ function App() {
 
   return (
     <div
-      className="relative flex h-screen flex-col bg-neutral-950"
+      className="workspace-app relative flex flex-col"
       aria-busy={interactionBlocked}
     >
       {interactionBlocked && (
         <div
-          className="absolute inset-0 z-[100] flex items-center justify-center bg-neutral-950/70 backdrop-blur-sm"
+          className="workspace-blocking-layer"
           role="status"
           aria-live="polite"
         >
-          <div className="rounded-lg border border-neutral-700 bg-neutral-900 px-5 py-4 text-center shadow-2xl">
-            <div className="text-sm font-medium text-neutral-100">
-              {blockingTitle}
-            </div>
-            <div className="mt-1 text-xs text-neutral-400">
-              {blockingDescription}
-            </div>
+          <div className="workspace-blocking-card">
+            <strong>{blockingTitle}</strong>
+            <span>{blockingDescription}</span>
           </div>
         </div>
       )}
       <div
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex h-full min-h-0 flex-col"
         inert={interactionBlocked ? true : undefined}
         aria-hidden={interactionBlocked}
       >
-      <Toolbar
-        currentThemeId={currentThemeId}
-        userThemes={userThemes}
-        onTheme={handleSelectThemeById}
-        fontH1={fontH1}
-        fontH2={fontH2}
-        fontH3={fontH3}
-        fontBody={fontBody}
-        h1Bold={h1Bold}
-        h2Bold={h2Bold}
-        h3Bold={h3Bold}
-        fontSize={fontSize}
-        density={density}
-        h1Width={h1Width}
-        overlay={overlay}
-        logoStrategy={logoStrategy}
-        userFontFamilies={userFontFamilies}
-        onFontH1={customize(setFontH1)}
-        onFontH2={customize(setFontH2)}
-        onFontH3={customize(setFontH3)}
-        onFontBody={customize(setFontBody)}
-        onH1Bold={customize(setH1Bold)}
-        onH2Bold={customize(setH2Bold)}
-        onH3Bold={customize(setH3Bold)}
-        onFontSize={customize(setFontSize)}
-        onDensity={customize(setDensity)}
-        onH1Width={customize(setH1Width)}
-        onOverlay={customize(setOverlay)}
-        onLogoStrategy={customize(setLogoStrategy)}
-        onOpenAssetLibrary={() => {
-          setAssetLibInitialKind(undefined)
-          setAssetLibOpen(true)
-        }}
-        imageActive={imageState.active}
-        imageWidth={imageState.width}
-        onImageWidth={handleImageWidthChange}
-        onOpenFontLibrary={() => setFontLibOpen(true)}
-        onOpenThemeLibrary={() => setThemeLibOpen(true)}
-        onOpenDraftLibrary={() => setDraftLibOpen(true)}
-        activeDocumentTitle={activeDraft?.title ?? '未命名草稿'}
-        draftSaveStatus={draftSaveStatus}
-        draftSaveError={draftStorageError}
-        onExport={() => setExportOpen(true)}
-        guidesOn={guidesOn}
-        onToggleGuides={() => setGuidesOn((v) => !v)}
-      />
-
-      {/* 关闭即卸载：每次打开都按 initialKind 初始化，无需 effect 重置本地 tab。 */}
-      {assetLibOpen && (
-        <AssetLibrary
-          open={assetLibOpen}
-          onOpenChange={setAssetLibOpen}
-          currentBgSrc={bgSrc}
-          currentLogoSrc={logoSrc}
-          onPickBackground={handlePickBackground}
-          onPickLogo={handlePickLogo}
-          onPickImage={handlePickImage}
-          initialKind={assetLibInitialKind}
+        <Toolbar
+          canUndo={historyState.canUndo}
+          canRedo={historyState.canRedo}
+          onUndo={() => editorRef.current?.undo()}
+          onRedo={() => editorRef.current?.redo()}
+          activeDocumentTitle={activeDraft?.title ?? '未命名草稿'}
+          draftSaveStatus={draftSaveStatus}
+          draftSaveError={draftStorageError}
+          onOpenDraftLibrary={() => setDraftLibOpen(true)}
+          cropGuideOn={cropGuideOn}
+          onToggleCropGuide={() => setCropGuideOn((value) => !value)}
+          layoutGuidesOn={layoutGuidesOn}
+          onToggleLayoutGuides={() => setLayoutGuidesOn((value) => !value)}
+          snapEnabled={snapEnabled}
+          onToggleSnap={() => setSnapEnabled((value) => !value)}
+          onExport={() => setExportOpen(true)}
+          exportDisabled={canvasGestureActive || themeApplying}
+          exportDisabledReason={
+            canvasGestureActive
+              ? '请先结束当前图片拖动'
+              : '主题资源仍在载入'
+          }
         />
-      )}
 
-      <FontLibrary
-        open={fontLibOpen}
-        onOpenChange={setFontLibOpen}
-        onFontsChanged={reloadUserFonts}
-      />
-
-      <ThemeLibrary
-        open={themeLibOpen}
-        onOpenChange={setThemeLibOpen}
-        userThemes={userThemes}
-        currentThemeId={currentThemeId}
-        onApply={applyTheme}
-        onSaveCurrent={saveCurrentAsTheme}
-        onReload={reloadUserThemes}
-      />
-
-      <DraftLibrary
-        open={draftLibOpen}
-        onOpenChange={setDraftLibOpen}
-        documents={draftDocuments}
-        activeDocumentId={activeDraft?.id ?? null}
-        activeDocumentTitle={activeDraft?.title ?? '未命名草稿'}
-        storageError={draftStorageError}
-        onSaveAs={handleSaveAsDraft}
-        onOpenDocument={handleOpenDraft}
-        onDeleteDocument={handleDeleteDraft}
-      />
-
-      <ExportDialog
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-        defaultFilename={suggestFilename(content)}
-        pageCount={pages.length}
-        onExport={handleExport}
-      />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* 左：编辑器 */}
-        <div className="w-[45%] border-r-2 border-neutral-800">
-          <EditorPane
-            ref={editorRef}
-            onUpdate={handleEditorUpdate}
-            onInsertImageClick={() => {
-              setAssetLibInitialKind('image')
-              setAssetLibOpen(true)
+        {/* 关闭即卸载：每次打开都按 initialKind 初始化。 */}
+        {assetLibOpen && (
+          <AssetLibrary
+            open={assetLibOpen}
+            onOpenChange={(open) => {
+              setAssetLibOpen(open)
+              if (!open) setReplaceImageId(null)
             }}
-            onImageStateChange={setImageState}
-            noWrapH1Layout={noWrapH1Layout}
+            currentBgSrc={bgSrc}
+            currentLogoSrc={logoSrc}
+            onPickBackground={handlePickBackground}
+            onPickLogo={handlePickLogo}
+            onPickImage={handlePickImage}
+            initialKind={assetLibInitialKind}
           />
-        </div>
+        )}
 
-        {/* 右：预览（多页纵向滚动） */}
-        <div className="flex flex-1 flex-col items-center gap-6 overflow-y-auto bg-neutral-900 p-8">
-          <div className="text-xs text-neutral-500">
-            预览缩放 40% · 画布 {CANVAS_WIDTH} × {CANVAS_HEIGHT}（9:15）· 导出{' '}
-            {EXPORT_WIDTH} × {EXPORT_HEIGHT} · 共 {pages.length} 页 · v{__APP_VERSION__}
-          </div>
-          {pages.map((pageHtml, i) => (
-            <Preview
-              key={i}
-              ref={(el) => {
-                pageRefs.current[i] = el
+        <FontLibrary
+          open={fontLibOpen}
+          onOpenChange={setFontLibOpen}
+          onFontsChanged={reloadUserFonts}
+        />
+        <ThemeLibrary
+          open={themeLibOpen}
+          onOpenChange={setThemeLibOpen}
+          userThemes={userThemes}
+          currentThemeId={currentThemeId}
+          onApply={applyTheme}
+          onSaveCurrent={saveCurrentAsTheme}
+          onReload={reloadUserThemes}
+        />
+        <DraftLibrary
+          open={draftLibOpen}
+          onOpenChange={setDraftLibOpen}
+          documents={draftDocuments}
+          activeDocumentId={activeDraft?.id ?? null}
+          activeDocumentTitle={activeDraft?.title ?? '未命名草稿'}
+          storageError={draftStorageError}
+          onSaveAs={handleSaveAsDraft}
+          onOpenDocument={handleOpenDraft}
+          onDeleteDocument={handleDeleteDraft}
+        />
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          defaultFilename={suggestFilename(content)}
+          pageCount={pages.length}
+          onExport={handleExport}
+        />
+
+        <main className="workspace-grid">
+          <section className="workspace-editor-panel" aria-label="正文编辑">
+            <EditorPane
+              ref={editorRef}
+              onUpdate={handleEditorUpdate}
+              onInsertImageClick={() => {
+                setReplaceImageId(null)
+                setAssetLibInitialKind('image')
+                setAssetLibOpen(true)
               }}
-              html={pageHtml}
-              themeClass={themeClass}
-              bgSrc={bgSrc}
-              logoSrc={logoSrc}
-              showLogo={shouldShowLogo(i, pages.length)}
-              pageIndex={i}
-              pageTotal={pages.length}
-              guidesOn={guidesOn}
+              onImageStateChange={setImageState}
+              onTextSelectionStateChange={setTextSelectionState}
+              onHistoryStateChange={setHistoryState}
+              noWrapH1Layout={noWrapH1Layout}
             />
-          ))}
-        </div>
-      </div>
+          </section>
+
+          <section className="workspace-canvas-panel" aria-label="9:15 成品画布">
+            <div className="workspace-canvas-heading">
+              <strong>成品画布</strong>
+              <span>
+                {pages.length} 页 · 导出 {EXPORT_WIDTH} × {EXPORT_HEIGHT}
+              </span>
+            </div>
+            <div className="workspace-canvas-pages">
+              {pages.map((pageHtml, index) => (
+                <Preview
+                  key={index}
+                  ref={(element) => {
+                    pageRefs.current[index] = element
+                  }}
+                  html={pageHtml}
+                  themeClass={themeClass}
+                  bgSrc={bgSrc}
+                  logoSrc={logoSrc}
+                  showLogo={shouldShowLogo(index, pages.length)}
+                  pageIndex={index}
+                  pageTotal={pages.length}
+                  cropGuideOn={cropGuideOn}
+                  layoutGuidesOn={layoutGuidesOn}
+                  snapEnabled={snapEnabled}
+                  selectedImageId={imageState.imageId}
+                  layoutRevision={previewLayoutRevision}
+                  onSelectImage={handleSelectCanvasImage}
+                  onClearSelection={() => editorRef.current?.clearSelection()}
+                  onGestureStateChange={setCanvasGestureActive}
+                  onCommitImage={handleCommitCanvasImage}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="workspace-inspector-panel">
+            <ContextInspector
+              imageState={imageState}
+              textSelectionState={textSelectionState}
+              recentActions={recentActions}
+              resourceIssues={resourceIssues}
+              resourceRetrying={resourceRetrying}
+              resourceLoading={themeApplying}
+              onRetryResources={() => void retryResources()}
+              currentThemeId={currentThemeId}
+              userThemes={userThemes}
+              onTheme={handleSelectThemeById}
+              fontH1={fontH1}
+              fontH2={fontH2}
+              fontH3={fontH3}
+              fontBody={fontBody}
+              h1Bold={h1Bold}
+              h2Bold={h2Bold}
+              h3Bold={h3Bold}
+              fontSize={fontSize}
+              density={density}
+              h1Width={h1Width}
+              overlay={overlay}
+              logoStrategy={logoStrategy}
+              userFontFamilies={userFontFamilies}
+              onFontH1={customize(setFontH1)}
+              onFontH2={customize(setFontH2)}
+              onFontH3={customize(setFontH3)}
+              onFontBody={customize(setFontBody)}
+              onH1Bold={customize(setH1Bold)}
+              onH2Bold={customize(setH2Bold)}
+              onH3Bold={customize(setH3Bold)}
+              onFontSize={customize(setFontSize)}
+              onDensity={customize(setDensity)}
+              onH1Width={customize(setH1Width)}
+              onOverlay={customize(setOverlay)}
+              onLogoStrategy={customize(setLogoStrategy)}
+              onOpenAssetLibrary={() => {
+                setReplaceImageId(null)
+                setAssetLibInitialKind(undefined)
+                setAssetLibOpen(true)
+              }}
+              onOpenFontLibrary={() => setFontLibOpen(true)}
+              onOpenThemeLibrary={() => setThemeLibOpen(true)}
+              onImageAlign={handleImageAlign}
+              onImageWidth={handleImageWidthChange}
+              onReplaceImage={handleReplaceImage}
+              onDeleteImage={handleDeleteImage}
+              onHighlightOpacity={handleHighlightOpacity}
+              onClearHighlight={handleClearHighlight}
+            />
+          </section>
+        </main>
       </div>
     </div>
   )

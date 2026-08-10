@@ -1,6 +1,210 @@
 /* Tiptap 编辑器视觉：和画布同字体族但缩小到屏幕可读尺寸。
  * 画布是 1080×1800，编辑器是屏幕原尺寸——这里只关心可读，不关心还原。 */
 
+.editor-workspace {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: #fffefa;
+}
+
+.editor-panel-heading {
+  display: flex;
+  min-height: 58px;
+  flex: none;
+  align-items: center;
+  border-bottom: 1px solid #e4e7ec;
+  padding: 0 24px;
+}
+
+.editor-panel-heading > div {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.editor-panel-heading strong {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: -0.015em;
+}
+
+.editor-panel-heading span {
+  color: #98a2b3;
+  font-size: 11px;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid #e4e7ec;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 12px 16px;
+}
+
+.editor-toolbar-primary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.editor-toolbar-primary {
+  overflow: hidden;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  padding: 3px;
+}
+
+.editor-block-select {
+  width: 76px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  padding-inline: 9px;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.editor-toolbar-divider {
+  width: 1px;
+  height: 22px;
+  flex: none;
+  background: #e4e7ec;
+}
+
+.editor-toolbar-button {
+  display: inline-flex;
+  min-height: 32px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 10px;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 620;
+  transition: 140ms ease;
+}
+
+.editor-toolbar-button.is-compact {
+  width: 32px;
+  min-width: 32px;
+  border-color: transparent;
+  padding: 0;
+}
+
+.editor-toolbar-more {
+  margin-left: auto;
+  border-color: transparent;
+  padding-inline: 8px;
+}
+
+.editor-toolbar-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.editor-toolbar-button:hover:not(:disabled),
+.editor-toolbar-button.is-active {
+  border-color: #84adff;
+  background: #eff4ff;
+  color: #155eef;
+}
+
+.editor-toolbar-button:focus-visible,
+.editor-block-select:focus-visible {
+  outline: 2px solid #84adff;
+  outline-offset: 1px;
+}
+
+.editor-toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.editor-toolbar-menu {
+  z-index: 80;
+  min-width: 184px;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #fff;
+  padding: 5px;
+  box-shadow: 0 16px 38px rgba(16, 24, 40, 0.14);
+}
+
+.editor-toolbar-menu-item {
+  display: flex;
+  min-height: 36px;
+  cursor: pointer;
+  user-select: none;
+  align-items: center;
+  gap: 9px;
+  border-radius: 8px;
+  padding: 0 9px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 610;
+  outline: none;
+}
+
+.editor-toolbar-menu-item[data-highlighted],
+.editor-toolbar-menu-item.is-active {
+  background: #eff4ff;
+  color: #155eef;
+}
+
+.editor-toolbar-menu-item[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.editor-toolbar-menu-item svg {
+  width: 15px;
+  height: 15px;
+}
+
+.editor-toolbar-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: #e4e7ec;
+}
+
+.editor-toolbar-menu-hint {
+  padding: 2px 9px 7px 33px;
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.editor-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 40px 80px;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1439px) {
+  .editor-toolbar-more {
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
+  }
+  .editor-toolbar-more > span {
+    display: none;
+  }
+}
+
 .tiptap-editor {
   font-family:
     "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
@@ -106,8 +310,19 @@
   border-radius: 4px;
   border: 1px solid #ddd;
 }
+.tiptap-editor img[data-align="left"] {
+  margin-inline: 0 auto;
+}
+.tiptap-editor img[data-align="center"] {
+  margin-inline: auto;
+}
+.tiptap-editor img[data-align="right"] {
+  margin-inline: auto 0;
+}
 .tiptap-editor img.ProseMirror-selectednode {
-  outline: 2px solid #2563eb;
+  outline: 1px solid #84adff;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
 /* Tailwind preflight 把 list-style 清成了 none，要主动补回，否则 ul/ol 视觉一样 */

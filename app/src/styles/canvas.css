@@ -95,10 +95,28 @@
 
 /* ============ 单页 9:15（3:5）画布 ============ */
 .page-wrapper {
-  transform-origin: top center;
+  position: relative;
+  flex: none;
+}
+.page-stage {
+  position: relative;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
   transform: scale(var(--preview-scale, 0.4));
-  /* 缩放后画布上下方留白要补回来 */
-  margin-bottom: calc(var(--canvas-h) * (var(--preview-scale, 0.4) - 1));
+  transform-origin: top left;
+}
+.page-preview-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+.page-preview-caption {
+  color: #7b8494;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 .page {
   position: relative;
@@ -120,28 +138,28 @@
 
 /* 首图 3:4 裁切参考：只在预览打开参考线时出现。
  * Why 用真实 DOM：导出前可明确 remove，避免 html2canvas 把伪元素截进 PNG。 */
-.page .cover-crop-preview {
+.canvas-interaction-layer .cover-crop-preview {
   position: absolute;
   inset: 0;
   z-index: 8;
   pointer-events: none;
 }
-.page .cover-crop-mask {
+.canvas-interaction-layer .cover-crop-mask {
   position: absolute;
   left: 0;
   right: 0;
   height: var(--cover-crop-offset);
   background: rgba(15, 23, 42, 0.18);
 }
-.page .cover-crop-mask--top {
+.canvas-interaction-layer .cover-crop-mask--top {
   top: 0;
   border-bottom: 3px solid rgba(245, 158, 11, 0.98);
 }
-.page .cover-crop-mask--bottom {
+.canvas-interaction-layer .cover-crop-mask--bottom {
   bottom: 0;
   border-top: 3px solid rgba(245, 158, 11, 0.98);
 }
-.page .cover-crop-label {
+.canvas-interaction-layer .cover-crop-label {
   position: absolute;
   top: calc(var(--cover-crop-offset) + 18px);
   left: var(--page-padding-x);
@@ -365,6 +383,206 @@
   height: auto;
   display: block;
   border-radius: 8px;
+}
+.content img[data-image-id][role="button"] {
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    outline-color 120ms ease;
+}
+.content img[data-image-id][role="button"]:hover {
+  filter: brightness(0.97);
+}
+.content img[data-image-id][role="button"]:focus-visible {
+  outline: 6px solid rgba(22, 119, 255, 0.86);
+  outline-offset: 8px;
+}
+.content img[data-align="left"] {
+  margin-inline: 0 auto;
+}
+.content img[data-align="center"] {
+  margin-inline: auto;
+}
+.content img[data-align="right"] {
+  margin-inline: auto 0;
+}
+
+/* ============ 中央画布编辑覆盖层（不属于 .page） ============ */
+.canvas-interaction-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.layout-guide,
+.snap-guide {
+  position: absolute;
+  z-index: 21;
+  pointer-events: none;
+}
+.layout-guide {
+  background: rgba(37, 99, 235, 0.38);
+}
+.layout-guide--left,
+.layout-guide--center,
+.layout-guide--right {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+.layout-guide--left {
+  left: var(--page-padding-x);
+}
+.layout-guide--center {
+  left: 50%;
+}
+.layout-guide--right {
+  right: var(--page-padding-x);
+}
+.layout-guide--top,
+.layout-guide--bottom {
+  left: var(--page-padding-x);
+  right: var(--page-padding-x);
+  height: 2px;
+}
+.layout-guide--bottom {
+  bottom: var(--page-padding-bottom);
+}
+.layout-guide-label {
+  position: absolute;
+  top: 24px;
+  left: var(--page-padding-x);
+  z-index: 22;
+  border: 2px solid rgba(37, 99, 235, 0.5);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.94);
+  padding: 7px 12px;
+  color: #1d4ed8;
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.snap-guide {
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-1.5px);
+  background: #1677ff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.image-selection-box {
+  position: absolute;
+  z-index: 24;
+  border: 4px solid #1677ff;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.88),
+    0 12px 36px rgba(22, 119, 255, 0.2);
+  pointer-events: none;
+}
+.image-drag-grip {
+  position: absolute;
+  left: 50%;
+  top: -70px;
+  display: flex;
+  width: 100px;
+  height: 70px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #1267dc;
+  pointer-events: auto;
+  touch-action: none;
+}
+.image-drag-grip::before {
+  content: "";
+  position: absolute;
+  inset: 17px 10px;
+  border: 3px solid #1677ff;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(22, 119, 255, 0.24);
+}
+.image-drag-grip svg {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  stroke-width: 2.2;
+}
+.image-resize-handle {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  margin: -35px;
+  cursor: nwse-resize;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
+}
+.image-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 21px;
+  border: 3px solid #1677ff;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.25);
+}
+.image-resize-handle--left-top {
+  left: 0;
+  top: 0;
+}
+.image-resize-handle--right-top {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+}
+.image-resize-handle--left-bottom {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+.image-resize-handle--right-bottom {
+  right: 0;
+  bottom: 0;
+}
+
+.gesture-feedback,
+.canvas-overflow-warning {
+  position: absolute;
+  z-index: 26;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+}
+.gesture-feedback {
+  top: 36px;
+  background: #1677ff;
+  padding: 12px 18px;
+}
+.canvas-overflow-warning {
+  bottom: 116px;
+  background: rgba(180, 83, 9, 0.94);
+  padding: 12px 20px;
 }
 
 .content hr {

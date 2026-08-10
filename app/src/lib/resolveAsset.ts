@@ -20,6 +20,22 @@ export async function resolveAssetSrc(
   return user?.src ?? ''
 }
 
+export interface AssetResolution {
+  src: string
+  missing: boolean
+}
+
+// 带状态版供草稿恢复/主题切换使用：空 id 表示用户主动未设置，
+// 非空 id 却查不到才是可恢复的资源缺失。
+export async function resolveAssetSrcWithStatus(
+  id: string,
+  kind: 'background' | 'logo',
+): Promise<AssetResolution> {
+  if (!id) return { src: '', missing: false }
+  const src = await resolveAssetSrc(id, kind)
+  return { src, missing: !src }
+}
+
 // —— 正文插图的 assetId → src 重解析 ——
 // Why: 主题「包含正文」时插图节点存的 src 是 session-bound blob URL，刷新即失效。
 // 图片节点带 assetId attribute，apply 主题前按 id 重新 resolve 出本会话有效的 src。
@@ -52,9 +68,81 @@ export async function mapContentImages(
   return walk(doc)
 }
 
+export interface ContentImageResolution<T = object> {
+  document: T
+  missingAssetIds: string[]
+}
+
+export interface ResolvedContentImageSource {
+  imageId: string
+  src: string
+}
+
+export function collectContentImageAssetIds(doc: object): string[] {
+  const assetIds = new Set<string>()
+  function walk(node: ContentNode) {
+    if (
+      node.type === 'image' &&
+      typeof node.attrs?.assetId === 'string' &&
+      node.attrs.assetId
+    ) {
+      assetIds.add(node.attrs.assetId)
+    }
+    node.content?.forEach(walk)
+  }
+  walk(doc as ContentNode)
+  return Array.from(assetIds)
+}
+
+export function collectResolvedContentImageSources(
+  doc: object,
+): ResolvedContentImageSource[] {
+  const sources: ResolvedContentImageSource[] = []
+  function walk(node: ContentNode) {
+    if (
+      node.type === 'image' &&
+      typeof node.attrs?.imageId === 'string' &&
+      typeof node.attrs.src === 'string' &&
+      node.attrs.src
+    ) {
+      sources.push({ imageId: node.attrs.imageId, src: node.attrs.src })
+    }
+    node.content?.forEach(walk)
+  }
+  walk(doc as ContentNode)
+  return sources
+}
+
+// 与 mapContentImages 相同的深拷贝语义，同时把查不到的素材显式上报。
+// 缺失时保留原 src，让仍然有效的外链/旧会话缓存有机会继续显示。
+export async function mapContentImagesWithReport<T extends ContentNode>(
+  doc: T,
+  mapSrc: (assetId: string) => Promise<string | null>,
+): Promise<ContentImageResolution<T>> {
+  const missing = new Set<string>()
+  const document = await mapContentImages(doc, async (assetId) => {
+    const src = await mapSrc(assetId)
+    if (!src) missing.add(assetId)
+    return src
+  })
+  return {
+    document: document as T,
+    missingAssetIds: Array.from(missing),
+  }
+}
+
 // IO 版：从 IndexedDB 按 assetId 反查 src
 export async function resolveContentImages(doc: object): Promise<object> {
   return mapContentImages(doc as ContentNode, async (assetId) => {
+    const asset = await getUserAssetById(assetId)
+    return asset?.src ?? null
+  })
+}
+
+export async function resolveContentImagesWithReport(
+  doc: object,
+): Promise<ContentImageResolution> {
+  return mapContentImagesWithReport(doc as ContentNode, async (assetId) => {
     const asset = await getUserAssetById(assetId)
     return asset?.src ?? null
   })

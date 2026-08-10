@@ -22,6 +22,7 @@ import '@fontsource/noto-serif-sc/600.css'
 import '@fontsource/noto-serif-sc/700.css'
 import '@fontsource/noto-serif-sc/800.css'
 import '@fontsource/noto-serif-sc/900.css'
+import '@fontsource-variable/geist/index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

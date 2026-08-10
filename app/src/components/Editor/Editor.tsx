@@ -6,15 +6,62 @@ import {
   type Editor,
 } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import {
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react'
+import {
+  Bold,
+  Code2,
+  ImagePlus,
+  Italic,
+  List,
+  ListOrdered,
+  Minus,
+  MoreHorizontal,
+  PanelTopOpen,
+  Quote,
+  Underline,
+  WrapText,
+} from 'lucide-react'
+import { DropdownMenu } from 'radix-ui'
+import { closeHistory, history } from '@tiptap/pm/history'
+import { Fragment, Slice } from '@tiptap/pm/model'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { NoWrapPhrase } from './NoWrapPhrase'
+import { PosterImage, type PosterImageAttributes } from './ImageExtension'
+import { TextHighlight } from './TextHighlight'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   canKeepPhraseTogether,
   normalizeChineseBoldBoundaryWhitespaceHtml,
   normalizeEditorContent,
   NO_WRAP_PHRASE_MAX_LENGTH,
 } from '@/lib/textReliability'
+import {
+  createImageId,
+  normalizeImageAlign,
+  normalizeImageDocument,
+  normalizeImageWidth,
+  type ImageAlign,
+  type ImageNodeLike,
+} from '@/lib/imageModel'
+import {
+  normalizeHighlightOpacity,
+  TEXT_HIGHLIGHT_COLOR,
+  TEXT_HIGHLIGHT_DEFAULT_OPACITY,
+} from '@/lib/textHighlight'
 import '@/styles/editor.css'
 
 // 分隔线：渲染成 <hr class="divider">，与 horizontalRule（分页符，class="page-break"）区分。
@@ -32,39 +79,25 @@ const Divider = Node.create({
   },
 })
 
-// 扩展 Image，加 width attribute 走 inline style（百分比，画布按宽度自适应）
-// 默认 null = 原大小（CSS max-width:100% 兜底，不会溢出）
-const ResizableImage = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      width: {
-        default: null,
-        renderHTML: (attrs) => {
-          if (!attrs.width) return {}
-          return { style: `width: ${attrs.width}` }
-        },
-        parseHTML: (element) =>
-          (element as HTMLElement).style.width || null,
-      },
-      // Why: 素材库图片的 src 是 session-bound blob URL，主题「包含正文」序列化后
-      // 刷新即失效。存 assetId，applyTheme 时按 id 从 IndexedDB 重新 resolve src
-      //（与背景/Logo 的「只存 assetId」设计对齐）
-      assetId: {
-        default: null,
-        renderHTML: (attrs) =>
-          attrs.assetId ? { 'data-asset-id': attrs.assetId } : {},
-        parseHTML: (element) =>
-          (element as HTMLElement).getAttribute('data-asset-id'),
-      },
-    }
-  },
-})
-
-// 上抛给 App 的图片状态，Toolbar 拿来渲染下拉
+// 上抛给 App 的选区状态，中央画布和右侧检查器共用。
 export interface ImageState {
   active: boolean
+  imageId: string | null
   width: string | null
+  align: ImageAlign
+  src: string | null
+  assetId: string | null
+}
+
+export interface TextSelectionState {
+  active: boolean
+  highlighted: boolean
+  opacity: number
+}
+
+export interface HistoryState {
+  canUndo: boolean
+  canRedo: boolean
 }
 
 export interface NoWrapH1Layout {
@@ -78,10 +111,27 @@ export interface NoWrapH1Layout {
 // 插入图片需要让 App 持有的素材库回调能把 src 喂回编辑器；
 // setImageWidth 给顶部 Toolbar 的「图片宽度」下拉用
 export interface EditorHandle {
-  setContent: (content: object | string) => void
+  setContent: (
+    content: object | string,
+    options?: { resetHistory?: boolean },
+  ) => void
   getJSON: () => object | null
   insertImage: (src: string, assetId?: string) => void
   setImageWidth: (width: string | null) => void
+  selectImageById: (imageId: string) => boolean
+  commitImageAttributes: (
+    imageId: string,
+    patch: Partial<Pick<PosterImageAttributes, 'width' | 'align' | 'src' | 'assetId'>>,
+  ) => boolean
+  deleteImageById: (imageId: string) => boolean
+  clearSelection: () => boolean
+  setTextHighlight: (opacity: number) => boolean
+  clearTextHighlight: () => boolean
+  syncImageSources: (
+    updates: Array<{ imageId: string; src: string }>,
+  ) => boolean
+  undo: () => boolean
+  redo: () => boolean
 }
 
 interface Props {
@@ -91,6 +141,8 @@ interface Props {
   onInsertImageClick?: () => void
   // selection 变化或图片属性变化时上抛，Toolbar 据此显示当前图片宽度
   onImageStateChange?: (state: ImageState) => void
+  onTextSelectionStateChange?: (state: TextSelectionState) => void
+  onHistoryStateChange?: (state: HistoryState) => void
   noWrapH1Layout?: NoWrapH1Layout
 }
 
@@ -155,17 +207,108 @@ const DEFAULT_CONTENT = `
 <p>开始写你自己的内容吧 ✦</p>
 `
 
+function normalizeIncomingContent(content: object | string): object | string {
+  const normalizedText = normalizeEditorContent(content)
+  return typeof normalizedText === 'string'
+    ? normalizedText
+    : normalizeImageDocument(normalizedText as ImageNodeLike)
+}
+
+// 内部复制图片会同时复制 data-image-id。粘贴前清空 ID，
+// PosterImage 插件就会为新节点分配独立身份，原图 ID 不变。
+function stripPastedImageIds(slice: Slice): Slice {
+  function mapFragment(fragment: Fragment): Fragment {
+    const nodes = Array.from({ length: fragment.childCount }, (_, index) => {
+      const node = fragment.child(index)
+      if (node.type.name === 'image') {
+        return node.type.create(
+          { ...node.attrs, imageId: null },
+          node.content,
+          node.marks,
+        )
+      }
+      return node.content.size > 0 ? node.copy(mapFragment(node.content)) : node
+    })
+    return Fragment.fromArray(nodes)
+  }
+  return new Slice(mapFragment(slice.content), slice.openStart, slice.openEnd)
+}
+
+interface FoundImage {
+  pos: number
+  attrs: PosterImageAttributes
+  nodeSize: number
+}
+
+function findImageById(editor: Editor, imageId: string): FoundImage | null {
+  let found: FoundImage | null = null
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'image' || node.attrs.imageId !== imageId) return true
+    found = {
+      pos,
+      attrs: node.attrs as PosterImageAttributes,
+      nodeSize: node.nodeSize,
+    }
+    return false
+  })
+  return found
+}
+
 export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   {
     onUpdate,
     initialContent,
     onInsertImageClick,
     onImageStateChange,
+    onTextSelectionStateChange,
+    onHistoryStateChange,
     noWrapH1Layout,
   },
   ref,
 ) {
   const noWrapH1LayoutRef = useRef(noWrapH1Layout)
+
+  const reportEditorState = useCallback((ed: Editor) => {
+    const imageActive = ed.isActive('image')
+    const imageAttrs = imageActive
+      ? (ed.getAttributes('image') as Partial<PosterImageAttributes>)
+      : {}
+    onImageStateChange?.({
+      active: imageActive,
+      imageId:
+        imageActive && typeof imageAttrs.imageId === 'string'
+          ? imageAttrs.imageId
+          : null,
+      width: normalizeImageWidth(imageAttrs.width),
+      align: normalizeImageAlign(imageAttrs.align),
+      src:
+        imageActive && typeof imageAttrs.src === 'string' ? imageAttrs.src : null,
+      assetId:
+        imageActive && typeof imageAttrs.assetId === 'string'
+          ? imageAttrs.assetId
+          : null,
+    })
+
+    const textSelection = ed.state.selection
+    const textActive =
+      textSelection instanceof TextSelection && !textSelection.empty
+    const highlightAttrs = textActive
+      ? (ed.getAttributes('textHighlight') as {
+          opacity?: unknown
+        })
+      : {}
+    onTextSelectionStateChange?.({
+      active: textActive,
+      highlighted: textActive && ed.isActive('textHighlight'),
+      opacity: normalizeHighlightOpacity(
+        highlightAttrs.opacity ?? TEXT_HIGHLIGHT_DEFAULT_OPACITY,
+      ),
+    })
+    onHistoryStateChange?.({
+      canUndo: ed.can().undo(),
+      canRedo: ed.can().redo(),
+    })
+  }, [onHistoryStateChange, onImageStateChange, onTextSelectionStateChange])
 
   const editor = useEditor({
     extensions: [
@@ -177,65 +320,250 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       }),
       Divider,
       NoWrapPhrase,
+      TextHighlight,
       // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
-      ResizableImage.configure({ inline: false, allowBase64: true }),
+      PosterImage.configure({ inline: false, allowBase64: true }),
     ],
-    content: normalizeEditorContent(initialContent ?? DEFAULT_CONTENT),
+    content: normalizeIncomingContent(initialContent ?? DEFAULT_CONTENT),
     editorProps: {
       // 富文本粘贴是异常空格的主要来源。只清理可判定的中文粗体边界，
       // 不对纯文本、英文、URL 或 code/pre 做激进重写。
       transformPastedHTML: normalizeChineseBoldBoundaryWhitespaceHtml,
+      transformPasted: stripPastedImageIds,
     },
     onUpdate: ({ editor }) => {
       onUpdate?.(editor.getHTML())
       // 改属性（如调宽度）也走 onUpdate，需同步上抛
-      reportImageState(editor)
+      reportEditorState(editor)
     },
-    onSelectionUpdate: ({ editor }) => reportImageState(editor),
+    onSelectionUpdate: ({ editor }) => reportEditorState(editor),
     onTransaction: ({ editor }) => {
       // undo、setContent、草稿恢复或外部 HTML 都可能绕过工具栏校验。
       // 每次文档 transaction 后都重新建立 nowrap 不变量。
       queueMicrotask(() => {
         if (!editor.isDestroyed) {
           removeUnsafeNoWrapMarks(editor, noWrapH1LayoutRef.current)
+          reportEditorState(editor)
         }
       })
     },
   })
 
-  function reportImageState(ed: Editor) {
-    onImageStateChange?.({
-      active: ed.isActive('image'),
-      width: (ed.getAttributes('image').width as string | null) || null,
+  function replaceContent(
+    content: object | string,
+    resetHistory: boolean,
+  ): void {
+    if (!editor) return
+    const normalized = normalizeIncomingContent(content)
+    if (!resetHistory) {
+      editor.commands.setContent(normalized as never)
+      return
+    }
+
+    // ProseMirror 的 setContent 本身会进 history，仅设 addToHistory=false
+    // 也不会清除上一份草稿的 undo 栈。恢复/切换草稿时重建
+    // history plugin，确保撤销绝不跨文档。
+    editor.unregisterPlugin('history')
+    editor.commands.setContent(normalized as never, { emitUpdate: false })
+    editor.registerPlugin(history({ depth: 100, newGroupDelay: 500 }))
+    onUpdate?.(editor.getHTML())
+    queueMicrotask(() => {
+      if (!editor.isDestroyed) reportEditorState(editor)
     })
+  }
+
+  function selectImageById(imageId: string): boolean {
+    if (!editor) return false
+    const target = findImageById(editor, imageId)
+    if (!target) return false
+    const transaction = editor.state.tr
+      .setSelection(NodeSelection.create(editor.state.doc, target.pos))
+      .setMeta('addToHistory', false)
+    editor.view.dispatch(transaction)
+    return true
+  }
+
+  function commitImageAttributes(
+    imageId: string,
+    patch: Partial<
+      Pick<PosterImageAttributes, 'width' | 'align' | 'src' | 'assetId'>
+    >,
+  ): boolean {
+    if (!editor) return false
+    const target = findImageById(editor, imageId)
+    if (!target) return false
+    const current = target.attrs
+    const next: Record<string, unknown> = {
+      ...current,
+      ...patch,
+      width:
+        'width' in patch ? normalizeImageWidth(patch.width) : current.width,
+      align:
+        'align' in patch ? normalizeImageAlign(patch.align) : current.align,
+      height: null,
+    }
+    const changedAttributes = Object.entries(next).filter(
+      ([key, value]) =>
+        current[key as keyof PosterImageAttributes] !== value,
+    )
+    if (changedAttributes.length === 0) return false
+
+    // 属性级 step 的 inverse 只恢复本次改动的属性。这样资源恢复在
+    // 之后以 addToHistory=false 同步新 src 时，撤销 width/align 不会
+    // 被整节点 setNodeMarkup 的旧快照带回过期 src。
+    let transaction = editor.state.tr
+    for (const [attribute, value] of changedAttributes) {
+      transaction = transaction.setNodeAttribute(target.pos, attribute, value)
+    }
+    transaction = closeHistory(transaction)
+    transaction.setSelection(NodeSelection.create(transaction.doc, target.pos))
+    editor.view.dispatch(transaction)
+    return true
+  }
+
+  function deleteImageById(imageId: string): boolean {
+    if (!editor) return false
+    const target = findImageById(editor, imageId)
+    if (!target) return false
+    const transaction = closeHistory(
+      editor.state.tr.delete(target.pos, target.pos + target.nodeSize),
+    )
+    editor.view.dispatch(transaction)
+    return true
+  }
+
+  function setTextHighlight(opacity: number): boolean {
+    if (!editor) return false
+    const { selection } = editor.state
+    if (!(selection instanceof TextSelection) || selection.empty) return false
+    const mark = editor.schema.marks.textHighlight
+    if (!mark) return false
+    const nextOpacity = normalizeHighlightOpacity(opacity)
+    let sawText = false
+    let alreadyApplied = true
+    editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+      if (!node.isText) return true
+      sawText = true
+      const existing = node.marks.find((item) => item.type === mark)
+      if (
+        !existing ||
+        existing.attrs.color !== TEXT_HIGHLIGHT_COLOR ||
+        normalizeHighlightOpacity(existing.attrs.opacity) !== nextOpacity
+      ) {
+        alreadyApplied = false
+      }
+      return true
+    })
+    if (sawText && alreadyApplied) return false
+    const transaction = closeHistory(
+      editor.state.tr.addMark(
+        selection.from,
+        selection.to,
+        mark.create({
+          color: TEXT_HIGHLIGHT_COLOR,
+          opacity: nextOpacity,
+        }),
+      ),
+    )
+    editor.view.dispatch(transaction)
+    return true
+  }
+
+  function clearTextHighlight(): boolean {
+    if (!editor) return false
+    const { selection } = editor.state
+    if (!(selection instanceof TextSelection) || selection.empty) return false
+    const mark = editor.schema.marks.textHighlight
+    if (!mark) return false
+    if (!editor.state.doc.rangeHasMark(selection.from, selection.to, mark)) {
+      return false
+    }
+    const transaction = closeHistory(
+      editor.state.tr.removeMark(selection.from, selection.to, mark),
+    )
+    editor.view.dispatch(transaction)
+    return true
   }
 
   useImperativeHandle(
     ref,
     () => ({
-      setContent: (c) => {
-        editor?.commands.setContent(normalizeEditorContent(c) as never)
-      },
+      setContent: (content, options) =>
+        replaceContent(content, options?.resetHistory ?? false),
       getJSON: () => editor?.getJSON() ?? null,
       insertImage: (src, assetId) => {
         // setImage 的类型签名不含自定义 attrs，走 insertContent 直接给节点 JSON
         editor
           ?.chain()
           .focus()
-          .insertContent({ type: 'image', attrs: { src, assetId: assetId ?? null } })
+          .insertContent({
+            type: 'image',
+            attrs: {
+              src,
+              assetId: assetId ?? null,
+              imageId: createImageId(),
+              width: null,
+              height: null,
+              align: 'left',
+            },
+          })
           .run()
       },
       setImageWidth: (width) => {
-        editor?.chain().focus().updateAttributes('image', { width }).run()
+        const imageId = editor?.getAttributes('image').imageId
+        if (typeof imageId === 'string') {
+          commitImageAttributes(imageId, { width })
+        }
       },
+      selectImageById,
+      commitImageAttributes,
+      deleteImageById,
+      clearSelection: () => {
+        if (!editor) return false
+        const position = Math.min(
+          editor.state.selection.to,
+          editor.state.doc.content.size,
+        )
+        const selection = TextSelection.near(editor.state.doc.resolve(position))
+        editor.view.dispatch(
+          editor.state.tr
+            .setSelection(selection)
+            .setMeta('addToHistory', false),
+        )
+        return true
+      },
+      setTextHighlight,
+      clearTextHighlight,
+      syncImageSources: (updates) => {
+        if (!editor || updates.length === 0) return false
+        const byId = new Map(updates.map((update) => [update.imageId, update.src]))
+        let transaction = editor.state.tr
+        let changed = false
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name !== 'image') return true
+          const src = byId.get(node.attrs.imageId)
+          if (!src || src === node.attrs.src) return true
+          transaction = transaction.setNodeAttribute(pos, 'src', src)
+          changed = true
+          return true
+        })
+        if (!changed) return false
+        transaction.setMeta('addToHistory', false)
+        editor.view.dispatch(transaction)
+        return true
+      },
+      undo: () => editor?.commands.undo() ?? false,
+      redo: () => editor?.commands.redo() ?? false,
     }),
-    [editor],
   )
 
   // 首次挂载触发一次回调，保证预览不为空
   useEffect(() => {
-    if (editor) onUpdate?.(editor.getHTML())
-  }, [editor, onUpdate])
+    if (editor) {
+      onUpdate?.(editor.getHTML())
+      reportEditorState(editor)
+    }
+  }, [editor, onUpdate, reportEditorState])
 
   // Dev 模式把 editor 挂到 window，方便控制台/E2E 测试调用 setContent 等命令
   useEffect(() => {
@@ -254,13 +582,19 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   }, [editor, noWrapH1Layout])
 
   return (
-    <div className="flex h-full flex-col bg-[#fafaf8]">
+    <div className="editor-workspace">
+      <div className="editor-panel-heading">
+        <div>
+          <strong>正文编辑</strong>
+          <span>录入文字与文档结构</span>
+        </div>
+      </div>
       <EditorToolbar
         editor={editor}
         onInsertImageClick={onInsertImageClick}
         noWrapH1Layout={noWrapH1Layout}
       />
-      <div className="flex-1 overflow-y-auto px-10 py-8">
+      <div className="editor-scroll-area">
         <EditorContent editor={editor} className="tiptap-editor" />
       </div>
     </div>
@@ -270,18 +604,22 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
 interface EditorToolbarButtonProps {
   label: string
   onClick: () => void
+  icon?: ReactNode
   active?: boolean
   disabled?: boolean
   title?: string
+  compact?: boolean
 }
 
 // 保持在 EditorToolbar 组件外，避免每次 selection/render 都创建新组件类型。
 function Btn({
   label,
   onClick,
+  icon,
   active,
   disabled,
   title,
+  compact = false,
 }: EditorToolbarButtonProps) {
   return (
     <button
@@ -289,14 +627,14 @@ function Btn({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={
-        'rounded border px-2.5 py-1.5 text-[13px] text-neutral-700 disabled:cursor-not-allowed disabled:opacity-45 ' +
-        (active
-          ? 'border-blue-500 bg-blue-50'
-          : 'border-neutral-300 bg-white hover:border-blue-400 hover:bg-blue-50')
-      }
+      aria-pressed={active ?? undefined}
+      aria-label={compact ? label : undefined}
+      className={`editor-toolbar-button${active ? ' is-active' : ''}${
+        compact ? ' is-compact' : ''
+      }`}
     >
-      {label}
+      {icon ? <span aria-hidden="true">{icon}</span> : null}
+      <span className={compact ? 'sr-only' : undefined}>{label}</span>
     </button>
   )
 }
@@ -333,6 +671,24 @@ function EditorToolbar({
   const canToggleNoWrap =
     !empty &&
     (noWrapActive || (phraseWithinLimit && phraseFitsH1))
+  const blockType = editor.isActive('heading', { level: 1 })
+    ? 'h1'
+    : editor.isActive('heading', { level: 2 })
+      ? 'h2'
+      : editor.isActive('heading', { level: 3 })
+        ? 'h3'
+        : editor.isActive('codeBlock')
+          ? 'code'
+          : 'paragraph'
+
+  function setBlockType(value: string) {
+    const chain = activeEditor.chain().focus()
+    if (value === 'h1') chain.setHeading({ level: 1 }).run()
+    else if (value === 'h2') chain.setHeading({ level: 2 }).run()
+    else if (value === 'h3') chain.setHeading({ level: 3 }).run()
+    else if (value === 'code') chain.setCodeBlock().run()
+    else chain.setParagraph().run()
+  }
 
   function toggleNoWrapPhrase() {
     const selection = activeEditor.state.selection
@@ -355,94 +711,153 @@ function EditorToolbar({
   }
 
   return (
-    <div className="flex flex-shrink-0 flex-wrap gap-1 border-b border-neutral-300 bg-neutral-100 px-4 py-2">
-      <Btn
-        label="H1"
-        active={editor.isActive('heading', { level: 1 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 1 }).run()
-        }
-      />
-      <Btn
-        label="H2"
-        active={editor.isActive('heading', { level: 2 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 2 }).run()
-        }
-      />
-      <Btn
-        label="H3"
-        active={editor.isActive('heading', { level: 3 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 3 }).run()
-        }
-      />
-      <Btn
-        label="正文"
-        active={editor.isActive('paragraph')}
-        onClick={() => editor.chain().focus().setParagraph().run()}
-      />
-      <span className="mx-1 w-px self-stretch bg-neutral-300" />
-      <Btn
-        label="引用"
-        active={editor.isActive('blockquote')}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-      />
-      <Btn
-        label="代码块"
-        active={editor.isActive('codeBlock')}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-      />
-      <Btn
-        label="无序列表"
-        active={editor.isActive('bulletList')}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-      />
-      <Btn
-        label="有序列表"
-        active={editor.isActive('orderedList')}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      />
-      <Btn
-        label="— 分隔线 —"
-        onClick={() =>
-          editor.chain().focus().insertContent({ type: 'divider' }).run()
-        }
-      />
-      <Btn
-        label="↓ 插入分页 ↓"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-      />
-      {onInsertImageClick && (
-        <Btn label="🖼 插入图片" onClick={onInsertImageClick} />
-      )}
-      <span className="mx-1 w-px self-stretch bg-neutral-300" />
-      <Btn
-        label="加粗"
-        active={editor.isActive('bold')}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-      />
-      <Btn
-        label="下划线"
-        active={editor.isActive('underline')}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-      />
-      <Btn
-        label="短语不拆"
-        active={noWrapActive}
-        disabled={!canToggleNoWrap}
-        title={
-          !phraseWithinLimit
-            ? `与相邻不拆短语合并后超过 ${NO_WRAP_PHRASE_MAX_LENGTH} 个字符，请缩短选择`
-            : phraseFitsH1
-            ? `选中 1–${NO_WRAP_PHRASE_MAX_LENGTH} 个字符后使用，避免整段溢出`
-            : '当前 H1 宽度容不下这段文字，请缩短关键词或调宽 H1'
-        }
-        onClick={toggleNoWrapPhrase}
-      />
-      <Btn label="撤销" onClick={() => editor.chain().focus().undo().run()} />
-      <Btn label="重做" onClick={() => editor.chain().focus().redo().run()} />
+    <div className="editor-toolbar" aria-label="正文排版工具栏">
+      <div className="editor-toolbar-primary">
+        <Select value={blockType} onValueChange={setBlockType}>
+          <SelectTrigger className="editor-block-select" aria-label="段落样式">
+            <SelectValue>
+              {blockType === 'paragraph' ? '正文' : blockType.toUpperCase()}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="h1">H1 · 一级标题</SelectItem>
+              <SelectItem value="h2">H2 · 二级标题</SelectItem>
+              <SelectItem value="h3">H3 · 三级标题</SelectItem>
+              <SelectItem value="paragraph">正文</SelectItem>
+              <SelectItem value="code">代码块</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <span className="editor-toolbar-divider" aria-hidden="true" />
+        <Btn
+          label="加粗"
+          compact
+          icon={<Bold />}
+          active={editor.isActive('bold')}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        />
+        <Btn
+          label="斜体"
+          compact
+          icon={<Italic />}
+          active={editor.isActive('italic')}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        />
+        <Btn
+          label="下划线"
+          compact
+          icon={<Underline />}
+          active={editor.isActive('underline')}
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+        />
+        <span className="editor-toolbar-divider" aria-hidden="true" />
+        <Btn
+          label="无序列表"
+          compact
+          icon={<List />}
+          active={editor.isActive('bulletList')}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        />
+        <Btn
+          label="有序列表"
+          compact
+          icon={<ListOrdered />}
+          active={editor.isActive('orderedList')}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        />
+        <Btn
+          label="引用"
+          compact
+          icon={<Quote />}
+          active={editor.isActive('blockquote')}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        />
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              className="editor-toolbar-button editor-toolbar-more"
+              aria-label="更多结构工具"
+            >
+              <MoreHorizontal aria-hidden="true" />
+              <span>更多</span>
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className="editor-toolbar-menu"
+              sideOffset={6}
+              align="end"
+            >
+              <ToolbarMenuItem
+                icon={<Code2 />}
+                label="代码块"
+                active={editor.isActive('codeBlock')}
+                onSelect={() => editor.chain().focus().toggleCodeBlock().run()}
+              />
+              <ToolbarMenuItem
+                icon={<Minus />}
+                label="插入分隔线"
+                onSelect={() =>
+                  editor.chain().focus().insertContent({ type: 'divider' }).run()
+                }
+              />
+              <ToolbarMenuItem
+                icon={<PanelTopOpen />}
+                label="插入分页"
+                onSelect={() => editor.chain().focus().setHorizontalRule().run()}
+              />
+              {onInsertImageClick ? (
+                <ToolbarMenuItem
+                  icon={<ImagePlus />}
+                  label="插入图片"
+                  onSelect={onInsertImageClick}
+                />
+              ) : null}
+              <DropdownMenu.Separator className="editor-toolbar-menu-separator" />
+              <ToolbarMenuItem
+                icon={<WrapText />}
+                label="短语不拆"
+                active={noWrapActive}
+                disabled={!canToggleNoWrap}
+                onSelect={toggleNoWrapPhrase}
+              />
+              {!canToggleNoWrap ? (
+                <div className="editor-toolbar-menu-hint">
+                  先选中 1–{NO_WRAP_PHRASE_MAX_LENGTH} 个字符
+                </div>
+              ) : null}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      </div>
     </div>
+  )
+}
+
+function ToolbarMenuItem({
+  icon,
+  label,
+  active = false,
+  disabled = false,
+  onSelect,
+}: {
+  icon: ReactNode
+  label: string
+  active?: boolean
+  disabled?: boolean
+  onSelect: () => void
+}) {
+  return (
+    <DropdownMenu.Item
+      className={`editor-toolbar-menu-item${active ? ' is-active' : ''}`}
+      disabled={disabled}
+      onSelect={onSelect}
+    >
+      <span aria-hidden="true">{icon}</span>
+      {label}
+    </DropdownMenu.Item>
   )
 }
 

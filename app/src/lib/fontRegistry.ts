@@ -54,12 +54,25 @@ export function getUserFontFaceCss(): string {
 // App 启动时调用一次，把 IndexedDB 里所有字体注册回 document.fonts
 // 只返回注册成功的 family：损坏字体不进字体下拉（选了也没效果，徒增困惑）
 export async function loadAllUserFonts(): Promise<string[]> {
+  return (await loadAllUserFontsWithReport()).families
+}
+
+export interface UserFontLoadReport {
+  families: string[]
+  failedFamilies: string[]
+}
+
+export async function loadAllUserFontsWithReport(): Promise<UserFontLoadReport> {
   const fonts = await listUserFonts()
   // 并发注册，单个失败不阻塞其他
   const results = await Promise.allSettled(
     fonts.map((f) => registerFontFromBlob(f.family, f.blob)),
   )
-  return fonts
+  const families = fonts
     .filter((_, i) => results[i].status === 'fulfilled')
     .map((f) => f.family)
+  const failedFamilies = fonts
+    .filter((_, i) => results[i].status === 'rejected')
+    .map((f) => f.family)
+  return { families, failedFamilies }
 }

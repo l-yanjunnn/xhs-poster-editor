@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { mapContentImages } from './resolveAsset'
+import {
+  collectContentImageAssetIds,
+  collectResolvedContentImageSources,
+  mapContentImages,
+  mapContentImagesWithReport,
+} from './resolveAsset'
 
 const doc = {
   type: 'doc',
@@ -7,7 +12,13 @@ const doc = {
     { type: 'paragraph', content: [{ type: 'text', text: 'hello' }] },
     {
       type: 'image',
-      attrs: { src: 'blob:https://x/dead', assetId: 'user-image-1', width: '50%' },
+      attrs: {
+        src: 'blob:https://x/dead',
+        assetId: 'user-image-1',
+        imageId: 'image-1',
+        width: '50%',
+        align: 'center',
+      },
     },
     {
       type: 'blockquote',
@@ -27,6 +38,8 @@ describe('mapContentImages', () => {
     const imgs = collectImages(out)
     expect(imgs[0].attrs?.src).toBe('resolved:user-image-1')
     expect(imgs[0].attrs?.width).toBe('50%') // 其他 attrs 保留
+    expect(imgs[0].attrs?.imageId).toBe('image-1')
+    expect(imgs[0].attrs?.align).toBe('center')
     expect(imgs[1].attrs?.src).toBe('resolved:user-image-2')
     expect(imgs[2].attrs?.src).toBe('https://example.com/a.png')
   })
@@ -47,6 +60,35 @@ describe('mapContentImages', () => {
     const plain = { type: 'doc', content: [{ type: 'paragraph' }] }
     const out = await mapContentImages(plain, async () => 'x')
     expect(out).toEqual(plain)
+  })
+
+  it('显式报告缺失素材并去重，仍保留原文档属性', async () => {
+    const out = await mapContentImagesWithReport(doc, async (id) =>
+      id === 'user-image-2' ? 'resolved:nested' : null,
+    )
+    expect(out.missingAssetIds).toEqual(['user-image-1'])
+    const imgs = collectImages(out.document)
+    expect(imgs[0].attrs).toMatchObject({
+      src: 'blob:https://x/dead',
+      imageId: 'image-1',
+      width: '50%',
+      align: 'center',
+    })
+    expect(imgs[1].attrs?.src).toBe('resolved:nested')
+  })
+
+  it('按 imageId 收集可无历史同步回编辑器的图片源', async () => {
+    const out = await mapContentImages(doc, async (id) => `resolved:${id}`)
+    expect(collectResolvedContentImageSources(out)).toEqual([
+      { imageId: 'image-1', src: 'resolved:user-image-1' },
+    ])
+  })
+
+  it('收集当前文档仍引用的正文素材 id 并去重', () => {
+    expect(collectContentImageAssetIds(doc)).toEqual([
+      'user-image-1',
+      'user-image-2',
+    ])
   })
 })
 

@@ -7,6 +7,18 @@ v8（离屏渲染 + onclone 注入全量 CSS）已根治。完整战史见 `HAND
 
 ## 主要脚本
 
+### `test_v140_local.py` ⭐ v1.4 桌面交互与可靠性闭环
+
+启动 4174 本地 Vite server 后，覆盖 1536 / 1440 / 1280 三栏布局、图片无移动不提交、缩放/对齐单次 undo-redo、第二页 `imageId` 映射、Esc 回滚、图片键盘可达性、资源同步后的 undo 边界、草稿切换历史隔离、荧光笔 50% / 0% / 100% 与固定基色、辅助层隔离，以及缺图导出预检的「重新检查 / 仍然导出」。脚本使用全新浏览器 context，布局截图写入 `/tmp/xhs-v140-rc/`。
+
+```bash
+cd app
+./node_modules/.bin/vite --host 127.0.0.1 --port 4174 --strictPort
+
+# 回到仓库根目录
+python3 tools/export-race-repro/test_v140_local.py http://localhost:4174/
+```
+
 ### `test_v130_local.py` ⭐ v1.3 本地候选闭环
 
 启动本地 Vite dev server 后，覆盖 9:15/3:4 裁切、导出像素、异常空格、短语不拆、草稿立即关闭恢复和双标签页单写入者接管，并把验收图写到 `/tmp/xhs-v130-rc/`。

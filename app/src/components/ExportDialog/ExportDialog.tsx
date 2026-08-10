@@ -7,6 +7,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import {
+  ExportReadinessError,
+  type ExportResourceIssue,
+} from '@/lib/exportReadiness'
 
 interface Props {
   open: boolean
@@ -17,6 +21,7 @@ interface Props {
   onExport: (
     filename: string,
     onProgress: (current: number, total: number) => void,
+    options?: { skipReadiness?: boolean },
   ) => Promise<void>
 }
 
@@ -35,6 +40,10 @@ export function ExportDialog({
     current: 0,
     total: 0,
   })
+  const [readinessIssues, setReadinessIssues] = useState<
+    ExportResourceIssue[]
+  >([])
+  const [exportError, setExportError] = useState<string | null>(null)
   // Why: 用户常保留同一个 H1（filename 来自 H1），多次导出会同名覆盖到 Downloads，
   // macOS 会静默重命名成 `xxx 2.png`，用户以为还是第一版。记忆已用过的 name 自动加序号
   const usedNamesRef = useRef<Set<string>>(new Set())
@@ -52,6 +61,8 @@ export function ExportDialog({
       setFilename(candidate)
       setExporting(false)
       setProgress({ current: 0, total: 0 })
+      setReadinessIssues([])
+      setExportError(null)
     }
   }, [open, defaultFilename])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -62,19 +73,27 @@ export function ExportDialog({
   const outputName =
     pageCount === 1 ? `${trimmed || '...'}.png` : `${trimmed || '...'}.zip`
 
-  async function handleExport() {
+  async function handleExport(skipReadiness = false) {
     if (!canExport) return
     setExporting(true)
     setProgress({ current: 0, total: 0 })
+    setExportError(null)
+    if (!skipReadiness) setReadinessIssues([])
     try {
-      await onExport(trimmed, (current, total) =>
-        setProgress({ current, total }),
+      await onExport(
+        trimmed,
+        (current, total) => setProgress({ current, total }),
+        { skipReadiness },
       )
       usedNamesRef.current.add(trimmed)
       onOpenChange(false)
     } catch (e) {
-      console.error('导出失败', e)
-      alert(`导出失败：${(e as Error).message}`)
+      if (e instanceof ExportReadinessError) {
+        setReadinessIssues(e.issues)
+      } else {
+        console.error('导出失败', e)
+        setExportError((e as Error).message || '未知错误，请重试')
+      }
     } finally {
       setExporting(false)
     }
@@ -98,7 +117,7 @@ export function ExportDialog({
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && canExport) handleExport()
+                if (e.key === 'Enter' && canExport) void handleExport()
               }}
               autoFocus
               className="rounded border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
@@ -119,6 +138,28 @@ export function ExportDialog({
               </>
             )}
           </div>
+
+          {readinessIssues.length > 0 ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950" role="alert">
+              <strong className="block font-semibold">部分资源尚未就绪</strong>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                {readinessIssues.map((issue, index) => (
+                  <li key={`${issue.kind}-${issue.label}-${index}`}>
+                    {issue.label}：{issue.message}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-amber-800">
+                可重新检查；若仍然导出，缺失资源可能留空或使用回退字体。
+              </p>
+            </div>
+          ) : null}
+
+          {exportError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800" role="alert">
+              导出失败：{exportError}
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
@@ -129,12 +170,25 @@ export function ExportDialog({
           >
             取消
           </Button>
-          <Button onClick={handleExport} disabled={!canExport}>
+          {readinessIssues.length > 0 ? (
+            <Button
+              variant="outline"
+              onClick={() => void handleExport(true)}
+              disabled={!canExport}
+            >
+              仍然导出
+            </Button>
+          ) : null}
+          <Button onClick={() => void handleExport(false)} disabled={!canExport}>
             {exporting
               ? progress.total > 0
                 ? `导出中 ${progress.current} / ${progress.total}`
                 : '导出中…'
-              : '导出'}
+              : readinessIssues.length > 0
+                ? '重新检查'
+                : exportError
+                  ? '重试导出'
+                  : '导出'}
           </Button>
         </DialogFooter>
       </DialogContent>

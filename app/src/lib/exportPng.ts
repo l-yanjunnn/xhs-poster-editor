@@ -205,7 +205,12 @@ export async function exportPages(
   onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   if (pages.length === 0) return
-  await document.fonts.ready
+  // 导出弹窗已在前置检查里明确提示字体超时；用户选择“仍然导出”后，
+  // 实际导出也必须有上限，不能再次无期限卡在 fonts.ready。
+  await Promise.race([
+    document.fonts.ready,
+    new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+  ])
 
   if (pages.length === 1) {
     const blob = await pageToPngBlobWithRetry(pages[0])
