@@ -1,8 +1,8 @@
 # 小红书排版编辑器 · Handoff 文档
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
-> 🌐 **生产 URL：https://xhs-poster-editor.l-yanjunnn.workers.dev**
-> 最后更新：2026-08-10（全面重构：现状优先结构 + SOP 固化。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
+> 最后更新：2026-08-10（v1.3.0 上线闭环完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -10,14 +10,14 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.2.0**（发版史见 git tag，页面预览区信息条显示当前版本，部署后看线上版本号确认生效） |
-| 本地候选 | **v1.3.0-RC，尚未提交/部署**。已实现 9:15、首图 3:4 裁切参考、文字可靠性与真实草稿；本地全量回归已通过，等待用户目检 |
-| 状态 | **生产 v1.2.0 稳定在线；v1.3.0 仅本地候选**。未经用户目检不得部署 |
+| 线上版本 | **v1.3.0**。正式代码提交 `a12d159`，tag `v1.3.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-v0W3nzMj.js`，包内版本号已核验 |
+| 本地候选 | 父级便捷预览副本：`/Users/a0000/Nutstore Files/Claude_YJ/小红书排版编辑器-v1.3.0-本地候选版/`，双击目录内 `.command` 启动器即可打开；正式归档见 `archive/dist-v1.3.0/` |
+| 状态 | **v1.3.0 双轨稳定在线**。9:15、首图 3:4 裁切参考、文字可靠性与真实草稿均已发布；继续保持手动分页 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | v1.3.0-RC：vitest 62/62、tsc -b、ESLint、build、diff-check 全绿；`test_v130_local.py` 浏览器闭环通过（含 2160×3600 导出、裁切剥离、文字可靠性、草稿/WAL、顺序与并发双标签页原子接管） |
+| 测试基线 | v1.3.0：vitest 62/62、tsc -b、ESLint、build、diff-check、`test_v130_local.py` 全绿；2026-08-10 20:25 CST 双生产入口 `test_prod_deep.py` 均通过（三主题单页、2160×3600、自定义字体），Cloudflare `test_prod.py` 连续 5 轮 × 5 页共 25 张均为 2160×3600 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。

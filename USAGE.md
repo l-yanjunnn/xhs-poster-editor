@@ -1,10 +1,13 @@
 # 小红书排版编辑器 使用说明
 
-> 本说明对应本地 **v1.3.0 候选版**。线上当前仍是 v1.2.0，待视觉确认后再发布。
+> 本说明对应已上线的 **v1.3.0**。
 
 ## 怎么打开
 
-浏览器访问：**https://xhs-poster-editor.l-yanjunnn.workers.dev**
+浏览器访问：
+
+- Cloudflare：**https://xhs-poster-editor.l-yanjunnn.workers.dev**
+- 大陆通道：**https://xhsposter.tshzchen.cn**
 
 无需安装、无需注册，Chrome / Edge / Safari 都行。打开就是一份 5 页的「使用教程」样张，照着看一遍就会用了。
 
