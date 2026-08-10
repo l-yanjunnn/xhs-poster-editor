@@ -81,6 +81,8 @@
 
 **阿里云大陆通道架构**（2026-08-10 搭建，复刻发圈工具）：OSS bucket `xhs-poster-editor`（cn-shenzhen，public-read，SPA 404→index）→ CDN 加速域名 `xhsposter.tshzchen.cn`（回源 OSS）→ AliDNS CNAME。部署 = `tools/deploy-oss.sh`（hashed assets 长缓存 immutable、index 等 no-cache、自动刷新 CDN index）。凭据：本机 ossutil / aliyun CLI（与发圈工具同账号）。
 
+HTTPS：CAS 免费 DV 证书（CertId 26549959，2026-08-10 签发，1 年期，联系人刘彦君 19303019049）。**续期流程**：`aliyun cas CreateCertificateRequest`（ValidateType DNS）→ `DescribeCertificateState` 拿 `_dnsauth` TXT 值 → AliDNS 加 TXT → 签发后 `aliyun cdn SetCdnDomainSSLCertificate --CertType cas --CertId <新ID> --SSLProtocol on` → 删 TXT。坑：新 OSS bucket 默认 `BlockPublicAccess=true` 会压掉 public-read ACL，要先 `put-bucket-public-access-block` 关掉再设 ACL；CAS API 必须显式 `--endpoint cas.aliyuncs.com --region cn-hangzhou`。
+
 **HANDOFF 纪律**（本次重构的起因）：「当前状态」只允许存在于 §0 一处。历史章节不要留「当前 prod」字样——2026-08 审查时发现 v5 章节还标着「当前 prod 状态」而实际已是 v8，两处「当前」互相矛盾。临时脚本一律放进 `tools/`（进 git），不要引用 `/tmp/` 路径——/tmp 会被系统清掉（test_prod.py 曾经只活在 /tmp，已丢过一次）。
 
 ---
