@@ -1,4 +1,4 @@
-"""v1.2.0+ 发版标准深度回归：三主题导出像素校验 + 用户字体导出验证。
+"""v1.4.1+ 发版标准深度回归：三主题导出像素校验 + 用户字体导出验证。
 
 用法：
     python3 tools/export-race-repro/test_prod_deep.py [URL]
@@ -52,15 +52,28 @@ def dark_pixels(data: bytes) -> int:
 
 async def pick_select(page, group_label: str, option_text: str):
     """按 Group label 定位 Radix Select 并选择选项"""
-    group = page.locator(f'div:has(> span:text-is("{group_label}"))').last
+    group = page.get_by_role("group", name=group_label, exact=True).last
     await group.get_by_role("combobox").click()
+    await page.get_by_role("option", name=option_text, exact=False).first.click()
+    await page.wait_for_timeout(400)
+
+
+async def pick_font(page, field_label: str, option_text: str):
+    field = page.locator(".font-field").filter(has_text=field_label).first
+    await field.get_by_role("combobox").click()
     await page.get_by_role("option", name=option_text, exact=False).first.click()
     await page.wait_for_timeout(400)
 
 
 async def export_current(page, name: str) -> bytes:
     """点导出 → 弹窗填名 → 收下载。单页返回 PNG bytes；zip 返回第一页"""
-    await page.get_by_role("button", name="导出 PNG").click()
+    export_button = page.get_by_role("button", name="导出 PNG")
+    await export_button.wait_for()
+    await page.wait_for_function(
+        "!document.querySelector('.topbar-export')?.disabled",
+        timeout=30_000,
+    )
+    await export_button.click()
     dlg = page.get_by_role("dialog")
     await dlg.get_by_placeholder("输入文件名").fill(name)
     async with page.expect_download(timeout=120_000) as dl_info:
@@ -89,8 +102,16 @@ async def main():
         await page.wait_for_selector(".page", timeout=60_000)
         await page.wait_for_timeout(3000)
 
-        info = await page.locator(".text-xs", has_text="预览缩放").text_content()
-        print(f"页面版本信息: {info}")
+        version = (await page.locator(".topbar-version").text_content()) or ""
+        js_hash = await page.evaluate(
+            """() => {
+              const script = [...document.scripts].find((item) => item.src.includes('index-'))
+              return script?.src.match(/index-([A-Za-z0-9_-]+)\\.js/)?.[1] ?? null
+            }"""
+        )
+        print(f"页面版本信息: {version}, js={js_hash}")
+        if version != "v1.4.1":
+            problems.append(f"线上版本 {version} ≠ v1.4.1")
 
         # ---- 内容换成单页拉丁 H1（Comic Sans 无中文字形，且单页导出直接出 PNG）----
         editor = page.locator(".tiptap-editor .ProseMirror, .ProseMirror").first
@@ -98,8 +119,11 @@ async def main():
         await page.keyboard.press("Meta+a")
         await page.keyboard.type("Export Deep Test ABC 123")
         await page.keyboard.press("Meta+a")
-        await page.get_by_role("button", name="H1", exact=True).first.click()
+        await page.get_by_role("combobox", name="段落样式").click()
+        await page.get_by_role("option", name="H1 · 一级标题", exact=True).click()
         await page.wait_for_timeout(500)
+        await page.wait_for_function("document.querySelectorAll('.page').length === 1")
+        await page.locator(".page").click(position={"x": 12, "y": 12})
 
         # ---- 1) 三主题导出像素校验 ----
         for theme, rgb in THEMES.items():
@@ -114,14 +138,14 @@ async def main():
         base_png = await export_current(page, "font-baseline")
         base_ink = dark_pixels(base_png)
 
-        # 上传字体：H1 Group 内 ⚙ 打开字体库 → file input
-        h1_group = page.locator('div:has(> span:text-is("H1"))').last
-        await h1_group.get_by_text("⚙").click()
+        # 上传字体：右侧页面检查器 → 字体库 → file input
+        await page.get_by_role("button", name="字体库", exact=True).click()
         file_input = page.get_by_role("dialog").locator('input[type="file"]')
         await file_input.set_input_files(FONT_FILE)
         await page.wait_for_timeout(1500)
         await page.keyboard.press("Escape")
-        await pick_select(page, "H1", "Comic Sans")
+        await page.locator(".inspector-details summary").click()
+        await pick_font(page, "H1 全局样式", "Comic Sans")
 
         font_png = await export_current(page, "font-user")
         font_ink = dark_pixels(font_png)

@@ -109,7 +109,7 @@ export interface NoWrapH1Layout {
 
 // 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON；
 // 插入图片需要让 App 持有的素材库回调能把 src 喂回编辑器；
-// setImageWidth 给顶部 Toolbar 的「图片宽度」下拉用
+// 图片属性命令同时供中央画布手势与右侧上下文检查器使用。
 export interface EditorHandle {
   setContent: (
     content: object | string,
@@ -139,7 +139,7 @@ interface Props {
   initialContent?: string
   // 编辑器内点「插入图片」时通知 App 打开素材库到 image tab
   onInsertImageClick?: () => void
-  // selection 变化或图片属性变化时上抛，Toolbar 据此显示当前图片宽度
+  // selection 变化或图片属性变化时上抛，App 据此同步中央画布与右侧检查器。
   onImageStateChange?: (state: ImageState) => void
   onTextSelectionStateChange?: (state: TextSelectionState) => void
   onHistoryStateChange?: (state: HistoryState) => void
@@ -150,58 +150,58 @@ const DEFAULT_CONTENT = `
 <h1>小红书长图排版工具</h1>
 <p>使用指南 · 给非技术朋友的开箱即用工具</p>
 <hr class="divider">
-<p>写文字 → 选样式 → 一键导出 PNG，三步搞定小红书图文长图。</p>
-<blockquote>编辑器左侧打字，右侧实时看 9:15（3:5）画布效果。所见即所得，不用懂代码。</blockquote>
-<p>五页教程，跟着右滑划完，你就上手了。</p>
+<p>写正文 → 调对象 → 一键导出 PNG，三步搞定小红书图文长图。</p>
+<blockquote>左侧写正文，中央看 9:15 成品，右侧只显示当前对象的设置。所见即所得，不用懂代码。</blockquote>
+<p>这份五页教程会带你认识 V1.4 工作台。</p>
 
 <hr class="page-break">
 
-<h1>顶部工具栏</h1>
-<p>全局样式控制，决定整篇长图的视觉基调。</p>
-<h2>核心选项</h2>
+<h1>三栏工作台</h1>
+<p>每一栏只负责一件事，找设置不用来回翻。</p>
 <ul>
-  <li><strong>主题</strong>：雅致 / 极简白 / 深夜黑，一键切换整体配色和字体</li>
-  <li><strong>字体</strong>：H1/H2/H3/正文 各自独立可选，覆盖思源宋/黑、ZCOOL 等</li>
-  <li><strong>字号</strong>：5 档联动，整体放大缩小</li>
-  <li><strong>间距</strong>：紧凑 / 标准 / 宽松 / 极宽</li>
-  <li><strong>Logo 策略</strong>：每页 / 仅首页 / 首尾 / 不显示</li>
+  <li><strong>左侧</strong>：输入正文、切换段落样式、插图和分页</li>
+  <li><strong>中央</strong>：查看多页成品，并直接选择和调整图片</li>
+  <li><strong>右侧</strong>：页面、文字或图片被选中时，只展示相关设置</li>
 </ul>
-<hr class="divider">
-<p>右上「主题」按钮可保存当前样式快照，下次直接调用。</p>
+<h2>顶部只放全局动作</h2>
+<p>撤销 / 重做、草稿状态、裁切参考、排版参考、磁吸与导出都在顶部。导出是唯一紫色主按钮。</p>
 
 <hr class="page-break">
 
-<h1>编辑器排版</h1>
-<p>左侧工具栏控制段落级别的排版，光标所在的块会被切换样式。</p>
+<h1>文字排版</h1>
+<p>左侧工具栏控制段落结构；右侧文字检查器处理当前选区。</p>
 <h2>支持的块</h2>
 <ul>
   <li><strong>H1 / H2 / H3</strong>：三级标题，各有独立字体和字重</li>
   <li><strong>正文 / 引用 / 代码块</strong>：基础文本块</li>
   <li><strong>有序 / 无序列表</strong>：嵌套自如</li>
 </ul>
-<h3>两种横线</h3>
-<p>「— 分隔线 —」插入淡淡虚线装饰；</p>
-<p>「↓ 插入分页 ↓」把内容切到下一页。</p>
 <p>选中 1–12 个字符后点「短语不拆」，机构名或关键词就不会从中间换行。</p>
-<blockquote>分页符在编辑器内显示为蓝色虚线 + 「↓ 分页 ↓」标签，不会出现在导出图里。</blockquote>
+<p>选中文字后可加固定紫色荧光笔，并把透明度从 0% 调到 100%；它不会影响后续输入。</p>
+<blockquote>「— 分隔线 —」负责装饰；「↓ 插入分页 ↓」才会把后续内容切到下一页。</blockquote>
 
 <hr class="page-break">
 
-<h1>素材、草稿与裁切</h1>
-<p>右上按钮覆盖资源管理、保存与最终产出。</p>
-<h3>裁切参考</h3>
-<p>查看首图发布后会被中心裁切的 3:4 可见区。上下变暗和橙线只在预览出现，不进入 PNG。</p>
-<h3>草稿</h3>
-<p>正文、样式、背景和 Logo 自动保存；也可另存、切换或删除草稿。</p>
-<h3>素材库 / 主题</h3>
-<p>素材库存背景、Logo 和插图；主题只保存可复用样式，不再冒充正文草稿。</p>
+<h1>图片与参考线</h1>
+<p>点击中央画布里的图片，会出现选框、四角手柄和顶部横向抓手。</p>
+<ul>
+  <li><strong>缩放</strong>：拖四角等比调整；也可在右侧输入宽度</li>
+  <li><strong>对齐</strong>：拖顶部抓手或在右侧选择左 / 中 / 右</li>
+  <li><strong>磁吸</strong>：自动吸附版心与常用宽度；按住 Option / Alt 临时关闭</li>
+  <li><strong>取消</strong>：拖动中按 Esc，立即回到本次操作前</li>
+</ul>
+<blockquote>裁切参考、排版参考和磁吸彼此独立；选框、手柄与辅助线都不会进入 PNG。</blockquote>
 
 <hr class="page-break">
 
+<h1>草稿、资源与导出</h1>
+<p>正文、样式、背景和 Logo 自动保存在当前浏览器；草稿库支持另存、切换和删除。</p>
+<p>素材库存背景、Logo 和插图；主题只保存可复用样式。单个资源失败只会局部降级，可在右侧原位重试。</p>
 <h3>导出 PNG</h3>
 <ul>
   <li>单页 → 直接下载 PNG，多页 → 自动打 zip</li>
   <li>文件名默认取首个 H1，同名再次导出自动加 -2 / -3 序号</li>
+  <li>导出前会检查图片和字体；失败时可重新检查或明确选择继续</li>
 </ul>
 <blockquote>导出尺寸 2160 × 3600，真实 9:15（3:5），scale 2 高清。</blockquote>
 <p>开始写你自己的内容吧 ✦</p>

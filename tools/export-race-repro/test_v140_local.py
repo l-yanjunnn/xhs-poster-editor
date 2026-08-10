@@ -1,4 +1,4 @@
-"""V1.4.0 本地回归：三栏外壳、图片直接操作、荧光笔与导出预检。
+"""V1.4.x 本地回归：三栏外壳、图片直接操作、荧光笔与导出预检。
 
 用法：
     cd app && ./node_modules/.bin/vite --host 127.0.0.1 --port 4174 --strictPort
@@ -42,7 +42,7 @@ async def wait_for_app(page: Page) -> None:
         timeout=30_000,
     )
     version = (await page.locator(".topbar-version").text_content()) or ""
-    assert version == "v1.4.0", version
+    assert version == "v1.4.1", version
 
 
 async def next_layout(page: Page) -> None:
