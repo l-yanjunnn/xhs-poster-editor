@@ -13,7 +13,7 @@
 | 版本 | **v1.2.0**（发版史见 git tag，页面预览区信息条显示当前版本，部署后看线上版本号确认生效） |
 | 状态 | **稳定已上线**。Export PNG v8 终局（离屏渲染 + onclone 注入全量 CSS），prod 实测 3 主题各 5/5 全 OK |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
-| 部署 | Cloudflare Workers Static Assets，`git push origin main` 即自动 build + deploy（1–3 分钟），**不要碰 Cloudflare 后台** |
+| 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
 | 测试基线 | vitest 31/31 绿，tsc -b 绿（2026-08-10 核验） |
@@ -72,12 +72,14 @@
 1. bump `app/package.json` version
 2. 本地验证三连 + UI 改动 Playwright 截图自查
 3. **用户目检确认**后才部署
-4. `git push origin main`（= 部署）+ `git tag vX.Y.Z && git push --tags`
+4. `git push origin main`（= Cloudflare 轨）+ `bash tools/deploy-oss.sh`（= 阿里云轨，**每版必推，不允许只推一轨**）+ `git tag vX.Y.Z && git push --tags`
 5. 导出路径改动：prod URL playwright 实测（§2 第 6 步）
 6. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
 7. **公告草稿发刘彦君私聊**（含工具网址 + 本版变化摘要），用户确认后自行转发
 
-与沃林工具的差异：本项目是 git 仓库，「每版新文件不覆盖」由 git 天然保证，无需复制文件；无双轨部署（只有 Cloudflare 一轨）。
+与沃林工具的差异：本项目是 git 仓库，「每版新文件不覆盖」由 git 天然保证，无需复制文件。
+
+**阿里云大陆通道架构**（2026-08-10 搭建，复刻发圈工具）：OSS bucket `xhs-poster-editor`（cn-shenzhen，public-read，SPA 404→index）→ CDN 加速域名 `xhsposter.tshzchen.cn`（回源 OSS）→ AliDNS CNAME。部署 = `tools/deploy-oss.sh`（hashed assets 长缓存 immutable、index 等 no-cache、自动刷新 CDN index）。凭据：本机 ossutil / aliyun CLI（与发圈工具同账号）。
 
 **HANDOFF 纪律**（本次重构的起因）：「当前状态」只允许存在于 §0 一处。历史章节不要留「当前 prod」字样——2026-08 审查时发现 v5 章节还标着「当前 prod 状态」而实际已是 v8，两处「当前」互相矛盾。临时脚本一律放进 `tools/`（进 git），不要引用 `/tmp/` 路径——/tmp 会被系统清掉（test_prod.py 曾经只活在 /tmp，已丢过一次）。
 

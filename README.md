@@ -33,9 +33,11 @@ cd app
 ./node_modules/.bin/vite build    # 构建
 ```
 
-## 部署
+## 部署（双轨，每版都要推全）
 
-`git push origin main` → Cloudflare 自动 build + deploy，1–3 分钟上线。
+- 轨一（海外）：`git push origin main` → Cloudflare 自动 build + deploy，1–3 分钟上线
+- 轨二（大陆）：`bash tools/deploy-oss.sh` → 阿里云 OSS+CDN（https://xhsposter.tshzchen.cn）
+
 不需要（也不要）去 Cloudflare 后台操作。
 
 ⚠️ 改了导出路径的代码，上线后必须在 prod URL 上实测（本地 preview 复现不了 prod 的导出 bug，详见 HANDOFF §5）。
