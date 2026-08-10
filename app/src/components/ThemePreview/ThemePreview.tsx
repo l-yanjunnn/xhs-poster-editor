@@ -1,11 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { OVERLAY_MAP, type Theme } from '@/lib/themes'
-import {
-  BUILTIN_BACKGROUNDS,
-  BUILTIN_LOGOS,
-  findAssetById,
-} from '@/lib/builtinAssets'
-import { getUserAssetById } from '@/lib/assetStore'
+import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { DENSITY_MAP } from '@/lib/density'
 import { computeFontSizeVars } from '@/lib/fontSize'
 
@@ -32,8 +27,8 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
   useEffect(() => {
     let alive = true
     ;(async () => {
-      const bg = await resolveSrc(theme.bgAssetId, 'background')
-      const logo = await resolveSrc(theme.logoAssetId, 'logo')
+      const bg = await resolveAssetSrc(theme.bgAssetId, 'background')
+      const logo = await resolveAssetSrc(theme.logoAssetId, 'logo')
       if (alive) {
         setBgSrc(bg)
         setLogoSrc(logo)
@@ -51,6 +46,11 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     ['--font-h2' as never]: theme.fontH2,
     ['--font-h3' as never]: theme.fontH3,
     ['--font-body' as never]: theme.fontBody,
+    // 字重也要注入：否则缩略图继承 :root 上当前 App 状态的 --fw-*，
+    // 「不加粗」主题的缩略图会错误显示为粗体
+    ['--fw-h1' as never]: theme.h1Bold ? '700' : '400',
+    ['--fw-h2' as never]: theme.h2Bold ? '700' : '400',
+    ['--fw-h3' as never]: theme.h3Bold ? '700' : '400',
     ['--h1-max-width' as never]: theme.h1Width,
     ['--c-overlay-color' as never]: overlayColor,
     ['--c-overlay-opacity' as never]: String(overlayOpacity),
@@ -108,11 +108,3 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
   )
 }
 
-async function resolveSrc(id: string, kind: 'background' | 'logo') {
-  if (!id) return ''
-  const list = kind === 'background' ? BUILTIN_BACKGROUNDS : BUILTIN_LOGOS
-  const builtin = findAssetById(list, id)
-  if (builtin) return builtin.src
-  const user = await getUserAssetById(id)
-  return user?.src ?? ''
-}

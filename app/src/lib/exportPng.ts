@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from './canvas'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 
 // v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
@@ -89,7 +89,7 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
     const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
 
     return await html2canvas(cloned, {
-      scale: 2,
+      scale: EXPORT_SCALE,
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
       backgroundColor: null,
@@ -176,25 +176,32 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 // 单页直下 PNG，多页打 zip。filename 不含扩展名
+// onProgress: 每完成一页（含 zip 打包阶段）回调一次，便于 UI 显示 N/total
 export async function exportPages(
   pages: HTMLElement[],
   filename: string,
+  onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   if (pages.length === 0) return
   await document.fonts.ready
 
   if (pages.length === 1) {
     const blob = await pageToPngBlobWithRetry(pages[0])
+    onProgress?.(1, 1)
     triggerDownload(blob, `${filename}.png`)
     return
   }
 
+  // N 张截图 + 1 个 zip 打包步骤 = N+1 总步数
+  const totalSteps = pages.length + 1
   const zip = new JSZip()
   for (let i = 0; i < pages.length; i++) {
     const blob = await pageToPngBlobWithRetry(pages[i])
     zip.file(`${filename}-${i + 1}.png`, blob)
+    onProgress?.(i + 1, totalSteps)
   }
   const zipBlob = await zip.generateAsync({ type: 'blob' })
+  onProgress?.(totalSteps, totalSteps)
   triggerDownload(zipBlob, `${filename}.zip`)
 }
 

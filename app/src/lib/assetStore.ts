@@ -34,7 +34,11 @@ function openDB(): Promise<IDBDatabase> {
       }
     }
     req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    req.onerror = () => {
+      // 失败不缓存 rejected promise，下次调用重试（配额/隐私模式等临时失败可恢复）
+      dbPromise = null
+      reject(req.error)
+    }
   })
   return dbPromise
 }
@@ -52,14 +56,6 @@ function blobToUrl(id: string, blob: Blob): string {
   const url = URL.createObjectURL(blob)
   urlCache.set(id, url)
   return url
-}
-
-function revokeUrl(id: string) {
-  const url = urlCache.get(id)
-  if (url) {
-    URL.revokeObjectURL(url)
-    urlCache.delete(id)
-  }
 }
 
 export async function addUserAsset(
@@ -135,5 +131,6 @@ export async function deleteUserAsset(id: string): Promise<void> {
     req.onsuccess = () => resolve()
     req.onerror = () => reject(req.error)
   })
-  revokeUrl(id)
+  // 故意不 revoke object URL：被删素材可能仍被当前背景/Logo 或正文图片引用，
+  // 立即 revoke 会让画布和导出裂图。会话内泄漏一张图的内存可接受，刷新即回收
 }

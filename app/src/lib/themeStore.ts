@@ -21,7 +21,11 @@ function openDB(): Promise<IDBDatabase> {
       }
     }
     req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    req.onerror = () => {
+      // 失败不缓存 rejected promise，下次调用重试
+      dbPromise = null
+      reject(req.error)
+    }
   })
   return dbPromise
 }

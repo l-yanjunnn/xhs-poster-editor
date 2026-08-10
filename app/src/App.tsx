@@ -32,7 +32,7 @@ import {
 } from '@/lib/builtinAssets'
 import { loadAllUserFonts } from '@/lib/fontRegistry'
 import { listUserFonts } from '@/lib/fontStore'
-import { getUserAssetById } from '@/lib/assetStore'
+import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { splitIntoPages } from '@/lib/splitPages'
 import { exportPages, suggestFilename } from '@/lib/exportPng'
 import './styles/canvas.css'
@@ -106,20 +106,6 @@ function App() {
   const reloadUserThemes = useCallback(async () => {
     setUserThemes(await listUserThemes())
   }, [])
-
-  // 通过 assetId 反查 src：builtin 走静态表，user 走 IndexedDB
-  async function resolveAssetSrc(
-    id: string,
-    kind: 'background' | 'logo',
-  ): Promise<string> {
-    if (!id) return ''
-    const builtinList =
-      kind === 'background' ? BUILTIN_BACKGROUNDS : BUILTIN_LOGOS
-    const builtin = findAssetById(builtinList, id)
-    if (builtin) return builtin.src
-    const user = await getUserAssetById(id)
-    return user?.src ?? ''
-  }
 
   // 应用主题：把 Theme 所有字段写回 App state；含正文则替换 editor
   async function applyTheme(theme: Theme) {
@@ -233,9 +219,12 @@ function App() {
 
   const pages = useMemo(() => splitIntoPages(content), [content])
 
-  async function handleExport(filename: string) {
+  async function handleExport(
+    filename: string,
+    onProgress: (current: number, total: number) => void,
+  ) {
     const els = pageRefs.current.filter((el): el is HTMLDivElement => el !== null)
-    await exportPages(els, filename)
+    await exportPages(els, filename, onProgress)
   }
 
   function shouldShowLogo(pageIndex: number, total: number): boolean {

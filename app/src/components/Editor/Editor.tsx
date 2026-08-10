@@ -1,6 +1,5 @@
 import { useEditor, EditorContent, Node, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import Image from '@tiptap/extension-image'
 import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import '@/styles/editor.css'
@@ -132,10 +131,10 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     extensions: [
       // 所有 hr 都视为分页符：注入 class="page-break"
       // 画布层（splitIntoPages）按 hr.page-break 切割成多页
+      // Underline 不用单独注册：Tiptap v3 StarterKit 已内置（重复注册会告警且互相覆盖）
       StarterKit.configure({
         horizontalRule: { HTMLAttributes: { class: 'page-break' } },
       }),
-      Underline,
       Divider,
       // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
       ResizableImage.configure({ inline: false, allowBase64: true }),
