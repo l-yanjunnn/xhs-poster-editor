@@ -15,7 +15,7 @@
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
-| 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
+| 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
 | 测试基线 | vitest 31/31 绿，tsc -b 绿（2026-08-10 核验） |
 | 定位 | 小红书 9:16 长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
@@ -287,7 +287,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 ```
 我在继续做小红书排版编辑器项目（已上线 Cloudflare）。请先读 HANDOFF：
 
-/Users/a0000/Nutstore Files/Claude_YJ/Scripts-脚本工具集/xhs-poster-小红书排版/HANDOFF.md
+/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/HANDOFF.md
 
 读完告诉我你理解的现状，然后我们做 <目标>。
 ```
