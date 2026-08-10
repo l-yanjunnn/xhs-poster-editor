@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-10（v1.4.1 双轨上线闭环完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-11（v1.4.1 线上状态不变；v1.5.0「公考双底图模板版」已补齐封面主/副标题语义色、正文工具全部常驻与列表内可靠分页规格，尚未改码/发版。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -13,6 +13,7 @@
 | 线上版本 | **v1.4.1**。正式代码提交 `d89b927`，tag `v1.4.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-CJUSefBL.js`，页面版本号均已核验。`v1.4.1` 仅同步默认 5 页教程到新三栏界面，V1.4 功能主体提交为 `61b6a9b` / tag `v1.4.0` |
 | 本地归档 | 当前完整构建在 `app/dist/`；不可覆盖的应用核心快照在 `archive/dist-v1.4.1/`，`archive/dist-v1.4.0/` 保留首发快照；字体清单见各归档的 `FONTS-MANIFEST.txt`，完整复原走对应 tag + `bash ci.sh` |
 | 状态 | **v1.4.1 双轨稳定在线**。三栏桌面工作台、中央画布图片直接操作、对齐/缩放磁吸、排版参考线、正文荧光笔、资源恢复与导出就绪检查均已发布；默认教程已同步新操作路径；继续保持手动分页 |
+| 下一迭代 | **v1.5.0 公考双底图模板版已立项，待新窗口实现**：第 1 页 Cover，第 2 页起 Inner；封面主标题 `#6D136C`、副标题 `#5A465F` 并提供 HEX 修改入口；正文工具栏取消「更多」；修复无序/有序列表内插入分页后分页线缩进且不切页的结构缺陷。Markdown 导入/自动编排明确顺延。当前只有规格与版本化设计输入，线上仍是 v1.4.1 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
@@ -34,11 +35,15 @@
 4. **CSS**：Tailwind v4（@tailwindcss/vite 插件，配置在 `src/index.css` 的 `@theme` 块，无 tailwind.config.js）
 5. **富文本**：Tiptap 3.x，**不要换**
 6. **字体**：核心字体（思源黑/宋全档）走 fontsource npm 包（unicode-range 分片按需加载，大陆稳）；ZCOOL/Ma Shan Zheng/Long Cang/LXGW/Inter 走 CDN；用户自定义字体走 FontFace API + IndexedDB。苹方简因版权不能嵌
-7. **主题（原「模板」）**：概念统一叫主题；扁平 JSON schema；**只存 assetId 不存 blob URL**（blob URL session-bound，刷新失效，是老模板功能翻车根因）
+7. **主题（原「模板」）**：可复用视觉方案继续统一叫主题；扁平 JSON schema；**只存 assetId 不存 blob URL**（blob URL session-bound，刷新失效，是老模板功能翻车根因）。v1.5 用户口中的「公考模板」按**内置页面角色主题**落地，`contentJSON: null`，套用时不覆盖正文；只有未来确定要携带正文骨架/字段槽位时，才拆独立 `PosterTemplate`
 8. **画布**：真实 9:15（1080×1800），导出 scale 2（2160×3600）；首图只在预览叠加中心 3:4 裁切参考，源图尺寸不变
 9. **分页**：手动 `<hr class="page-break">`（Tiptap HorizontalRule 全部配置为分页符）；装饰分隔线是独立 `Divider` 节点（`hr.divider`）
 10. **部署**：Cloudflare Workers Static Assets + GitHub auto-deploy，build 走 `bash ci.sh`
 11. **旧 MVP**：`editor.html` + `assets/` + `demo.html` 保留作参考，不再维护
+12. **页面角色底图**：v1.5 保留 `bgAssetId` 的旧语义（默认/内页底图），只新增 `coverBgAssetId` 作首页覆盖；页角色永远由当前页序推导，不存逐页背景数组
+13. **封面语义色**：v1.5 用 `coverTitleColor` / `coverSubtitleColor` 作为 Theme/草稿样式，不写进 Tiptap 文字 mark；副标题严格定义为首图第一个 H1 后紧邻的第一个正文段，不得误染全篇正文
+14. **工具可见性**：用户要求正文编辑工具全部常驻；不再使用「更多」、动态收纳或横向滚动。左栏继续固定桌面宽度，用稳定两行分组承载；右侧高级字体等设置仍可渐进展开，不在此要求内
+15. **分页结构不变量**：`hr.page-break` 必须是 Tiptap `doc` 的直接子节点；工具栏插入、粘贴、草稿/恢复载入都不得留下 `li > hr.page-break` 等嵌套分页。`splitIntoPages` 继续只切顶层分页；禁止用 CSS 拉宽伪修复，也禁止递归搜 HR 后粗暴切 HTML
 
 ---
 
@@ -64,7 +69,7 @@
 
 **版本号**：语义化三段 `主.次.修`，单一来源 = `app/package.json` 的 `version` 字段（构建时注入页面信息条显示，部署后看线上版本号即确认生效）。
 
-- **主**：架构级/破坏性变更（如换导出库、数据 schema 迁移）
+- **主**：架构级/破坏性变更（如换导出库、不向后兼容的数据 schema 迁移）
 - **次**：新功能、功能恢复
 - **修**：bug 修复、文案、纯文档不发版
 
@@ -77,7 +82,7 @@
 5. 导出路径改动：prod URL playwright 实测（§2 第 6 步）
 6. **归档**：`bash tools/archive-release.sh` → `archive/dist-vX.Y.Z/`（对齐发圈工具文件管理法：历史版本永留 archive/，同版本拒绝覆盖；归档=应用核心 ~6MB，字体走 manifest + git tag 复原）
 7. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
-8. **公告草稿发刘彦君私聊**（含工具网址 + 本版变化摘要），用户确认后自行转发
+8. **发版公告必须专业、完整**（含工具网址 + 本版变化摘要 + 必要注意事项），使用**飞书旧企业租户的机器人**发到刘彦君私聊，用户确认后再自行转发；发送前仍须核对租户、机器人和接收人身份
 
 与沃林工具的差异：本项目是 git 仓库，「每版新文件不覆盖」由 git 天然保证，无需复制文件。
 
@@ -267,7 +272,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ---
 
-## 8. v1.4 冻结验收基线与后续候选
+## 8. v1.4 冻结验收基线与 v1.5 执行规格
 
 ### v1.4.0–v1.4.1「桌面交互与可靠性版」（2026-08-10 已完成并双轨上线）
 
@@ -321,15 +326,199 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. **完整可点击回跳的修改时间线暂不做**：Tiptap 没有现成动作标签与任意回跳能力，为它另造持久快照系统会把图片交互版本拖成历史系统重构；v1.4 先用轻量最近操作 + 原生撤销重做验证价值
 4. **独立自诊断页暂不做**：本版先完成资源就绪检查、局部降级和原地重试；只有真实故障数据证明需要时，再建设完整自诊断页
 
-### 后续版本路线（V1.4 已完成；v1.5.0 起均为候选，开工前再次确认）
+### v1.5.0「公考双底图模板版」（2026-08-11 用户确认优先级；下一窗口执行）
+
+#### 需求与产品定义
+
+1. Markdown 导入、结构解析、自动编排和自动分页全部顺延，v1.5 不顺手做任何其中能力
+2. 新增一套内置公考视觉模板，用户可见名称暂定 **「公考·山水卷」**：第 1 页固定用 Cover，第 2 页及以后统一用 Inner
+3. 本轮的「模板」只是**有封面/内页角色的视觉主题**：套用到当前草稿，不替换正文、不新建草稿、不引入独立模板库。这是对当前 Theme 链路的最小、可兼容扩展
+4. 页面角色只由当前页序决定：1 页时只用 Cover；2/5/任意多页时为 `[Cover, Inner, Inner…]`；增删分页后实时重算，不存「第 3 页用什么」这类易失效状态
+
+#### 版本化设计输入（下一窗口的唯一素材源）
+
+| 角色 | 项目内设计原图 | 尺寸 / Alpha | SHA-256 |
+|---|---|---|---|
+| Cover（仅第 1 页） | [`docs/design/v1.5.0/public-exam-cover-v1.png`](docs/design/v1.5.0/public-exam-cover-v1.png) | 1080×1800 / 无 | `33228831119ffced8e96785015231ad751a7ec190dfaafd0a21d474e52e2b89c` |
+| Inner（第 2 页起） | [`docs/design/v1.5.0/public-exam-inner-v1.png`](docs/design/v1.5.0/public-exam-inner-v1.png) | 1080×1800 / 无 | `613d1b4c56da3ac2a38161cc8f7751f0fc38decf806e96130020754c44707401` |
+
+- 两份项目内文件是用户 Downloads 原件的无损副本，尺寸、Alpha 和 hash 已核对；后续不再依赖 Downloads 路径
+- 实装时复制进 `app/public/builtin-assets/`，建议使用新文件名 `bg-public-exam-landscape-cover-v1.png` / `bg-public-exam-landscape-inner-v1.png`，以及稳定 ID `builtin-bg-public-exam-landscape-cover-v1` / `builtin-bg-public-exam-landscape-inner-v1`
+- 这两张是不可拆对的模板资产；日后修图必须新增 `v2` 文件名和 assetId，禁止覆盖同名文件，避免 Cloudflare/CDN 缓存混版
+- 原图已是精确 9:15，页面内按原位全画布显示；不做 CSS 位移、缩放或二次裁切
+
+**新增设计/问题证据（只作开发参考，不随应用发布）：**
+
+- [`public-exam-title-colors-reference-v1.png`](docs/design/v1.5.0/public-exam-title-colors-reference-v1.png)：用户给定主/副标题精确色值的快照，2086×2168，SHA-256 `56d2d09189c778c9f190200703d8c345d46684dd73f34b0960a622ce3be5f986`
+- [`editor-toolbar-more-current-v1.png`](docs/design/v1.5.0/editor-toolbar-more-current-v1.png)：v1.4.1 左侧正文工具被固定收进「更多」的问题快照，3456×2168，SHA-256 `30c22a68a6b0dced665a3f05743bc7b9817556eae8e435e46428cf2a967a8b56`
+- [`list-page-break-nested-current-v1.png`](docs/design/v1.5.0/list-page-break-nested-current-v1.png)：v1.4.1 在无序列表内插入分页时，分页线跟随列表缩进且右侧仍不切页的问题快照，3334×1832（带 Alpha），SHA-256 `421105d75de068d7b54409c42fc1aae718a9236c35ef378b1f7fb18c5469ec2d`
+
+#### 视觉基线（首次实装参数，以用户截图验收为准）
+
+**Cover：**
+
+- 纸张为暖象牙色，山水约从 `y=1300` 进入、`y=1450` 后变重；小红书中心 3:4 裁切区为 `y=180…1620`，船恰好落在下裁切边缘，只能当装饰，不承载语义
+- 正式文字安全盒：`x=120…960 / y=340…1180`；建议主标题左对齐、最多 3 行，钩子/副标题最多 2–3 行，不让任何关键信息压到 `y≥1250`
+- 初始 token：`--page-padding-x: 120px`、`--page-padding-top: 340px`、`--page-padding-bottom: 620px`、H1 宽度 `80%`。主标题用 Noto Serif SC/700，正文基准 40px 时 H1 沿用现有 90px 比例；先看真实样稿，不为凑更大标题强行改全局字号系统
+
+**Inner：**
+
+- 顶部紫线位于约 `y=82…83 / x=46…1034`，抽样色 `#8A4B7C`；它已烘进底图，不得再用 CSS 画第二条顶线
+- 正文安全盒：`x=96…984 / y=180…1500`，即初始 token 为 `--page-padding-x: 96px`、`--page-padding-top: 180px`、`--page-padding-bottom: 300px`；底部山形从约 `y=1550` 进入，正文和图片不得侵入
+- 正文 Noto Sans SC 40px、行高沿用 1.85，初始间距用 `normal`；H2 使用 Noto Serif SC/700。装不下就手动分页，不缩小到 36px 以下，不挤进山形区
+- 多页页码不再放底部山中：Cover 隐藏页码，Inner 的 `2 / N` 移到顶线下方右侧（初始值 `top: 112px; right: 96px`）
+
+**共通视觉：**
+
+- 封面主标题正式色为 `#6D136C`，封面副标题正式色为 `#5A465F`；Inner 正文仍用 `#2D292B`，次级/引用文字可用 `#5F5659`，主题强调色用底图紫 `#8A4B7C`；正文荧光笔仍保持已冻结的 `#7B3B8B`
+- `overlay: none`，不加浅膜/深膜，避免洗掉纸纹、山水和紫线；引用底色可用 `rgba(123,59,139,.08)`
+- 默认 `logoStrategy: none`；现有猫 Logo 与公考视觉不匹配，不得为了复用旧默认而放到每页
+- 新增 `theme-public-exam-landscape` 承担正文/强调色、安全盒和页码位置；封面主/副标题颜色来自可编辑的 Theme 字段，不在 class 里硬编码。参考线应跟随新 padding，并继续属于纯编辑层
+
+#### 封面主/副标题颜色与修改交互（v1.5 新增需求）
+
+| 语义角色 | 正式色值 | RGB | 暖纸底 `#FBF2E6` 对比度 |
+|---|---|---|---|
+| 封面主标题 | `#6D136C` | `109, 19, 108` | 约 `9.67:1` |
+| 封面副标题 | `#5A465F` | `90, 70, 95` | 约 `7.65:1` |
+
+1. **语义定义必须唯一**：主标题 = 首图 `.content` 内第一个 H1；副标题 = 该 H1 后**紧邻**的第一个 `p`。建议选择器为 `.page--first .content > h1:first-of-type` 与 `.page--first .content > h1:first-of-type + p`；不用 H2 冒充副标题，不将全篇正文染成灰紫
+2. **产品入口**：在右侧「页面与主题」主卡中增加始终可见的「封面文字颜色」组，不收进「高级字体设置」。两行分别为「主标题」/「副标题」，每行显示实时色块 + `#RRGGBB` 输入，并提供「恢复模板色」
+3. **输入规则**：只接受六位 HEX，内部统一规范化为大写 `#RRGGBB`；当前值合法时实时预览，`Enter`/失焦提交；非法值原位提示且不写入 App state/草稿/CSS，不允许任意 CSS 字符串注入
+4. **状态与预览**：有效修改走现有 `customize`，主题下拉显示「自定义样式」，并进入 autosave/WAL/另存草稿/保存用户主题。中央成品画布是权威实时预览，ThemePreview 与 PNG 导出使用同一组语义 token
+5. **本轮的边界**：v1.5 只做封面主/副标题两个**主题级**颜色，不引入 Tiptap `TextStyle/Color` mark，不做逐字/任意选区颜色。否则 inline color 会压过主题、扩大复制粘贴/清除/混合选区/撤销语义，也会再次挤压左侧工具栏
+
+#### 正文编辑工具全部常驻（v1.5 新增需求）
+
+当前「更多」不是响应式自动收纳：`Editor.tsx` 将代码块/分隔线/分页/图片/短语不拆永久写在 Radix DropdownMenu 里，`editor.css` 的 `overflow: hidden` 还会静默裁掉超宽内容。左栏在 1280/1440/1536 桌面宽度下约为 400/450/480px，所有工具硬塞单行必然超宽，因此固定两行是稳定方案：
+
+```text
+第 1 行·文字格式  [正文 ▾] [代码块] [B] [I] [U] [无序] [有序] [引用]
+第 2 行·结构插入  [分隔线] [分页] [图片] [短语不拆]
+状态提示·固定高度  例：「短语不拆：请先选中 1–12 个字符」
+```
+
+1. **稳定分组**：两行共用一个外边框/圆角；第 2 行用 1px 顶分隔线与极浅底色标明「会改变文档结构」的动作，四个按钮等分宽度。不用 `flex-wrap` 随机漂移，不横向滚动，不再生成任何「更多」入口
+2. **文字与命中面**：第 1 行沿用紧凑图标按钮，但必须有中文 tooltip/`aria-label`；第 2 行必须显示图标 + 「分隔线/分页/图片/短语不拆」短文字，不能为了塞一行退化成难猜的纯图标。所有按钮保持至少 32px 高度与清晰 focus ring
+3. **代码块去重不改语义**：代码块属于 block type，放在第 1 行作快捷按钮；段落 Select 仍能显示 `CODE` 当前状态，不破坏旧文档。可以保留 Select 中的代码块选项，但不能再作为唯一入口
+4. **不可用状态仍可理解**：「短语不拆」无选区、超过 12 字或 H1 宽度不容纳时仍占位显示；用 `aria-disabled` + no-op 保持可聚焦，用固定高度的直接提示 + `aria-describedby` 说明原因，不要让用户先猜为什么点不了
+5. **键盘与可访问性**：外层与两行用 `role="group"` + 中文 `aria-label`，保留原生 Tab/Shift+Tab 顺序和 Enter/Space；本轮不贸然声明 `role="toolbar"`，除非同时实现 APG 要求的 roving tabindex + 方向键。toggle 继续用 `aria-pressed`，插入动作不伪装 toggle
+6. **布局变化边界**：工具栏高度预计从约 64px 增到 96–110px，只压缩本来就独立纵向滚动的正文区，不改左栏宽度、不侵占中央成品画布、不产生整页滚动。用户要求的「不收纳」仅指左侧正文工具，右侧高级字体设置仍保持渐进展开
+
+#### 列表内分页可靠性（v1.5 新增缺陷，发版阻断）
+
+**现象与根因已定位：**
+
+- 用户在无序列表的项内点「插入分页」后，左侧蓝色分页线缩进到列表内，中央画布页数不增加，内容继续溢出安全区；有序列表、嵌套列表与 blockquote 内都有同类结构风险
+- `Editor.tsx` 现在直接调用 `editor.chain().focus().setHorizontalRule().run()`。Tiptap `horizontalRule` 是普通 block，`listItem` 又允许 `paragraph block*`，所以会合法生成 `li > ... > hr.page-break`；JSON 往返还会稳定保存这个坏结构
+- `splitIntoPages.ts` 只遍历 `root.children`，仅把顶层 `hr.page-break` 当分页边界。因此「线缩进」和「不分页」是同一个文档结构错误，不是两个 CSS 小问题
+
+**产品语义与实现边界：**
+
+1. 新增专用的 `insertRootPageBreak` 命令（名称可调整），固定两行工具栏的「分页」只调该命令，不再直接调 `setHorizontalRule()`
+2. 普通段落/标题保留现有按光标位置切分的手感。在列表中点分页时，以**当前最外层列表项结束处**为安全边界：当前项和其嵌套内容留在前页，后续同级项作为同类列表在新页继续；光标在最后一项时就在整个列表之后分页。不在一个 bullet 的行内文字中间动刀
+3. 列表空项中点分页时，消费该空项并在原边界插入顶层分页，不留空圆点/空编号。在列表项开头点分页时放在该项之前；非空列表项中部/末尾则按上述安全边界放在完整当前项之后
+4. 有序列表拆成前/后两段时，后段必须保留连续序号（通过 `start` 或等价模型属性）；无序列表保留嵌套层级、marks 和段落顺序
+5. blockquote 不得留下嵌套分页；按当前引用块的安全边界插入顶层分页。codeBlock 等现在已能生成顶层分页的节点不得回退
+6. 命令用一个 ProseMirror transaction 完成，点一次「分页」只产生一次 undo；插入后 selection 落到新页的第一个可编辑位置，用户可继续输入
+7. 在既有 `normalizeIncomingContent`/草稿 hydrate 边界增加纯 JSON 归一化，并在 paste transform 边界拦截新嵌套分页；将历史草稿、WAL 恢复、外部 setContent/粘贴中的嵌套分页升格为顶层边界，保留可见文本、列表类型/顺序和分页数；归一化不进入历史栈，不让用户第一次撤销又恢复坏结构
+8. 优先抽出 Editor 与单测共用的生产 extensions factory，避免测试仍用「普通 StarterKit」而漏掉真实 page-break schema/命令。可用「顶层专用 PageBreak schema + 安全插入/清理」建立双重保障，但只改 schema 不足以清理空列表项和有序列表 `start`
+9. `splitIntoPages` 保持顶层线性切分，作为简单可审核的消费端。不得只把嵌套线用负 margin 拉宽，不得用正则/递归 DOM 遇到 HR 就切字符串，也不得在 Preview 层二次猜测列表语义
+
+#### 最小架构方案（不新造 `PosterTemplate`）
+
+1. **Theme 字段**：保留 `bgAssetId` 为「默认/内页底图」，新增 `coverBgAssetId?: string` 为首页 override。旧主题没有该字段时 fallback 到 `bgAssetId`；判断必须用 `typeof value === 'string'`，因为显式 `''` 代表纯色封面，不能被 `||` 错误覆盖
+2. **语义色字段**：Theme 与草稿 style 新增 `coverTitleColor` / `coverSubtitleColor`，只存规范化六位 HEX。App 分别注入 `--c-cover-title` / `--c-cover-subtitle`；`theme-public-exam-landscape` 不得在 class 内硬写这两个 CSS 变量，否则会压过用户的颜色控件
+3. **内置主题**：新增 `builtin-public-exam-landscape`，`bgAssetId = Inner`、`coverBgAssetId = Cover`、`coverTitleColor = '#6D136C'`、`coverSubtitleColor = '#5A465F'`、`contentJSON = null`。应用时只写入样式/资产快照，不调用 `editor.setContent`
+4. **草稿兼容**：草稿正式升为 `EditorDocumentV2`，style 一次显式保存 `coverBgAssetId / coverTitleColor / coverSubtitleColor`；parser 同时严格接受 V1/V2。V1 读取时 `coverBgAssetId = bgAssetId`，两个颜色按旧 `themeClass` 的原主色迁移（雅致 `#1A1A1A`、极简白 `#111111`、深夜黑 `#F0F0F0`），不得把所有旧草稿默认染成公考紫。IndexedDB object store 无需升级；WAL 使用 v2 key，v2 优先、兼容读 v1
+5. **用户主题兼容**：Theme 库现在没有 schemaVersion，因此在读取/应用边界 normalize 旧主题；旧主题的双底图和两个颜色都按上述规则补全，新保存用户主题必须显式保留全部四项
+6. **App 状态与资源**：新增 cover id/src 与两个封面颜色 state；hydrate、capture/autosave、applyTheme、save theme、retryResources 全链路携带。Cover/Inner 并行 resolve 后再通过现有 revision guard 原子提交，不得出现「新 Cover + 旧 Inner」的混搭；主题切换时两个颜色也必须一次替换，不留旧值
+7. **按页路由**：`pages.map` 仅做 `index === 0 ? coverBgSrc : bgSrc`，Preview 仍只接收「本页底图」，不理解整套模板。导出继续 clone 每个 `.page`，不改写 `exportPng.ts` 架构；两个颜色通过既有 CSS/根变量注入路径自然进入导出
+8. **现有背景入口**：用户在素材库点选普通背景时，同时把 Cover/Inner 设为该素材，恢复「全篇同一背景」旧语义并脱离当前主题。v1.5 不新增分别编辑首页/内页的入口
+9. **主题库交互**：继续使用现有主题库和右侧主题下拉；「公考·山水卷」卡片主缩略图显示 Cover，增加简短「首图 + 内页」标识。ThemePreview 必须注入两个封面色；因为不替换正文，不需要危险操作确认弹窗
+10. **缺资源降级**：问题文案分别叫「首图背景」/「内页背景」，可单独重试。对应页先回退到另一张已解析底图，两张都缺时才回退纯色；1 页文档未使用 Inner，Inner 缺失不得单独阻断导出
+
+#### v1.5 明确不做
+
+- 不做 Markdown 导入、自动分页、自动缩字或自动编排
+- 不做根据画布高度自动推测分页；本轮只保证用户手动点击的分页在普通段落和列表中都真正生效
+- 不新建 `PosterTemplate`、模板市场、用户自建/分享模板，不赠送或替换正文骨架
+- 不做独立的封面眉题/主标题/钩子字段槽位；本轮继续编辑普通 Tiptap 流式文档
+- 不做任意选区/逐字颜色，不引入 `TextStyle/Color` mark；两个封面颜色是 Theme/草稿样式，不改写 Tiptap JSON
+- 不做任意逐页背景、最后一页专属背景、自由图层/x-y 或背景位置调整
+- 不添加未获授权的国徽、政府/机构 Logo 或「官方背书」视觉；底图只使用本次用户交付素材
+- 不重写已稳定的 Tiptap、Preview 或导出引擎，不借机做 PWA/手机端/产品壳
+
+#### 验收矩阵
+
+**模型/兼容：**
+
+- V1 旧草稿迁移后 Cover/Inner 都等于原 `bgAssetId`，外观不变；V2 双底图经过 autosave、WAL、刷新、另存、切换后不丢
+- 旧用户主题缺 `coverBgAssetId` 时全页仍使用原背景；公考主题保存再应用仍是成对底图；应用任一旧内置主题后所有页恢复同背景
+- 主题套用不修改 Tiptap JSON/分页符、不产生跨草稿 undo；快速切换主题/草稿/背景时，旧异步 resolve 不得回写新状态
+
+**封面颜色/语义：**
+
+- 应用公考主题后，Cover 第一个 H1 的 computed color 精确为 `rgb(109, 19, 108)`，紧邻副标题 p 精确为 `rgb(90, 70, 95)`；ThemePreview、中央画布与 2160×3600 PNG 一致
+- 副标题选择器只命中首图第一个 H1 的紧邻 p；其他正文、Inner 页、H2/H3、引用和荧光笔不得误染
+- 两个 HEX 修改、「恢复模板色」、主题切换、autosave/WAL/刷新/另存/用户主题往返都要测；非法/不完整 HEX 不落盘、不产生 CSS 注入、不清空正文
+- V1 三个旧主题迁移后标题/紧邻段落像素外观不变；切换主题时不得残留上一主题的封面颜色
+
+**正文工具栏/可访问性：**
+
+- 1280×800、1440×900、1536×1024 三档保持完全一致的两行布局；段落 Select 外的 11 个按钮全部在首屏，「代码块/插入分隔线/插入分页/插入图片/短语不拆」均是直接按钮；DOM 中不再存在 accessible name 「更多结构工具」
+- 工具栏不横向滚动、不裁切、不用省略号，实测 `scrollWidth <= clientWidth`；最后一个「短语不拆」文字、focus ring 和固定提示行完整可见，整页不增加滚动
+- 代码块 active/toggle；装饰分隔线不分页；分页立即改变页数和 Cover/Inner 路由；图片直达素材库 image tab；短语不拆在无选区/1–12 字/超长/H1 超宽/已激活解除五种状态都正确。可撤销动作继续一次产生一个 undo 事务
+- 只用 Tab/Shift+Tab 可按视觉顺序访问全部控件，Enter/Space 生效；屏幕阅读器可读出两个分组、中文按钮名、pressed/disabled 状态与「短语不拆」禁用原因，点击后不丢当前选区/编辑器焦点
+
+**手动分页/列表结构：**
+
+- 普通段落/标题光标中部、空段落、无序列表、有序列表、列表首/中/尾项、空列表项、两层嵌套列表、blockquote 和 codeBlock 分别插入；每次后 `page-break` 均为 `doc` 直接子节点，不存在任何 `ul/ol/blockquote hr.page-break`
+- 列表中段分页后，前后文字、marks、嵌套层级不丢不重，不留空 `ul/ol/li` 或幽灵圆点；有序列表要分别覆盖 `start=1` 和 `start=4`，后段序号连续而不重置；单次插入可一次 undo/redo 往返
+- 用 v1.4.1 可产生的 `li > hr.page-break` JSON 构造旧草稿、WAL 恢复和外部 setContent/粘贴样例；载入后自动归一化且不污染 undo，再保存/刷新/JSON 往返不复发
+- 每次插入或归一化后，`splitIntoPages(editor.getHTML()).length` 立即增加预期页数，中央画布不再把后续文字挤出安全区；公考主题的页角色同步变为 `[Cover, Inner…]`
+- 单页 PNG/多页 ZIP 的页数、顺序和 2160×3600 尺寸与画布一致；保留既有「连续分页产生空页、首/尾分页保留空页、divider 不分页」语义
+
+**页角色/可靠性：**
+
+- 1 页只显示 Cover（Inner 可按现有资源策略预载）；2 页为 `[Cover, Inner]`；5 页为 `[Cover, Inner, Inner, Inner, Inner]`；手动插入/删除分页后立即重算。文档开头就有 page-break 时，空的 page 0 仍是 Cover，不做隐式跳页
+- Cover/Inner 分别缺失、分别重试、双缺失、同 assetId 去重都要测；单页缺 Inner 可导出，多页缺 Inner 进导出预检
+- 参考线在两种页角色上准确跟随安全盒；选框、参考线、裁切遮罩不进导出
+
+**视觉/导出：**
+
+- 本地用至少 2 页的公考真实样稿验证 Cover 标题层级、Inner 正文可读性、3:4 裁切参考、顶线不重复、无猫 Logo、页码不压山；1280/1440/1536 三档桌面宽度都截图
+- 单页 PNG 和多页 ZIP 每张都是 2160×3600；通过 DOM src 顺序 + 底部特征像素确认第 1 页真的是 Cover、第 2–N 页真的是 Inner，不只靠肉眼看相似纸色
+- 打开/关闭首图裁切参考后，导出成品 hash 不变；底图无叠膜、无 CSS 位移/二次裁切，Inner 顶线只有原图一条
+- 既有雅致/极简白/深夜黑、自定义背景/字体、正文图片和荧光笔均回归，`test_v140_local.py` 继续全绿，新增 v1.5 双底图回归脚本/单测
+
+#### v1.5 打包策略：一次对外发布，分区实现/验收
+
+**默认结论：这四类需求合并为一个 v1.5.0，但禁止做成一个大提交或一口气改完才测。**
+
+- 公考双底图依赖可靠手动分页，否则 Cover/Inner 页角色本身无法验收；两行工具栏又会把「分页」从更多菜单提到明面，不能让一个更容易点到的按钮仍保留已知坏路径
+- 合并为一个用户版本，只需一次 V1→V2 迁移、一轮完整导出验收、一次双轨部署和一份专业公告；内部用独立工作包/提交又能让问题可定位、可回退
+- 只有当公考模板明显延期，或线上分页缺陷需要立即止血时，才把「列表安全分页」先独立发为 **v1.4.2**，再发 v1.5.0；不得把多个不同构建都叫 v1.5.0
+
+#### 下一窗口的执行顺序与发布门禁
+
+1. **WP1·分页可靠性（基础门禁）**：先固化列表内插入的失败用例，再实现顶层安全分页命令和旧嵌套分页归一化，独立提交；不开工 Markdown
+2. **WP2·工具可见性**：将 Editor toolbar 改为固定两行，删除 More/DropdownMenu 与裁切 CSS，「分页」接 WP1 的安全命令，独立提交；完成第一次用户目检（工具栏 + 列表分页）
+3. **WP3·数据/资源基础**：做底图 helper、HEX normalize/validation、V1→V2 草稿兼容、Theme normalize、App 双资源/颜色 state 与资源原子解析，独立提交
+4. **WP4·公考视觉闭环**：接页序路由、内置资产、「公考·山水卷」、专属 CSS、右侧两个 HEX 控件、资源降级和导出预检，独立提交；完成第二次用户目检（公考模板视觉）
+5. **WP5·联合回归**：跑本地三连 + 新旧 E2E + 1280/1440/1536 Playwright 截图，特别验证「列表分页 → 页数增加 → `[Cover, Inner…]` 路由 → PNG/ZIP 页数」全链路；然后交最终导出验收
+6. **发布门禁**：上述本地验收期间均不 bump/不推送/不部署；用户最终明确说「视觉通过，可以发布」后，才按 v1.5.0 完整双轨发版，并在 Cloudflare + OSS/CDN 两入口各做 1/2/5 页背景 + 主/副标题颜色 + 列表分页像素/页数回归，再归档、更新 HANDOFF/USAGE/项目日志、准备专业公告草稿
+
+### 后续版本路线（v1.5.0 已确认；其后仍是候选，开工前再确认）
 
 1. **v1.4.1 桌面交互与可靠性版（已上线）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则；补丁版同步默认 5 页教程
-2. **v1.5.0 文档自动编排版**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
-3. **v1.6.0 内容模板版**：封面专属标题 + 钩子正文、模板数据结构、首个完成度高的公考官方模板；先验证一套，不承诺模板市场
-4. **v1.7.0 视觉资产质量版**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、字体与图片在预览/导出中的一致性、加载性能优化
+2. **v1.5.0 公考双底图模板版（已立项，下一窗口实现）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，旧草稿/主题兼容、资源恢复与高清导出闭环
+3. **v1.6.0 视觉资产质量版**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、字体与图片在预览/导出中的一致性、加载性能优化
+4. **v1.7.0 文档自动编排版（已顺延）**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
 5. **v1.8.0 交付与诊断版（按需要）**：PWA 安装、部署/资源诊断、稳定运行后简化 `hasRaceArtifact/retry`；Tauri macOS `.app` 只在确有离线桌面分发需求时再评估，不与 PWA 同时默认开工
 6. **v2.0.0 运营机器产品壳**：项目首页、素材入口、历史作品、工作流导航等全局 UI/UX 与信息架构更新；只换产品壳和工作流，不重写已经稳定的排版、草稿与导出引擎
-7. **远期候选：手机端，不预占版本号**：当前不做、不进 v1.4 测试矩阵。桌面功能稳定且出现明确移动场景后，再学习沃林的「共享引擎 + 独立手机壳」，单独设计底部抽屉、触控命中、双指手势与微信保存链路；绝不把桌面侧栏直接压缩到手机
+7. **独立内容模板，不预占版本号**：只有出现明确的「带正文骨架/封面字段槽位/页类型」需求后，才设计 `PosterTemplate`；Theme 继续管视觉 token，Template 才管内容结构，二者不混在一个模型里
+8. **远期候选：手机端，不预占版本号**：当前不做。桌面功能稳定且出现明确移动场景后，再学习沃林的「共享引擎 + 独立手机壳」，单独设计底部抽屉、触控命中、双指手势与微信保存链路；绝不把桌面侧栏直接压缩到手机
 
 ---
 
@@ -339,12 +528,26 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - 响应简短直接；关键决策用 AskUserQuestion 给选项，第一个标推荐
 - 中文注释解释 WHY 不写 WHAT
 - UI 改动 Playwright 截图自查后再交用户目检
+- 正文编辑的高频/重要工具要直接可见，不收进「更多」；宁可稳定分成两行，也不隐藏或横向滚动
 - 版本管理：迭代不覆盖原文件（全局记忆规则）
+- 发版公告要写得专业；通过飞书旧企业租户机器人发到刘彦君私聊，发送前核对身份
 - 终端统一 iTerm2
 
 ---
 
 ## 10. 新会话开场建议
+
+v1.5.0 专用开场：
+
+```
+我在继续做小红书排版编辑器项目。请先完整读取：
+
+/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/HANDOFF.md
+
+本窗口执行 §8 的 v1.5.0「公考双底图模板版」。先告诉我你理解的现状、实现边界和开工顺序，再开始。本轮同时包含：封面主/副标题语义色及 HEX 修改控件；取消「更多」、左侧正文工具全部常驻的固定两行工具栏；以及修复无序/有序/嵌套列表内插入分页时分页线缩进且不切页的结构缺陷。按 WP1→WP5 分区实现验收，最后只发一个 v1.5.0。不做 Markdown 导入/自动编排；本地截图自查后先交我目检，我明确说「视觉通过，可以发布」之前不部署。
+```
+
+通用开场：
 
 ```
 我在继续做小红书排版编辑器项目（已上线 Cloudflare）。请先读 HANDOFF：
