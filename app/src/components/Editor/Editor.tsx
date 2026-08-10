@@ -34,6 +34,16 @@ const ResizableImage = Image.extend({
         parseHTML: (element) =>
           (element as HTMLElement).style.width || null,
       },
+      // Why: 素材库图片的 src 是 session-bound blob URL，主题「包含正文」序列化后
+      // 刷新即失效。存 assetId，applyTheme 时按 id 从 IndexedDB 重新 resolve src
+      //（与背景/Logo 的「只存 assetId」设计对齐）
+      assetId: {
+        default: null,
+        renderHTML: (attrs) =>
+          attrs.assetId ? { 'data-asset-id': attrs.assetId } : {},
+        parseHTML: (element) =>
+          (element as HTMLElement).getAttribute('data-asset-id'),
+      },
     }
   },
 })
@@ -50,7 +60,7 @@ export interface ImageState {
 export interface EditorHandle {
   setContent: (content: object | string) => void
   getJSON: () => object | null
-  insertImage: (src: string) => void
+  insertImage: (src: string, assetId?: string) => void
   setImageWidth: (width: string | null) => void
 }
 
@@ -162,8 +172,13 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         editor?.commands.setContent(c as never)
       },
       getJSON: () => editor?.getJSON() ?? null,
-      insertImage: (src) => {
-        editor?.chain().focus().setImage({ src }).run()
+      insertImage: (src, assetId) => {
+        // setImage 的类型签名不含自定义 attrs，走 insertContent 直接给节点 JSON
+        editor
+          ?.chain()
+          .focus()
+          .insertContent({ type: 'image', attrs: { src, assetId: assetId ?? null } })
+          .run()
       },
       setImageWidth: (width) => {
         editor?.chain().focus().updateAttributes('image', { width }).run()

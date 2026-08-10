@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
+import { getUserFontFaceCss } from './fontRegistry'
 
 // v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
@@ -41,7 +42,8 @@ function collectAllCss(): string {
   return parts.join('\n')
 }
 
-async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
+// export 仅为 E2E 测试直取 canvas 用（跳过下载管线做像素断言），业务方走 exportPages
+export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
   // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
   const stage = document.createElement('div')
   stage.setAttribute('data-export-stage', '')
@@ -85,7 +87,9 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
     // 4. 在 onclone 钩子里注入完整 CSS + 拷贝 :root 的 inline CSS vars
     // 这两步缺一不可：CSS 文件提供 .theme-* 类的样式定义，:root inline vars 提供
     // 用户当前选择的字号/字体/密度等运行时值
-    const cssText = collectAllCss()
+    // 用户字体的 @font-face 单独拼接：它们经 FontFace API 注册，不在 styleSheets 里，
+    // collectAllCss() 覆盖不到（v8 上线后发现的盲区）
+    const cssText = `${collectAllCss()}\n${getUserFontFaceCss()}`
     const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
 
     return await html2canvas(cloned, {
@@ -95,7 +99,7 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
-      onclone: (clonedDoc) => {
+      onclone: async (clonedDoc) => {
         // 注入完整 CSS：iframe 不需要从网络加载 stylesheet 就能拿到所有规则
         const styleEl = clonedDoc.createElement('style')
         styleEl.textContent = cssText
@@ -107,6 +111,16 @@ async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
             'style',
             current ? `${current};${rootInlineStyle}` : rootInlineStyle,
           )
+        }
+        // 等 cloned doc 里的字体（含刚注入的用户字体 @font-face）加载完再截图，
+        // 否则 iframe 里布局按 fallback 字体度量，换行位置会错。3s 兜底防卡死
+        try {
+          await Promise.race([
+            clonedDoc.fonts.ready,
+            new Promise((r) => setTimeout(r, 3000)),
+          ])
+        } catch {
+          // fonts.ready 异常不阻塞导出
         }
       },
     })

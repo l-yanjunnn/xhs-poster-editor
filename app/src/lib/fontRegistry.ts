@@ -5,6 +5,11 @@
 import { listUserFonts } from './fontStore'
 
 const registered = new Map<string, FontFace>()
+// Why 同时存 blob URL：FontFace API 注册不产生 CSS 规则，导出时 exportPng 的
+// collectAllCss() 拿不到用户字体，cloned iframe 里布局/渲染会回退到 fallback 字体。
+// 每个用户字体额外持有一个 blob URL，导出时以 @font-face 文本注入 cloned doc
+//（about:blank iframe 与主文档同源，blob URL 可正常加载）
+const fontUrls = new Map<string, string>()
 
 export async function registerFontFromBlob(
   family: string,
@@ -17,6 +22,10 @@ export async function registerFontFromBlob(
   if (old) document.fonts.delete(old)
   document.fonts.add(face)
   registered.set(family, face)
+
+  const oldUrl = fontUrls.get(family)
+  if (oldUrl) URL.revokeObjectURL(oldUrl)
+  fontUrls.set(family, URL.createObjectURL(blob))
 }
 
 export function unregisterFont(family: string) {
@@ -25,6 +34,21 @@ export function unregisterFont(family: string) {
     document.fonts.delete(face)
     registered.delete(family)
   }
+  const url = fontUrls.get(family)
+  if (url) {
+    URL.revokeObjectURL(url)
+    fontUrls.delete(family)
+  }
+}
+
+// 导出用：所有已注册用户字体的 @font-face 规则文本（注入 cloned iframe）
+export function getUserFontFaceCss(): string {
+  return Array.from(fontUrls.entries())
+    .map(
+      ([family, url]) =>
+        `@font-face{font-family:${JSON.stringify(family)};src:url(${JSON.stringify(url)});font-display:block}`,
+    )
+    .join('\n')
 }
 
 // App 启动时调用一次，把 IndexedDB 里所有字体注册回 document.fonts

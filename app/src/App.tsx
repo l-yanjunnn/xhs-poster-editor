@@ -32,7 +32,7 @@ import {
 } from '@/lib/builtinAssets'
 import { loadAllUserFonts } from '@/lib/fontRegistry'
 import { listUserFonts } from '@/lib/fontStore'
-import { resolveAssetSrc } from '@/lib/resolveAsset'
+import { resolveAssetSrc, resolveContentImages } from '@/lib/resolveAsset'
 import { splitIntoPages } from '@/lib/splitPages'
 import { exportPages, suggestFilename } from '@/lib/exportPng'
 import './styles/canvas.css'
@@ -96,6 +96,18 @@ function App() {
   useEffect(() => {
     loadAllUserFonts().then(setUserFontFamilies)
     listUserThemes().then(setUserThemes)
+    // dev-only E2E 钩子（prod build 被 tree-shake），同 Editor 的 window.__editor
+    if (import.meta.env.DEV) {
+      import('@/lib/exportPng').then((m) => {
+        import('@/lib/fontRegistry').then((f) => {
+          ;(window as unknown as Record<string, unknown>).__test = {
+            pageToPngCanvas: m.pageToPngCanvas,
+            registerFontFromBlob: f.registerFontFromBlob,
+            getUserFontFaceCss: f.getUserFontFaceCss,
+          }
+        })
+      })
+    }
   }, [])
 
   const reloadUserFonts = useCallback(async () => {
@@ -128,7 +140,10 @@ function App() {
     setLogoSrc(await resolveAssetSrc(theme.logoAssetId, 'logo'))
     setCurrentThemeId(theme.id)
     if (theme.contentJSON) {
-      editorRef.current?.setContent(theme.contentJSON)
+      // 正文插图按 assetId 重新 resolve src（存储里的 blob URL 已跨会话失效）
+      editorRef.current?.setContent(
+        await resolveContentImages(theme.contentJSON),
+      )
     }
   }
 
@@ -187,7 +202,8 @@ function App() {
     setCurrentThemeId(null)
   }
   function handlePickImage(asset: Asset) {
-    editorRef.current?.insertImage(asset.src)
+    // 带上 assetId：主题「包含正文」序列化后靠它跨会话重新 resolve src
+    editorRef.current?.insertImage(asset.src, asset.id)
   }
   function handleImageWidthChange(width: string | null) {
     editorRef.current?.setImageWidth(width)

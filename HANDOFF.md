@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.1.0（本地已提交，待上线）**；线上 = v1.0.0（发版史见 git tag，页面右侧信息条显示当前版本） |
+| 版本 | **v1.2.0**（发版史见 git tag，页面预览区信息条显示当前版本，部署后看线上版本号确认生效） |
 | 状态 | **稳定已上线**。Export PNG v8 终局（离屏渲染 + onclone 注入全量 CSS），prod 实测 3 主题各 5/5 全 OK |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | Cloudflare Workers Static Assets，`git push origin main` 即自动 build + deploy（1–3 分钟），**不要碰 Cloudflare 后台** |
@@ -20,6 +20,8 @@
 | 定位 | 小红书 9:16 长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
+
+**Codex 接手说明**：用户计划将后续迭代转到 Codex 执行。本文件即唯一交接源——Codex 与 Claude Code 共享工作区记忆桥（AGENTS.md），流程/坑/版本纪律全在本文件，照 §2 SOP 执行即可。`codex exec` 需 `--skip-git-repo-check`。E2E 钩子：dev 模式下 `window.__editor`（Tiptap 实例）和 `window.__test`（pageToPngCanvas / registerFontFromBlob / getUserFontFaceCss）可用。
 
 ---
 
@@ -179,10 +181,14 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - ~~Step 12 加的导出进度回调（`exportPages` 第三参 + ExportDialog 显示 `3 / 6`）在 v7 重写时被静默丢弃~~ ✅ 2026-08-10 已恢复
 - `hasRaceArtifact` + retry 在 v8 下属于死保险。副作用：右缘纯黑的自定义背景会每页白跑 3 遍渲染（导出时间 ×3）。2026-08-10 审查建议删除，暂保留观察
 
-### 🐛 已知 bug（2026-08-10 代码审查发现，未修——修都要动导出路径，须按 §2 SOP 部署后 prod 实测）
+### ~~🐛 已知 bug~~ ✅ v1.2.0 已修（2026-08-10）
 
-1. **用户上传字体不参与导出渲染**：用户字体走 `FontFace API` 注册，不产生 CSS 规则，v8 的 `collectAllCss()` 只遍历 `document.styleSheets`，注入 iframe 的 CSS 里没有它们的 `@font-face` → 导出时用户字体回退、换行可能错位。内置 fontsource 字体不受影响（有真实 stylesheet），所以 prod 实测一直没暴露。**修法**：fontRegistry 注册时同存 `Map<family, objectURL>`，onclone 里追加 `@font-face { src: url(blob:...) }` 注入（iframe 同源可用 blob URL）。动手前先在 prod 上传字体导出复现确认
-2. **「包含正文」主题里的插图存的是 blob URL**：`insertImage(asset.src)` 的 src 是 session-bound blob URL，勾「包含正文」保存主题会原样序列化进 IndexedDB，刷新后应用该主题图片全裂。背景/Logo 有「只存 assetId」设计，正文图片漏了同样处理。**修法**：img 节点加 `data-asset-id` attribute，applyTheme 时按 id 重新 resolve src（`lib/resolveAsset.ts` 已就位可复用）
+1. ~~**用户上传字体不参与导出渲染**~~：fontRegistry 注册时同存 `Map<family, blobURL>`（`getUserFontFaceCss()`），exportPng 的 onclone 把用户字体 `@font-face` 追加进注入 CSS，并 `await clonedDoc.fonts.ready`（3s 兜底）。本地像素对比验证：用户字体 vs 默认字体导出差异 10.4 万暗像素（字体真实生效）
+2. ~~**「包含正文」主题里的插图存的是 blob URL**~~：image 节点加 `assetId` attribute（`data-asset-id`），applyTheme 时 `resolveContentImages()` 按 id 从 IndexedDB 重新 resolve src（纯遍历逻辑 `mapContentImages` 有单测）。注意：v1.2.0 之前保存的含插图旧主题无 assetId，无法修复，需重新保存
+
+### ⚠️ 待验证疑点（v1.2.0 发现，未处理）
+
+- **CDN 字体（ZCOOL/马善政/Long Cang/LXGW/Inter）在 prod 导出里可能同样回退**：Google Fonts stylesheet 跨域读不到 `cssRules`，被 `collectAllCss()` 跳过；iframe 里 `<link>` 重新加载在 prod 是否成功未验证。验证方法：prod 上 H1 选 ZCOOL 快乐体导出，与预览对比。若坏，治本 = §8 的「其余字体本地化」（fontsource 化后进 styleSheets 自然被覆盖）
 
 ---
 
@@ -246,10 +252,10 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ---
 
-## 8. 下一步候选（未拍板）
+## 8. 下一步候选（未拍板；2026-08-10 用户确认：以下均放后续新窗口做，不与 bug 修复混版本）
 
-0. **修 §5 两个已知 bug**（用户字体导出 / 正文插图 blob URL）——优先级最高，都是真实用户路径
-1. **其余字体本地化**：ZCOOL / Ma Shan Zheng / Long Cang 仍走 Google Fonts，大陆卡就 fontsource 化
+0. **阿里云 OSS 双轨部署**（用户已点名要做）：对齐沃林发圈工具的大陆通道方案（surge/CF + OSS 双轨）。届时启用发圈工具的**双轨发版纪律：每版两轨都必须推**，ossutil 2.x 缓存头用 `--cache-control`。参考记忆 `project_wallin_moments_tool`
+1. **其余字体本地化**：ZCOOL / Ma Shan Zheng / Long Cang 仍走 Google Fonts，大陆卡就 fontsource 化；**顺带根治 §5 的 CDN 字体导出疑点**
 2. **标题字重下拉**：`h1Bold` boolean → `h1Weight: 100–900`（fontsource 已载 9 档）
 3. **图片对齐**（左/中/右）与**拖拽手柄缩放**（档位不够用时）
 4. **PWA**（vite-plugin-pwa，可安装到 Dock）
