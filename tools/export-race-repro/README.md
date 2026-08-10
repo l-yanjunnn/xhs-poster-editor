@@ -5,7 +5,15 @@ v8（离屏渲染 + onclone 注入全量 CSS）已根治。完整战史见 `HAND
 
 **这些脚本现在的用途**：改动导出路径（exportPng.ts / canvas.css / Preview）后的**回归验证**。
 
-## 三个脚本
+## 主要脚本
+
+### `test_v130_local.py` ⭐ v1.3 本地候选闭环
+
+启动本地 Vite dev server 后，覆盖 9:15/3:4 裁切、导出像素、异常空格、短语不拆、草稿立即关闭恢复和双标签页单写入者接管，并把验收图写到 `/tmp/xhs-v130-rc/`。
+
+```bash
+python3 tools/export-race-repro/test_v130_local.py
+```
 
 ### `test_prod.py` ⭐ 部署后必跑
 直接命中 Cloudflare prod URL（走系统 proxy 模拟真实跨网络），多轮导出，dump 每张 PNG 尺寸。
@@ -15,13 +23,15 @@ v8（离屏渲染 + onclone 注入全量 CSS）已根治。完整战史见 `HAND
 python3 tools/export-race-repro/test_prod.py
 ```
 
-坏图特征：非 2160×3840 尺寸，或角落像素 alpha=0（CSS 未应用）。判断用像素采样，别肉眼看图。
+坏图特征：非 2160×3600（9:15）尺寸，或角落像素 alpha=0（CSS 未应用）。判断用像素采样，别肉眼看图。
 
 ### `test_slow_local.py` 本地慢网络模拟
 先起 `cd app && ./node_modules/.bin/vite preview --port 4173 --strictPort`，脚本用 playwright route 给素材加 800ms 延迟。复现力弱于 prod。
 
 ### `verify_export_bug.py` 本地快网络 sanity check
 最简单的 localhost 多轮导出 + 尺寸校验，确认代码至少能跑。
+
+`test_prod_deep.py` 是生产环境的扩展深度回归，普通发版先跑 `test_prod.py`，出现可疑结果或改动导出机制时再补跑。
 
 ## 回归验证工作流（改导出代码后）
 

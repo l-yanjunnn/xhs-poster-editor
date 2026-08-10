@@ -40,17 +40,9 @@ type KindTab = 'background' | 'logo' | 'image'
 
 export function AssetLibrary(p: Props) {
   const [kind, setKind] = useState<KindTab>(p.initialKind ?? 'background')
-  const [source, setSource] = useState<SourceTab>('builtin')
-
-  // 用 initialKind 切换打开的 tab（每次开启素材库都生效）
-  useEffect(() => {
-    if (p.open && p.initialKind) setKind(p.initialKind)
-  }, [p.open, p.initialKind])
-
-  // image kind 内置为空，自动跳到「我的上传」省一次点击
-  useEffect(() => {
-    if (kind === 'image') setSource('user')
-  }, [kind])
+  const [source, setSource] = useState<SourceTab>(
+    p.initialKind === 'image' ? 'user' : 'builtin',
+  )
   const [userAssets, setUserAssets] = useState<Asset[]>([])
   const [uploading, setUploading] = useState(false)
   // Why: 用 label htmlFor 关联 input 触发 file picker，比 ref.click() 稳。
@@ -89,6 +81,13 @@ export function AssetLibrary(p: Props) {
     p.onOpenChange(false)
   }
 
+  function handleKindChange(value: string) {
+    const nextKind = value as KindTab
+    setKind(nextKind)
+    // image 暂无内置素材，直接落到用户上传，避免空白一步。
+    if (nextKind === 'image') setSource('user')
+  }
+
   const builtinList =
     kind === 'background'
       ? BUILTIN_BACKGROUNDS
@@ -113,7 +112,7 @@ export function AssetLibrary(p: Props) {
         {/* 一级 Tab：素材类型 */}
         <Tabs
           value={kind}
-          onValueChange={(v) => setKind(v as KindTab)}
+          onValueChange={handleKindChange}
           className="w-full flex-col"
         >
           <TabsList className="w-full">

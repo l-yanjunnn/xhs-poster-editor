@@ -1,5 +1,6 @@
-import { forwardRef } from 'react'
+import { forwardRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
+import { COVER_CROP_TOP } from '@/lib/canvas'
 import type { ThemeKey } from '@/lib/themes'
 
 interface Props {
@@ -13,10 +14,9 @@ interface Props {
   guidesOn?: boolean
 }
 
-// 小红书首图被裁切成 4:3，所以第一页（pageIndex===0）走 .page--first 变体
-// 让内容整体下移到 4:3 切线下方
+// 所有页面真实输出 9:15；第一页额外显示平台信息流 3:4 中心裁切参考。
 
-// 单页 9:16 预览。Step 6 加分页算法后，App 层负责切页，这里只渲染一页。
+// 单页 9:15 预览。Step 6 加分页算法后，App 层负责切页，这里只渲染一页。
 // Step 7：ref 暴露内部 .page 节点给 html2canvas 截图用
 export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   {
@@ -54,8 +54,24 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
         )}
         {guidesOn && (
           <>
-            <div className="guide guide-v" />
-            <div className="guide guide-h" />
+            {isFirstPage && (
+              <div
+                className="cover-crop-preview"
+                data-preview-only=""
+                aria-hidden="true"
+                style={
+                  {
+                    '--cover-crop-offset': `${COVER_CROP_TOP}px`,
+                  } as CSSProperties
+                }
+              >
+                <div className="cover-crop-mask cover-crop-mask--top" />
+                <div className="cover-crop-mask cover-crop-mask--bottom" />
+                <div className="cover-crop-label">首图 3:4 可见区</div>
+              </div>
+            )}
+            <div className="guide guide-v" data-preview-only="" />
+            <div className="guide guide-h" data-preview-only="" />
           </>
         )}
       </div>

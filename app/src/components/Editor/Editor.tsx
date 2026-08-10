@@ -1,7 +1,20 @@
-import { useEditor, EditorContent, Node, type Editor } from '@tiptap/react'
+import {
+  useEditor,
+  useEditorState,
+  EditorContent,
+  Node,
+  type Editor,
+} from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-import { forwardRef, useEffect, useImperativeHandle } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { NoWrapPhrase } from './NoWrapPhrase'
+import {
+  canKeepPhraseTogether,
+  normalizeChineseBoldBoundaryWhitespaceHtml,
+  normalizeEditorContent,
+  NO_WRAP_PHRASE_MAX_LENGTH,
+} from '@/lib/textReliability'
 import '@/styles/editor.css'
 
 // 分隔线：渲染成 <hr class="divider">，与 horizontalRule（分页符，class="page-break"）区分。
@@ -54,6 +67,13 @@ export interface ImageState {
   width: string | null
 }
 
+export interface NoWrapH1Layout {
+  fontFamily: string
+  fontSizePx: number
+  fontWeight: number
+  maxWidthPx: number
+}
+
 // 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON；
 // 插入图片需要让 App 持有的素材库回调能把 src 喂回编辑器；
 // setImageWidth 给顶部 Toolbar 的「图片宽度」下拉用
@@ -71,6 +91,7 @@ interface Props {
   onInsertImageClick?: () => void
   // selection 变化或图片属性变化时上抛，Toolbar 据此显示当前图片宽度
   onImageStateChange?: (state: ImageState) => void
+  noWrapH1Layout?: NoWrapH1Layout
 }
 
 const DEFAULT_CONTENT = `
@@ -78,8 +99,8 @@ const DEFAULT_CONTENT = `
 <p>使用指南 · 给非技术朋友的开箱即用工具</p>
 <hr class="divider">
 <p>写文字 → 选样式 → 一键导出 PNG，三步搞定小红书图文长图。</p>
-<blockquote>编辑器左侧打字，右侧实时看 9:16 画布效果。所见即所得，不用懂代码。</blockquote>
-<p>四页教程，跟着右滑划完，你就上手了。</p>
+<blockquote>编辑器左侧打字，右侧实时看 9:15（3:5）画布效果。所见即所得，不用懂代码。</blockquote>
+<p>五页教程，跟着右滑划完，你就上手了。</p>
 
 <hr class="page-break">
 
@@ -109,18 +130,19 @@ const DEFAULT_CONTENT = `
 <h3>两种横线</h3>
 <p>「— 分隔线 —」插入淡淡虚线装饰；</p>
 <p>「↓ 插入分页 ↓」把内容切到下一页。</p>
+<p>选中 1–12 个字符后点「短语不拆」，机构名或关键词就不会从中间换行。</p>
 <blockquote>分页符在编辑器内显示为蓝色虚线 + 「↓ 分页 ↓」标签，不会出现在导出图里。</blockquote>
 
 <hr class="page-break">
 
-<h1>素材与导出</h1>
-<p>右上四个蓝/绿按钮，覆盖资源管理和最终产出。</p>
-<h3>参考线</h3>
-<p>蓝色按钮，开关首图 4:3 安全区辅助线。仅预览显示，导出 PNG 自动剥离。</p>
-<h3>素材库</h3>
-<p>管理背景图、Logo、插入图片。支持拖拽上传 + IndexedDB 持久化。</p>
-<h3>主题库</h3>
-<p>保存当前样式快照（可选含正文），跨会话复用。</p>
+<h1>素材、草稿与裁切</h1>
+<p>右上按钮覆盖资源管理、保存与最终产出。</p>
+<h3>裁切参考</h3>
+<p>查看首图发布后会被中心裁切的 3:4 可见区。上下变暗和橙线只在预览出现，不进入 PNG。</p>
+<h3>草稿</h3>
+<p>正文、样式、背景和 Logo 自动保存；也可另存、切换或删除草稿。</p>
+<h3>素材库 / 主题</h3>
+<p>素材库存背景、Logo 和插图；主题只保存可复用样式，不再冒充正文草稿。</p>
 
 <hr class="page-break">
 
@@ -129,14 +151,22 @@ const DEFAULT_CONTENT = `
   <li>单页 → 直接下载 PNG，多页 → 自动打 zip</li>
   <li>文件名默认取首个 H1，同名再次导出自动加 -2 / -3 序号</li>
 </ul>
-<blockquote>导出尺寸 2160 × 3840，scale 2 高清，发小红书后裁切清晰。</blockquote>
+<blockquote>导出尺寸 2160 × 3600，真实 9:15（3:5），scale 2 高清。</blockquote>
 <p>开始写你自己的内容吧 ✦</p>
 `
 
 export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
-  { onUpdate, initialContent, onInsertImageClick, onImageStateChange },
+  {
+    onUpdate,
+    initialContent,
+    onInsertImageClick,
+    onImageStateChange,
+    noWrapH1Layout,
+  },
   ref,
 ) {
+  const noWrapH1LayoutRef = useRef(noWrapH1Layout)
+
   const editor = useEditor({
     extensions: [
       // 所有 hr 都视为分页符：注入 class="page-break"
@@ -146,16 +176,31 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         horizontalRule: { HTMLAttributes: { class: 'page-break' } },
       }),
       Divider,
+      NoWrapPhrase,
       // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
       ResizableImage.configure({ inline: false, allowBase64: true }),
     ],
-    content: initialContent ?? DEFAULT_CONTENT,
+    content: normalizeEditorContent(initialContent ?? DEFAULT_CONTENT),
+    editorProps: {
+      // 富文本粘贴是异常空格的主要来源。只清理可判定的中文粗体边界，
+      // 不对纯文本、英文、URL 或 code/pre 做激进重写。
+      transformPastedHTML: normalizeChineseBoldBoundaryWhitespaceHtml,
+    },
     onUpdate: ({ editor }) => {
       onUpdate?.(editor.getHTML())
       // 改属性（如调宽度）也走 onUpdate，需同步上抛
       reportImageState(editor)
     },
     onSelectionUpdate: ({ editor }) => reportImageState(editor),
+    onTransaction: ({ editor }) => {
+      // undo、setContent、草稿恢复或外部 HTML 都可能绕过工具栏校验。
+      // 每次文档 transaction 后都重新建立 nowrap 不变量。
+      queueMicrotask(() => {
+        if (!editor.isDestroyed) {
+          removeUnsafeNoWrapMarks(editor, noWrapH1LayoutRef.current)
+        }
+      })
+    },
   })
 
   function reportImageState(ed: Editor) {
@@ -169,7 +214,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     ref,
     () => ({
       setContent: (c) => {
-        editor?.commands.setContent(c as never)
+        editor?.commands.setContent(normalizeEditorContent(c) as never)
       },
       getJSON: () => editor?.getJSON() ?? null,
       insertImage: (src, assetId) => {
@@ -199,9 +244,22 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     }
   }, [editor])
 
+  // H1 字号/字体/宽度之后可能被调大或调窄。若已有 nowrap 不再放得下，
+  // 自动撤销该 mark，保留文字并恢复正常换行，绝不让内容被页面裁掉。
+  useEffect(() => {
+    noWrapH1LayoutRef.current = noWrapH1Layout
+    if (editor) {
+      removeUnsafeNoWrapMarks(editor, noWrapH1Layout)
+    }
+  }, [editor, noWrapH1Layout])
+
   return (
     <div className="flex h-full flex-col bg-[#fafaf8]">
-      <EditorToolbar editor={editor} onInsertImageClick={onInsertImageClick} />
+      <EditorToolbar
+        editor={editor}
+        onInsertImageClick={onInsertImageClick}
+        noWrapH1Layout={noWrapH1Layout}
+      />
       <div className="flex-1 overflow-y-auto px-10 py-8">
         <EditorContent editor={editor} className="tiptap-editor" />
       </div>
@@ -209,28 +267,30 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   )
 })
 
-function EditorToolbar({
-  editor,
-  onInsertImageClick,
-}: {
-  editor: Editor | null
-  onInsertImageClick?: () => void
-}) {
-  if (!editor) return null
-  const Btn = ({
-    label,
-    onClick,
-    active,
-  }: {
-    label: string
-    onClick: () => void
-    active?: boolean
-  }) => (
+interface EditorToolbarButtonProps {
+  label: string
+  onClick: () => void
+  active?: boolean
+  disabled?: boolean
+  title?: string
+}
+
+// 保持在 EditorToolbar 组件外，避免每次 selection/render 都创建新组件类型。
+function Btn({
+  label,
+  onClick,
+  active,
+  disabled,
+  title,
+}: EditorToolbarButtonProps) {
+  return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={
-        'rounded border px-2.5 py-1.5 text-[13px] text-neutral-700 ' +
+        'rounded border px-2.5 py-1.5 text-[13px] text-neutral-700 disabled:cursor-not-allowed disabled:opacity-45 ' +
         (active
           ? 'border-blue-500 bg-blue-50'
           : 'border-neutral-300 bg-white hover:border-blue-400 hover:bg-blue-50')
@@ -239,6 +299,61 @@ function EditorToolbar({
       {label}
     </button>
   )
+}
+
+function EditorToolbar({
+  editor,
+  onInsertImageClick,
+  noWrapH1Layout,
+}: {
+  editor: Editor | null
+  onInsertImageClick?: () => void
+  noWrapH1Layout?: NoWrapH1Layout
+}) {
+  // Tiptap v3 默认不要求 useEditor 每个 transaction 重渲染 React。工具栏
+  // 需要跟随 selection/mark 更新，否则「短语不拆」会一直停在初始禁用态。
+  useEditorState({
+    editor,
+    selector: ({ transactionNumber }) => transactionNumber,
+  })
+  if (!editor) return null
+  const activeEditor = editor
+  const { from, to, empty } = editor.state.selection
+  const selectedPhrase = empty ? '' : editor.state.doc.textBetween(from, to, '\n')
+  const noWrapActive = editor.isActive('noWrapPhrase')
+  const prospectivePhrase = noWrapActive
+    ? selectedPhrase
+    : getProspectiveNoWrapPhrase(editor, selectedPhrase)
+  const phraseFitsH1 = doesSelectionFitCanvasH1(
+    editor,
+    prospectivePhrase,
+    noWrapH1Layout,
+  )
+  const phraseWithinLimit = canKeepPhraseTogether(prospectivePhrase)
+  const canToggleNoWrap =
+    !empty &&
+    (noWrapActive || (phraseWithinLimit && phraseFitsH1))
+
+  function toggleNoWrapPhrase() {
+    const selection = activeEditor.state.selection
+    if (selection.empty) return
+    const text = activeEditor.state.doc.textBetween(
+      selection.from,
+      selection.to,
+      '\n',
+    )
+    if (!activeEditor.isActive('noWrapPhrase')) {
+      const mergedText = getProspectiveNoWrapPhrase(activeEditor, text)
+      if (
+        !canKeepPhraseTogether(mergedText) ||
+        !doesSelectionFitCanvasH1(activeEditor, mergedText, noWrapH1Layout)
+      ) {
+        return
+      }
+    }
+    activeEditor.chain().focus().toggleMark('noWrapPhrase').run()
+  }
+
   return (
     <div className="flex flex-shrink-0 flex-wrap gap-1 border-b border-neutral-300 bg-neutral-100 px-4 py-2">
       <Btn
@@ -312,9 +427,133 @@ function EditorToolbar({
         active={editor.isActive('underline')}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       />
+      <Btn
+        label="短语不拆"
+        active={noWrapActive}
+        disabled={!canToggleNoWrap}
+        title={
+          !phraseWithinLimit
+            ? `与相邻不拆短语合并后超过 ${NO_WRAP_PHRASE_MAX_LENGTH} 个字符，请缩短选择`
+            : phraseFitsH1
+            ? `选中 1–${NO_WRAP_PHRASE_MAX_LENGTH} 个字符后使用，避免整段溢出`
+            : '当前 H1 宽度容不下这段文字，请缩短关键词或调宽 H1'
+        }
+        onClick={toggleNoWrapPhrase}
+      />
       <Btn label="撤销" onClick={() => editor.chain().focus().undo().run()} />
       <Btn label="重做" onClick={() => editor.chain().focus().redo().run()} />
     </div>
   )
 }
 
+let phraseMeasureCanvas: HTMLCanvasElement | null = null
+
+function getProspectiveNoWrapPhrase(editor: Editor, selectedText: string): string {
+  const { from, to, $from, $to } = editor.state.selection
+  if (!$from.sameParent($to)) return selectedText
+  const mark = editor.schema.marks.noWrapPhrase
+  if (!mark) return selectedText
+
+  let mergedFrom = from
+  let mergedTo = to
+  const parentStart = $from.start()
+  const parentEnd = $from.end()
+  while (
+    mergedFrom > parentStart &&
+    editor.state.doc.rangeHasMark(mergedFrom - 1, mergedFrom, mark)
+  ) {
+    mergedFrom -= 1
+  }
+  while (
+    mergedTo < parentEnd &&
+    editor.state.doc.rangeHasMark(mergedTo, mergedTo + 1, mark)
+  ) {
+    mergedTo += 1
+  }
+  return editor.state.doc.textBetween(mergedFrom, mergedTo, '\n')
+}
+
+function doesSelectionFitCanvasH1(
+  editor: Editor,
+  text: string,
+  layout?: NoWrapH1Layout,
+): boolean {
+  const { $from, $to } = editor.state.selection
+  const inH1 =
+    $from.sameParent($to) &&
+    $from.parent.type.name === 'heading' &&
+    $from.parent.attrs.level === 1
+  if (!inH1) return true
+  if (!layout) return false
+
+  return doesPhraseFitCanvasH1(text, layout)
+}
+
+function doesPhraseFitCanvasH1(text: string, layout: NoWrapH1Layout): boolean {
+  phraseMeasureCanvas ??= document.createElement('canvas')
+  const context = phraseMeasureCanvas.getContext('2d')
+  if (!context) return false
+  context.font = `${layout.fontWeight} ${layout.fontSizePx}px ${layout.fontFamily}`
+  const glyphCount = Array.from(text.trim()).length
+  // 画布 H1 的 letter-spacing 是 -0.5px；测量时保持同一规则。
+  const measuredWidth =
+    context.measureText(text.trim()).width - Math.max(0, glyphCount - 1) * 0.5
+  return measuredWidth <= layout.maxWidthPx
+}
+
+function removeUnsafeNoWrapMarks(
+  editor: Editor,
+  layout?: NoWrapH1Layout,
+): void {
+  const mark = editor.schema.marks.noWrapPhrase
+  if (!mark) return
+  const removals: Array<{ from: number; to: number }> = []
+
+  editor.state.doc.descendants((node, position) => {
+    if (!node.isTextblock) return true
+    const isH1 = node.type.name === 'heading' && node.attrs.level === 1
+
+    let segmentStart: number | null = null
+    let segmentEnd = 0
+    let segmentText = ''
+    const flush = () => {
+      const invalidLength = !canKeepPhraseTogether(segmentText)
+      const invalidH1Width =
+        isH1 && (!layout || !doesPhraseFitCanvasH1(segmentText, layout))
+      if (segmentStart !== null && (invalidLength || invalidH1Width)) {
+        removals.push({ from: segmentStart, to: segmentEnd })
+      }
+      segmentStart = null
+      segmentEnd = 0
+      segmentText = ''
+    }
+
+    node.descendants((child, childPosition) => {
+      if (!child.isText) {
+        flush()
+        return true
+      }
+      const hasNoWrap = child.marks.some((item) => item.type === mark)
+      if (!hasNoWrap) {
+        flush()
+        return false
+      }
+      const absoluteStart = position + 1 + childPosition
+      segmentStart ??= absoluteStart
+      segmentEnd = absoluteStart + child.nodeSize
+      segmentText += child.text ?? ''
+      return false
+    })
+    flush()
+    return false
+  })
+
+  if (removals.length === 0) return
+  const transaction = editor.state.tr
+  for (const { from, to } of removals) {
+    transaction.removeMark(from, to, mark)
+  }
+  // 自动可靠性修正不是用户操作，不能被一次“撤销”重新带回来。
+  transaction.setMeta('addToHistory', false)
+  editor.view.dispatch(transaction)
+}

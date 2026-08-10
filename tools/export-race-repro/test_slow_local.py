@@ -50,10 +50,10 @@ async def run_round(round_idx: int):
     for png in sorted(extract_dir.glob("*.png")):
         im = Image.open(png)
         sz = png.stat().st_size
-        ok = im.size == (2160, 3840)
+        ok = im.size == (2160, 3600)
         if not ok:
             bad += 1
-        marker = "" if ok else f"  ⚠️ WRONG SIZE (got {im.size}, expect (2160, 3840))"
+        marker = "" if ok else f"  ⚠️ WRONG SIZE (got {im.size}, expect (2160, 3600))"
         print(f"  {png.name}: file={sz:>10,}  px={im.size}{marker}")
     return bad
 

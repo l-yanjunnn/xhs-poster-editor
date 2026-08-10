@@ -27,6 +27,13 @@ import {
   type FontOption,
 } from '@/lib/fontPresets'
 
+export type DraftSaveStatus =
+  | 'restoring'
+  | 'pending'
+  | 'saving'
+  | 'saved'
+  | 'error'
+
 interface Props {
   currentThemeId: string | null
   userThemes: Theme[]
@@ -60,7 +67,11 @@ interface Props {
   onOpenAssetLibrary: () => void
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
+  onOpenDraftLibrary: () => void
   onExport: () => void
+  activeDocumentTitle: string
+  draftSaveStatus: DraftSaveStatus
+  draftSaveError: string | null
   // 参考线 toggle：辅助预览对齐，导出 PNG 时自动隐藏
   guidesOn: boolean
   onToggleGuides: () => void
@@ -220,10 +231,25 @@ export function Toolbar(p: Props) {
       </Group>
 
       <div className="ml-auto flex gap-2">
+        <DraftStatus
+          status={p.draftSaveStatus}
+          error={p.draftSaveError}
+          title={p.activeDocumentTitle}
+        />
+        <button
+          onClick={p.onOpenDraftLibrary}
+          className="cursor-pointer rounded border border-amber-700 bg-amber-950/40 px-3 py-1.5 text-[13px] text-amber-200 hover:bg-amber-900/50"
+        >
+          草稿
+        </button>
         <button
           onClick={p.onToggleGuides}
           aria-pressed={p.guidesOn}
-          title={p.guidesOn ? '关闭参考线' : '显示参考线（仅预览，不进入导出）'}
+          title={
+            p.guidesOn
+              ? '关闭裁切与内容边界参考'
+              : '显示首图 3:4 裁切区与内容边界（仅预览，不进入导出）'
+          }
           className={
             'cursor-pointer rounded border px-3 py-1.5 text-[13px] transition ' +
             (p.guidesOn
@@ -231,7 +257,7 @@ export function Toolbar(p: Props) {
               : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:bg-neutral-700')
           }
         >
-          参考线
+          裁切参考
         </button>
         <button
           onClick={p.onOpenThemeLibrary}
@@ -252,6 +278,59 @@ export function Toolbar(p: Props) {
           导出 PNG
         </button>
       </div>
+    </div>
+  )
+}
+
+function DraftStatus({
+  status,
+  error,
+  title,
+}: {
+  status: DraftSaveStatus
+  error: string | null
+  title: string
+}) {
+  const presentation: Record<
+    DraftSaveStatus,
+    { label: string; dot: string; text: string }
+  > = {
+    restoring: {
+      label: '正在恢复…',
+      dot: 'bg-blue-400 animate-pulse',
+      text: 'text-blue-300',
+    },
+    pending: {
+      label: '待保存',
+      dot: 'bg-amber-400',
+      text: 'text-amber-300',
+    },
+    saving: {
+      label: '保存中…',
+      dot: 'bg-blue-400 animate-pulse',
+      text: 'text-blue-300',
+    },
+    saved: {
+      label: '已保存',
+      dot: 'bg-emerald-400',
+      text: 'text-emerald-300',
+    },
+    error: {
+      label: '保存失败',
+      dot: 'bg-red-400',
+      text: 'text-red-300',
+    },
+  }
+  const current = presentation[status]
+
+  return (
+    <div
+      role="status"
+      title={error ?? `${title || '未命名草稿'}·${current.label}`}
+      className={`flex items-center gap-1.5 px-1 text-xs ${current.text}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
+      <span>{current.label}</span>
     </div>
   )
 }

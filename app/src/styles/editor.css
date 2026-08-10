@@ -1,5 +1,5 @@
 /* Tiptap 编辑器视觉：和画布同字体族但缩小到屏幕可读尺寸。
- * 画布是 1080×1920，编辑器是屏幕原尺寸——这里只关心可读，不关心还原。 */
+ * 画布是 1080×1800，编辑器是屏幕原尺寸——这里只关心可读，不关心还原。 */
 
 .tiptap-editor {
   font-family:
@@ -32,6 +32,20 @@
   font-size: 18px;
   font-weight: var(--fw-h3, 600);
   margin: 14px 0 6px;
+}
+
+.tiptap-editor h1 strong,
+.tiptap-editor h2 strong,
+.tiptap-editor h3 strong {
+  font-weight: 700;
+}
+
+.tiptap-editor .nowrap-phrase,
+.tiptap-editor [data-no-wrap-phrase] {
+  white-space: nowrap;
+  text-decoration: underline dotted #2563eb;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
 .tiptap-editor p {

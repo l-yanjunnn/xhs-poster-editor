@@ -1,20 +1,20 @@
-/* 9:16 画布 + 内容块样式。沿用 editor.html 的全部 token 名，便于 1:1 迁移。
+/* 9:15（3:5）画布 + 内容块样式。沿用 editor.html 的全部 token 名，便于 1:1 迁移。
  * 这层只管「画布显示成什么样」，不管编辑器 UI。 */
 
 :root {
   /* 画布 */
   --canvas-w: 1080px;
-  --canvas-h: 1920px;
+  --canvas-h: 1800px;
   --page-padding-x: 80px;
-  /* 小红书全屏展示是 9:15（不是 9:16），上下各裁约 60px。
-   * 在原 padding 基础上再往内收 100px 作为安全余量，避开出血区。 */
-  --page-padding-top: 360px;
-  --page-padding-bottom: 220px;
+  /* 旧 9:16 画布上传后会被平台上下各裁约 60px；现在直接输出 9:15，
+   * 因此把旧补偿量扣回，预览位置与旧图在平台里的实际显示保持一致。 */
+  --page-padding-top: 300px;
+  --page-padding-bottom: 160px;
 
   /* Logo */
   --logo-size: 120px;
   --logo-offset-x: 60px;
-  --logo-offset-y: 160px;
+  --logo-offset-y: 100px;
 
   /* 字体（webfont 优先 + local 回退）
    * H1/H2/H3 各自独立可调，H3 默认沿用 body 字体保留原视觉层级 */
@@ -93,7 +93,7 @@
   background: #1a1a1a;
 }
 
-/* ============ 单页 9:16 画布 ============ */
+/* ============ 单页 9:15（3:5）画布 ============ */
 .page-wrapper {
   transform-origin: top center;
   transform: scale(var(--preview-scale, 0.4));
@@ -109,14 +109,52 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
-/* 首页适配小红书首图「中心对齐 4:3」裁切：
- * 9:16 = 1080×1920，中心 4:3 = 1080×810，上下各裁 555px。
- * 4:3 安全区 y ∈ [555, 1365]。
- * H1 顶 555（紧贴安全区上沿），Logo 底比 H1 顶高 80px（与其他页 Logo→H1 间距一致）。
- * 其他页保持默认 padding/logo 位置不受影响。 */
+/* 首页仍输出 9:15，但信息流封面会中心裁成竖版 3:4：
+ * 9:15 = 1080×1800，中心 3:4 = 1080×1440，上下各裁 180px。
+ * 本轮先把 Logo 和正文起点放入可见区；正文末端仍由用户按遮罩手动检查。
+ * 封面专属标题/钩子布局后续再迭代。 */
 .page--first {
-  --page-padding-top: 555px;
-  --logo-offset-y: 355px;
+  --page-padding-top: 320px;
+  --logo-offset-y: 200px;
+}
+
+/* 首图 3:4 裁切参考：只在预览打开参考线时出现。
+ * Why 用真实 DOM：导出前可明确 remove，避免 html2canvas 把伪元素截进 PNG。 */
+.page .cover-crop-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+.page .cover-crop-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--cover-crop-offset);
+  background: rgba(15, 23, 42, 0.18);
+}
+.page .cover-crop-mask--top {
+  top: 0;
+  border-bottom: 3px solid rgba(245, 158, 11, 0.98);
+}
+.page .cover-crop-mask--bottom {
+  bottom: 0;
+  border-top: 3px solid rgba(245, 158, 11, 0.98);
+}
+.page .cover-crop-label {
+  position: absolute;
+  top: calc(var(--cover-crop-offset) + 18px);
+  left: var(--page-padding-x);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.96);
+  color: #1c1917;
+  font-family: var(--font-body);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.28);
 }
 
 /* 参考线：辅助用户对齐内容安全区。
@@ -177,8 +215,7 @@
 }
 .page-tag {
   position: absolute;
-  /* 避开 9:15 下出血（约 60px）+ 视觉余量 */
-  bottom: 130px;
+  bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 18px;
@@ -241,6 +278,19 @@
   font-weight: var(--fw-h3);
   color: var(--c-text-primary);
 }
+
+/* strong 默认的 bolder 会让标题从 700 跳到 900，造成局部突然变黑。 */
+.content h1 strong,
+.content h2 strong,
+.content h3 strong {
+  font-weight: 700;
+}
+
+/* 只由用户显式选中的「短语不拆」mark 生成，不会自动套给粗体或长段落。 */
+.content .nowrap-phrase,
+.content [data-no-wrap-phrase] {
+  white-space: nowrap;
+}
 .content > * + h3 {
   margin-top: var(--gap-h3-before);
 }
@@ -253,7 +303,8 @@
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   color: var(--c-text-primary);
-  text-align: justify;
+  /* 强制两端对齐会在 nowrap/粗体边界换行时把中文字距拉爆。 */
+  text-align: start;
   /* 让空段落（Tiptap 按回车产生的 <p></p>）保留一行高度，否则 0 高度看不见 */
   min-height: calc(var(--fs-body) * var(--lh-body));
 }

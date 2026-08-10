@@ -21,7 +21,7 @@ FONT_FILE = "/System/Library/Fonts/Supplemental/Comic Sans MS.ttf"
 OUT = Path("/tmp/prod_deep_test")
 OUT.mkdir(exist_ok=True)
 
-# 三内置主题的四角期望色（RGB）；导出 canvas 2160x3840、四角 alpha 必须 255
+# 三内置主题的四角期望色（RGB）；导出 canvas 2160x3600、四角 alpha 必须 255
 THEMES = {
     "雅致": (237, 238, 237),
     "极简白": (255, 255, 255),
@@ -32,8 +32,8 @@ THEMES = {
 def check_png(data: bytes, expect_rgb, tag: str) -> list[str]:
     problems = []
     img = Image.open(io.BytesIO(data)).convert("RGBA")
-    if img.size != (2160, 3840):
-        problems.append(f"{tag}: 尺寸 {img.size} ≠ 2160x3840")
+    if img.size != (2160, 3600):
+        problems.append(f"{tag}: 尺寸 {img.size} ≠ 2160x3600")
         return problems
     w, h = img.size
     for x, y in [(5, 5), (w - 6, 5), (5, h - 6), (w - 6, h - 6)]:
@@ -46,7 +46,7 @@ def check_png(data: bytes, expect_rgb, tag: str) -> list[str]:
 
 
 def dark_pixels(data: bytes) -> int:
-    img = Image.open(io.BytesIO(data)).convert("L").resize((540, 960))
+    img = Image.open(io.BytesIO(data)).convert("L").resize((540, 900))
     return sum(1 for p in img.getdata() if p < 120)
 
 

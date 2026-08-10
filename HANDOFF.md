@@ -10,14 +10,15 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | **v1.2.0**（发版史见 git tag，页面预览区信息条显示当前版本，部署后看线上版本号确认生效） |
-| 状态 | **稳定已上线**。Export PNG v8 终局（离屏渲染 + onclone 注入全量 CSS），prod 实测 3 主题各 5/5 全 OK |
+| 线上版本 | **v1.2.0**（发版史见 git tag，页面预览区信息条显示当前版本，部署后看线上版本号确认生效） |
+| 本地候选 | **v1.3.0-RC，尚未提交/部署**。已实现 9:15、首图 3:4 裁切参考、文字可靠性与真实草稿；本地全量回归已通过，等待用户目检 |
+| 状态 | **生产 v1.2.0 稳定在线；v1.3.0 仅本地候选**。未经用户目检不得部署 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | vitest 31/31 绿，tsc -b 绿（2026-08-10 核验） |
-| 定位 | 小红书 9:16 长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
+| 测试基线 | v1.3.0-RC：vitest 62/62、tsc -b、ESLint、build、diff-check 全绿；`test_v130_local.py` 浏览器闭环通过（含 2160×3600 导出、裁切剥离、文字可靠性、草稿/WAL、顺序与并发双标签页原子接管） |
+| 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
 
@@ -34,7 +35,7 @@
 5. **富文本**：Tiptap 3.x，**不要换**
 6. **字体**：核心字体（思源黑/宋全档）走 fontsource npm 包（unicode-range 分片按需加载，大陆稳）；ZCOOL/Ma Shan Zheng/Long Cang/LXGW/Inter 走 CDN；用户自定义字体走 FontFace API + IndexedDB。苹方简因版权不能嵌
 7. **主题（原「模板」）**：概念统一叫主题；扁平 JSON schema；**只存 assetId 不存 blob URL**（blob URL session-bound，刷新失效，是老模板功能翻车根因）
-8. **画布**：1080×1920，导出 scale 2（2160×3840）
+8. **画布**：真实 9:15（1080×1800），导出 scale 2（2160×3600）；首图只在预览叠加中心 3:4 裁切参考，源图尺寸不变
 9. **分页**：手动 `<hr class="page-break">`（Tiptap HorizontalRule 全部配置为分页符）；装饰分隔线是独立 `Divider` 节点（`hr.divider`）
 10. **部署**：Cloudflare Workers Static Assets + GitHub auto-deploy，build 走 `bash ci.sh`
 11. **旧 MVP**：`editor.html` + `assets/` + `demo.html` 保留作参考，不再维护
@@ -51,7 +52,7 @@
    ```bash
    cd app
    ./node_modules/.bin/tsc -b        # 类型检查
-   ./node_modules/.bin/vitest run    # 单测（31 个，<1s）
+   ./node_modules/.bin/vitest run    # 单测（当前 62 个，<1s）
    ./node_modules/.bin/vite build    # 构建
    ```
 4. **UI 改动**：`vite preview` + Playwright 截图自查 → 用户目检确认后再部署
@@ -92,10 +93,11 @@ HTTPS：CAS 免费 DV 证书（CertId 26549959，2026-08-10 签发，1 年期，
 
 | 模块 | 内容 |
 |---|---|
-| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、撤销重做、插入图片、分页符、分隔线 |
-| 顶部工具栏 | 主题下拉（内置/我的）、叠色 6 档、H1/H2/H3/正文字体独立选择、H1/H2/H3 加粗 toggle、H1 宽度 4 档、正文字号 5 档（联动标题）、间距密度 4 档、图片宽度 5 档、Logo 策略 4 种、参考线 toggle |
-| 画布 | 多页 9:16 预览（40% 缩放）、首页 `.page--first` 4:3 安全区适配、普通页 9:15 出血适配、页码角标 |
-| 主题库 | 内置 3（雅致/极简白/深夜黑）+ 用户主题（IndexedDB `xhs-poster-themes`），9:16 真图缩略图，可含正文快照 |
+| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、选中短语不拆行（≤12 字）、撤销重做、插入图片、手动分页符、分隔线；粘贴/恢复时保守清理中文粗体边界异常空格 |
+| 顶部工具栏 | 主题下拉（内置/我的）、叠色 6 档、H1/H2/H3/正文字体独立选择、H1/H2/H3 加粗 toggle、H1 宽度 4 档、正文字号 5 档（联动标题）、间距密度 4 档、图片宽度 5 档、Logo 策略 4 种、草稿状态/管理、裁切参考 toggle |
+| 画布 | 多页真实 9:15 预览（40% 缩放）、首页中心 3:4 裁切参考（上下遮罩 + 橙线，仅预览）、页码角标 |
+| 草稿库 | IndexedDB `xhs-poster-documents` 保存完整 Tiptap JSON + 15 项样式/素材 id；900ms 自动保存、同步 WAL 保护立即关页、刷新恢复、另存/切换/删除；写入串行，并用浏览器原子 Web Lock 让第二标签页只读，防旧快照覆盖新编辑 |
+| 主题库 | 内置 3（雅致/极简白/深夜黑）+ 用户主题（IndexedDB `xhs-poster-themes`），9:15 真图缩略图；v1.3 起新主题只存样式，历史含正文主题仍可兼容打开 |
 | 素材库 | 背景/Logo/图片三 tab × 内置/上传，IndexedDB `xhs-poster` 存 Blob |
 | 字体库 | 拖拽上传 ttf/otf/woff/woff2/ttc，IndexedDB `xhs-poster-fonts`，FontFace 注册，启动时全量恢复 |
 | 导出 | 单页 PNG / 多页 zip，重命名弹窗（默认取首个 H1），同名自动追 -2/-3 序号，scale 2 |
@@ -129,7 +131,8 @@ xhs-poster-小红书排版/
         ├── components/
         │   ├── ui/              ← shadcn（button/dialog/tabs/select）
         │   ├── Editor/          ← Tiptap + 编辑工具栏（forwardRef 暴露命令式 API）
-        │   ├── Preview/         ← 9:16 单页画布
+        │   ├── Preview/         ← 9:15 单页画布 + 首页 3:4 裁切参考
+        │   ├── DraftLibrary/    ← 草稿另存、切换、删除
         │   ├── Toolbar/         ← 顶部全局控件
         │   ├── AssetLibrary/ FontLibrary/ ThemeLibrary/ ThemePreview/ ExportDialog/
         ├── lib/                 ← 纯逻辑层（有单测的都在这）
@@ -159,7 +162,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 两层修法叠加，缺一不可：
 
-1. **离屏渲染**（v7 引入）：deep clone `.page` 到 body 直接子节点的 fixed 屏外 stage（无 transform 祖先），bbox 天然 = 1080×1920。预览的 `transform: scale(0.4)` 与导出彻底解耦，源 DOM 零修改
+1. **离屏渲染**（v7 引入）：deep clone `.page` 到 body 直接子节点的 fixed 屏外 stage（无 transform 祖先），bbox 由画布常量固定为 1080×1800。预览的 `transform: scale(0.4)` 与导出彻底解耦，源 DOM 零修改
 2. **onclone 注入全量 CSS**（v8 引入）：html2canvas-pro 把 cloned DOM 放进 about:blank iframe 截图，prod 上 iframe 跨域加载 `<link>` stylesheet 会被 CORS 拦掉 → cloned doc 裸渲染。修法：`collectAllCss()` 把 `document.styleSheets` 全部 cssRules 转 text 注入 cloned doc `<head>`，同时拷贝 `:root` 的 inline CSS vars。对未来新主题/新素材天然鲁棒（全量复制，不依赖具体类名）
 
 辅助机制：img 解码等待（5s 兜底）、`document.fonts.ready`、`hasRaceArtifact` 检测 + retry ×2（v5 遗留，v8 下基本不触发，留作兜底）、下载 60s 后才 revoke blob URL。
@@ -261,7 +264,6 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ## 8. 下一步候选（未拍板；2026-08-10 用户确认：以下均放后续新窗口做，不与 bug 修复混版本）
 
-0. **阿里云 OSS 双轨部署**（用户已点名要做）：对齐沃林发圈工具的大陆通道方案（surge/CF + OSS 双轨）。届时启用发圈工具的**双轨发版纪律：每版两轨都必须推**，ossutil 2.x 缓存头用 `--cache-control`。参考记忆 `project_wallin_moments_tool`
 1. **其余字体本地化**：ZCOOL / Ma Shan Zheng / Long Cang 仍走 Google Fonts，大陆卡就 fontsource 化；**顺带根治 §5 的 CDN 字体导出疑点**
 2. **标题字重下拉**：`h1Bold` boolean → `h1Weight: 100–900`（fontsource 已载 9 档）
 3. **图片对齐**（左/中/右）与**拖拽手柄缩放**（档位不够用时）
@@ -269,8 +271,10 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 5. **自定义域名**（~¥80/年）
 6. **字体冗余清理**：删 fontsource 的 .woff 只留 .woff2，dist 体积约减半（115MB → ~60MB）
 7. **Tauri 打包** macOS .app
-8. **自动分页**（段落不跨页）——老 roadmap 里的 Step 6 原始愿望，一直没做
+8. **Markdown 导入 → 自动编排 → 自动分页**：作为同一轮后续能力设计；v1.3.0 继续手动分页
 9. **hasRaceArtifact/retry 简化**（v8 稳定运行数月后可清）
+10. **封面专属标题 + 钩子正文布局**：先积累模板，不混进编辑可靠性版本
+11. **运营机器 UI/UX 换壳**：保留现有排版与导出引擎，仅重做信息架构和交互，按大版本推进
 
 ---
 

@@ -40,6 +40,7 @@ export function ExportDialog({
   const usedNamesRef = useRef<Set<string>>(new Set())
 
   // 每次弹窗打开时用最新的 defaultFilename 重置输入框；如果默认名已用过，自动加 -2/-3 序号
+  /* eslint-disable react-hooks/set-state-in-effect -- controlled dialog open is the session boundary; these resets must be atomic. */
   useEffect(() => {
     if (open) {
       let candidate = defaultFilename
@@ -53,6 +54,7 @@ export function ExportDialog({
       setProgress({ current: 0, total: 0 })
     }
   }, [open, defaultFilename])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const trimmed = filename.trim()
   const canExport = trimmed.length > 0 && pageCount > 0 && !exporting

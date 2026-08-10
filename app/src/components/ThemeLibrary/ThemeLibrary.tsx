@@ -20,7 +20,7 @@ interface Props {
   currentThemeId: string | null
   onApply: (theme: Theme) => void
   // 把当前 App state 打包成主题保存
-  onSaveCurrent: (name: string, includeContent: boolean) => Promise<void>
+  onSaveCurrent: (name: string) => Promise<void>
   // 增删后让 App 重新拉用户主题列表
   onReload: () => Promise<void>
 }
@@ -30,7 +30,6 @@ type Source = 'builtin' | 'user'
 export function ThemeLibrary(p: Props) {
   const [source, setSource] = useState<Source>('builtin')
   const [newName, setNewName] = useState('')
-  const [includeContent, setIncludeContent] = useState(false)
   const [saving, setSaving] = useState(false)
 
   function handleApply(theme: Theme) {
@@ -48,10 +47,9 @@ export function ThemeLibrary(p: Props) {
     if (!name) return
     setSaving(true)
     try {
-      await p.onSaveCurrent(name, includeContent)
+      await p.onSaveCurrent(name)
       await p.onReload()
       setNewName('')
-      setIncludeContent(false)
       setSource('user') // 切到「我的」让用户立即看到新主题
     } finally {
       setSaving(false)
@@ -86,10 +84,8 @@ export function ThemeLibrary(p: Props) {
           <TabsContent value="user" className="mt-4">
             <SaveForm
               newName={newName}
-              includeContent={includeContent}
               saving={saving}
               onNewName={setNewName}
-              onIncludeContent={setIncludeContent}
               onSave={handleSave}
             />
             <div className="mt-4">
@@ -137,7 +133,7 @@ function ThemeGrid({
                 : 'border-neutral-700 hover:border-neutral-500'
             }`}
           >
-            {/* 9:16 真实主题缩略图 */}
+            {/* 9:15 真实主题缩略图 */}
             <div className="flex items-center justify-center bg-neutral-950 p-2">
               <ThemePreview theme={t} scale={0.14} />
             </div>
@@ -178,17 +174,13 @@ function ThemeGrid({
 
 function SaveForm({
   newName,
-  includeContent,
   saving,
   onNewName,
-  onIncludeContent,
   onSave,
 }: {
   newName: string
-  includeContent: boolean
   saving: boolean
   onNewName: (v: string) => void
-  onIncludeContent: (v: boolean) => void
   onSave: () => void
 }) {
   return (
@@ -205,20 +197,12 @@ function SaveForm({
           placeholder="主题名称"
           className="flex-1 min-w-[180px] rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-blue-500"
         />
-        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-neutral-300">
-          <input
-            type="checkbox"
-            checked={includeContent}
-            onChange={(e) => onIncludeContent(e.target.checked)}
-          />
-          包含正文
-        </label>
         <Button onClick={onSave} disabled={!newName.trim() || saving}>
           {saving ? '保存中…' : '保存'}
         </Button>
       </div>
       <div className="mt-2 text-[11px] text-neutral-500">
-        包含正文：连同当前编辑器内容一起保存，下次应用时会替换正文
+        主题只保存当前样式；正文和排版状态由「草稿」自动保存。
       </div>
     </div>
   )

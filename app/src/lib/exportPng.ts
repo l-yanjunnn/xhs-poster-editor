@@ -7,7 +7,7 @@ import { getUserFontFaceCss } from './fontRegistry'
 //
 // 历史：
 //   v1~v6：在 html2canvas-pro 的 onclone 里改 transform，但 onclone 晚于 bbox 测量，无效
-//   v7：把 .page deep clone 到 body 外的 fixed offscreen 容器，bbox 自然 = 1080×1920
+//   v7：把 .page deep clone 到 body 外的 fixed offscreen 容器，bbox 由画布常量决定
 //       —— 本地 prod-preview 100% OK，但 prod URL 上深夜黑/极简白仍坏
 //
 // v7 的剩余 bug 根因（playwright 在 prod URL 上抓到证据）：
@@ -42,6 +42,14 @@ function collectAllCss(): string {
   return parts.join('\n')
 }
 
+// 所有只用于编辑预览的覆盖层统一从导出副本中剥离。
+// 保留 `.guide` 兼容 v1.2.0 之前没有 data 属性的旧参考线节点。
+export function removePreviewOnlyElements(root: HTMLElement): void {
+  root
+    .querySelectorAll<HTMLElement>('[data-preview-only], .guide')
+    .forEach((el) => el.remove())
+}
+
 // export 仅为 E2E 测试直取 canvas 用（跳过下载管线做像素断言），业务方走 exportPages
 export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
   // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
@@ -66,7 +74,7 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
     cloned.style.transform = 'none'
     cloned.style.width = `${CANVAS_WIDTH}px`
     cloned.style.height = `${CANVAS_HEIGHT}px`
-    cloned.querySelectorAll<HTMLElement>('.guide').forEach((g) => g.remove())
+    removePreviewOnlyElements(cloned)
     stage.appendChild(cloned)
 
     // 3. 等 img 解码

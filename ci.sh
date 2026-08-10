@@ -6,4 +6,6 @@ cd app
 pnpm install --ignore-workspace
 
 ./node_modules/.bin/tsc -b
+./node_modules/.bin/vitest run
+./node_modules/.bin/eslint .
 ./node_modules/.bin/vite build

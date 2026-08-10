@@ -1,6 +1,6 @@
-# 小红书 9:16 排版编辑器
+# 小红书 9:15 排版编辑器
 
-把文字 + 背景图 + Logo 排成小红书风格的 9:16 长图，一键导出 PNG。
+把文字 + 背景图 + Logo 排成小红书风格的 9:15（3:5）全屏长图，一键导出 2160×3600 PNG。
 
 🌐 **线上版（推荐）**：https://xhs-poster-editor.l-yanjunnn.workers.dev
 
@@ -10,7 +10,7 @@
 ## 技术栈
 
 Vite + React 19 + TypeScript + Tailwind v4 + shadcn/ui + Tiptap 3，纯前端无后端。
-导出用 html2canvas-pro + jszip；用户数据（素材/字体/主题）存浏览器 IndexedDB。
+导出用 html2canvas-pro + jszip；用户数据（草稿/素材/字体/主题）存浏览器 IndexedDB。
 
 ## 目录结构
 
