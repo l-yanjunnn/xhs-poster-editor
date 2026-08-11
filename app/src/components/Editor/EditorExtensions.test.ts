@@ -1,20 +1,18 @@
 import { Editor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
 import { TextSelection } from '@tiptap/pm/state'
 import { act, createElement, createRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it } from 'vitest'
-import { EditorPane, type EditorHandle } from './Editor'
-import { PosterImage } from './ImageExtension'
-import { TextHighlight } from './TextHighlight'
+import {
+  EditorPane,
+  normalizeIncomingContent,
+  type EditorHandle,
+} from './Editor'
+import { createEditorExtensions } from './editorExtensions'
 
 function makeEditor(content: object | string) {
   return new Editor({
-    extensions: [
-      StarterKit,
-      PosterImage.configure({ inline: false, allowBase64: true }),
-      TextHighlight,
-    ],
+    extensions: createEditorExtensions(),
     content: content as never,
   })
 }
@@ -152,5 +150,41 @@ describe('v1.4 editor extensions', () => {
 
     await act(async () => root.unmount())
     host.remove()
+  })
+
+  it('normalizes legacy nested page breaks at the shared setContent boundary', () => {
+    const normalized = normalizeIncomingContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          attrs: { start: 4 },
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: '第四项' }] },
+                { type: 'horizontalRule' },
+              ],
+            },
+            {
+              type: 'listItem',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: '第五项' }] },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    const editor = makeEditor(normalized)
+    const json = editor.getJSON()
+    expect(json.content?.slice(0, 3).map((node) => node.type)).toEqual([
+      'orderedList',
+      'horizontalRule',
+      'orderedList',
+    ])
+    expect(json.content?.[2]?.attrs?.start).toBe(5)
+    editor.destroy()
   })
 })

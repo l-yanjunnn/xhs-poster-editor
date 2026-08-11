@@ -2,10 +2,8 @@ import {
   useEditor,
   useEditorState,
   EditorContent,
-  Node,
   type Editor,
 } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
 import {
   forwardRef,
   type ReactNode,
@@ -32,9 +30,9 @@ import { DropdownMenu } from 'radix-ui'
 import { closeHistory, history } from '@tiptap/pm/history'
 import { Fragment, Slice } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
-import { NoWrapPhrase } from './NoWrapPhrase'
-import { PosterImage, type PosterImageAttributes } from './ImageExtension'
-import { TextHighlight } from './TextHighlight'
+import type { PosterImageAttributes } from './ImageExtension'
+import { createEditorExtensions } from './editorExtensions'
+import { insertRootPageBreak } from './pageBreakCommand'
 import {
   Select,
   SelectContent,
@@ -62,22 +60,11 @@ import {
   TEXT_HIGHLIGHT_COLOR,
   TEXT_HIGHLIGHT_DEFAULT_OPACITY,
 } from '@/lib/textHighlight'
+import {
+  normalizePageBreakHtml,
+  normalizePageBreakJson,
+} from '@/lib/pageBreak'
 import '@/styles/editor.css'
-
-// 分隔线：渲染成 <hr class="divider">，与 horizontalRule（分页符，class="page-break"）区分。
-// Why 单独建节点而不是给 hr 加 attribute：splitPages 按 hr.page-break 切页，
-// 让分隔线走另一个节点类型最干净，schema 上不会冲突。
-// parseHTML priority=1000 让 hr.divider 优先匹配 Divider 而不是默认的 horizontalRule
-const Divider = Node.create({
-  name: 'divider',
-  group: 'block',
-  parseHTML() {
-    return [{ tag: 'hr.divider', priority: 1000 }]
-  },
-  renderHTML() {
-    return ['hr', { class: 'divider' }]
-  },
-})
 
 // 上抛给 App 的选区状态，中央画布和右侧检查器共用。
 export interface ImageState {
@@ -207,11 +194,13 @@ const DEFAULT_CONTENT = `
 <p>开始写你自己的内容吧 ✦</p>
 `
 
-function normalizeIncomingContent(content: object | string): object | string {
+export function normalizeIncomingContent(content: object | string): object | string {
   const normalizedText = normalizeEditorContent(content)
   return typeof normalizedText === 'string'
-    ? normalizedText
-    : normalizeImageDocument(normalizedText as ImageNodeLike)
+    ? normalizePageBreakHtml(normalizedText)
+    : normalizeImageDocument(
+        normalizePageBreakJson(normalizedText) as ImageNodeLike,
+      )
 }
 
 // 内部复制图片会同时复制 data-image-id。粘贴前清空 ID，
@@ -311,24 +300,13 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   }, [onHistoryStateChange, onImageStateChange, onTextSelectionStateChange])
 
   const editor = useEditor({
-    extensions: [
-      // 所有 hr 都视为分页符：注入 class="page-break"
-      // 画布层（splitIntoPages）按 hr.page-break 切割成多页
-      // Underline 不用单独注册：Tiptap v3 StarterKit 已内置（重复注册会告警且互相覆盖）
-      StarterKit.configure({
-        horizontalRule: { HTMLAttributes: { class: 'page-break' } },
-      }),
-      Divider,
-      NoWrapPhrase,
-      TextHighlight,
-      // inline=false 让图片成为 block 节点，方便和段落/标题对齐流式排版
-      PosterImage.configure({ inline: false, allowBase64: true }),
-    ],
+    extensions: createEditorExtensions(),
     content: normalizeIncomingContent(initialContent ?? DEFAULT_CONTENT),
     editorProps: {
       // 富文本粘贴是异常空格的主要来源。只清理可判定的中文粗体边界，
       // 不对纯文本、英文、URL 或 code/pre 做激进重写。
-      transformPastedHTML: normalizeChineseBoldBoundaryWhitespaceHtml,
+      transformPastedHTML: (html) =>
+        normalizePageBreakHtml(normalizeChineseBoldBoundaryWhitespaceHtml(html)),
       transformPasted: stripPastedImageIds,
     },
     onUpdate: ({ editor }) => {
@@ -806,7 +784,7 @@ function EditorToolbar({
               <ToolbarMenuItem
                 icon={<PanelTopOpen />}
                 label="插入分页"
-                onSelect={() => editor.chain().focus().setHorizontalRule().run()}
+                onSelect={() => insertRootPageBreak(editor)}
               />
               {onInsertImageClick ? (
                 <ToolbarMenuItem
