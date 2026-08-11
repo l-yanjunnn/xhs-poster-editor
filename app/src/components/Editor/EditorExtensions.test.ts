@@ -3,11 +3,8 @@ import { TextSelection } from '@tiptap/pm/state'
 import { act, createElement, createRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it } from 'vitest'
-import {
-  EditorPane,
-  normalizeIncomingContent,
-  type EditorHandle,
-} from './Editor'
+import { EditorPane, type EditorHandle } from './Editor'
+import { normalizeIncomingContent } from './contentNormalization'
 import { createEditorExtensions } from './editorExtensions'
 
 function makeEditor(content: object | string) {

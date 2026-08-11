@@ -9,6 +9,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useRef,
 } from 'react'
@@ -20,17 +21,16 @@ import {
   List,
   ListOrdered,
   Minus,
-  MoreHorizontal,
   PanelTopOpen,
   Quote,
   Underline,
   WrapText,
 } from 'lucide-react'
-import { DropdownMenu } from 'radix-ui'
 import { closeHistory, history } from '@tiptap/pm/history'
 import { Fragment, Slice } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import type { PosterImageAttributes } from './ImageExtension'
+import { normalizeIncomingContent } from './contentNormalization'
 import { createEditorExtensions } from './editorExtensions'
 import { insertRootPageBreak } from './pageBreakCommand'
 import {
@@ -44,26 +44,20 @@ import {
 import {
   canKeepPhraseTogether,
   normalizeChineseBoldBoundaryWhitespaceHtml,
-  normalizeEditorContent,
   NO_WRAP_PHRASE_MAX_LENGTH,
 } from '@/lib/textReliability'
 import {
   createImageId,
   normalizeImageAlign,
-  normalizeImageDocument,
   normalizeImageWidth,
   type ImageAlign,
-  type ImageNodeLike,
 } from '@/lib/imageModel'
 import {
   normalizeHighlightOpacity,
   TEXT_HIGHLIGHT_COLOR,
   TEXT_HIGHLIGHT_DEFAULT_OPACITY,
 } from '@/lib/textHighlight'
-import {
-  normalizePageBreakHtml,
-  normalizePageBreakJson,
-} from '@/lib/pageBreak'
+import { normalizePageBreakHtml } from '@/lib/pageBreak'
 import '@/styles/editor.css'
 
 // 上抛给 App 的选区状态，中央画布和右侧检查器共用。
@@ -193,15 +187,6 @@ const DEFAULT_CONTENT = `
 <blockquote>导出尺寸 2160 × 3600，真实 9:15（3:5），scale 2 高清。</blockquote>
 <p>开始写你自己的内容吧 ✦</p>
 `
-
-export function normalizeIncomingContent(content: object | string): object | string {
-  const normalizedText = normalizeEditorContent(content)
-  return typeof normalizedText === 'string'
-    ? normalizePageBreakHtml(normalizedText)
-    : normalizeImageDocument(
-        normalizePageBreakJson(normalizedText) as ImageNodeLike,
-      )
-}
 
 // 内部复制图片会同时复制 data-image-id。粘贴前清空 ID，
 // PosterImage 插件就会为新节点分配独立身份，原图 ID 不变。
@@ -585,6 +570,9 @@ interface EditorToolbarButtonProps {
   icon?: ReactNode
   active?: boolean
   disabled?: boolean
+  ariaDisabled?: boolean
+  ariaLabel?: string
+  describedBy?: string
   title?: string
   compact?: boolean
 }
@@ -596,17 +584,25 @@ function Btn({
   icon,
   active,
   disabled,
+  ariaDisabled = false,
+  ariaLabel,
+  describedBy,
   title,
   compact = false,
 }: EditorToolbarButtonProps) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={() => {
+        if (!ariaDisabled) onClick()
+      }}
       disabled={disabled}
-      title={title}
+      title={title ?? label}
       aria-pressed={active ?? undefined}
-      aria-label={compact ? label : undefined}
+      aria-disabled={ariaDisabled || undefined}
+      aria-label={ariaLabel ?? (compact ? label : undefined)}
+      aria-describedby={describedBy}
       className={`editor-toolbar-button${active ? ' is-active' : ''}${
         compact ? ' is-compact' : ''
       }`}
@@ -632,6 +628,7 @@ function EditorToolbar({
     editor,
     selector: ({ transactionNumber }) => transactionNumber,
   })
+  const noWrapHintId = useId()
   if (!editor) return null
   const activeEditor = editor
   const { from, to, empty } = editor.state.selection
@@ -649,6 +646,18 @@ function EditorToolbar({
   const canToggleNoWrap =
     !empty &&
     (noWrapActive || (phraseWithinLimit && phraseFitsH1))
+  const phraseLength = Array.from(prospectivePhrase.trim()).length
+  const noWrapHint = empty
+    ? `短语不拆：请先选中 1–${NO_WRAP_PHRASE_MAX_LENGTH} 个字符`
+    : noWrapActive
+      ? '短语不拆：已启用，再次点击可解除'
+      : /[\r\n]/.test(prospectivePhrase)
+        ? '短语不拆：选区不能跨段或换行'
+        : phraseLength === 0 || phraseLength > NO_WRAP_PHRASE_MAX_LENGTH
+          ? `短语不拆：请选择 1–${NO_WRAP_PHRASE_MAX_LENGTH} 个字符`
+          : !phraseFitsH1
+            ? '短语不拆：当前一级标题宽度不足'
+            : '短语不拆：当前选区可以保持在同一行'
   const blockType = editor.isActive('heading', { level: 1 })
     ? 'h1'
     : editor.isActive('heading', { level: 2 })
@@ -689,153 +698,126 @@ function EditorToolbar({
   }
 
   return (
-    <div className="editor-toolbar" aria-label="正文排版工具栏">
-      <div className="editor-toolbar-primary">
-        <Select value={blockType} onValueChange={setBlockType}>
-          <SelectTrigger className="editor-block-select" aria-label="段落样式">
-            <SelectValue>
-              {blockType === 'paragraph' ? '正文' : blockType.toUpperCase()}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="h1">H1 · 一级标题</SelectItem>
-              <SelectItem value="h2">H2 · 二级标题</SelectItem>
-              <SelectItem value="h3">H3 · 三级标题</SelectItem>
-              <SelectItem value="paragraph">正文</SelectItem>
-              <SelectItem value="code">代码块</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <span className="editor-toolbar-divider" aria-hidden="true" />
-        <Btn
-          label="加粗"
-          compact
-          icon={<Bold />}
-          active={editor.isActive('bold')}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-        />
-        <Btn
-          label="斜体"
-          compact
-          icon={<Italic />}
-          active={editor.isActive('italic')}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-        />
-        <Btn
-          label="下划线"
-          compact
-          icon={<Underline />}
-          active={editor.isActive('underline')}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-        />
-        <span className="editor-toolbar-divider" aria-hidden="true" />
-        <Btn
-          label="无序列表"
-          compact
-          icon={<List />}
-          active={editor.isActive('bulletList')}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-        />
-        <Btn
-          label="有序列表"
-          compact
-          icon={<ListOrdered />}
-          active={editor.isActive('orderedList')}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        />
-        <Btn
-          label="引用"
-          compact
-          icon={<Quote />}
-          active={editor.isActive('blockquote')}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        />
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button
-              type="button"
-              className="editor-toolbar-button editor-toolbar-more"
-              aria-label="更多结构工具"
+    <div className="editor-toolbar" role="group" aria-label="正文排版工具">
+      <div className="editor-toolbar-frame">
+        <div
+          className="editor-toolbar-row editor-toolbar-format"
+          role="group"
+          aria-label="文字格式"
+        >
+          <Select value={blockType} onValueChange={setBlockType}>
+            <SelectTrigger className="editor-block-select" aria-label="段落样式">
+              <SelectValue>
+                {blockType === 'paragraph' ? '正文' : blockType.toUpperCase()}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              onCloseAutoFocus={(event) => {
+                event.preventDefault()
+                queueMicrotask(() => activeEditor.commands.focus())
+              }}
             >
-              <MoreHorizontal aria-hidden="true" />
-              <span>更多</span>
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              className="editor-toolbar-menu"
-              sideOffset={6}
-              align="end"
-            >
-              <ToolbarMenuItem
-                icon={<Code2 />}
-                label="代码块"
-                active={editor.isActive('codeBlock')}
-                onSelect={() => editor.chain().focus().toggleCodeBlock().run()}
-              />
-              <ToolbarMenuItem
-                icon={<Minus />}
-                label="插入分隔线"
-                onSelect={() =>
-                  editor.chain().focus().insertContent({ type: 'divider' }).run()
-                }
-              />
-              <ToolbarMenuItem
-                icon={<PanelTopOpen />}
-                label="插入分页"
-                onSelect={() => insertRootPageBreak(editor)}
-              />
-              {onInsertImageClick ? (
-                <ToolbarMenuItem
-                  icon={<ImagePlus />}
-                  label="插入图片"
-                  onSelect={onInsertImageClick}
-                />
-              ) : null}
-              <DropdownMenu.Separator className="editor-toolbar-menu-separator" />
-              <ToolbarMenuItem
-                icon={<WrapText />}
-                label="短语不拆"
-                active={noWrapActive}
-                disabled={!canToggleNoWrap}
-                onSelect={toggleNoWrapPhrase}
-              />
-              {!canToggleNoWrap ? (
-                <div className="editor-toolbar-menu-hint">
-                  先选中 1–{NO_WRAP_PHRASE_MAX_LENGTH} 个字符
-                </div>
-              ) : null}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+              <SelectGroup>
+                <SelectItem value="h1">H1 · 一级标题</SelectItem>
+                <SelectItem value="h2">H2 · 二级标题</SelectItem>
+                <SelectItem value="h3">H3 · 三级标题</SelectItem>
+                <SelectItem value="paragraph">正文</SelectItem>
+                <SelectItem value="code">代码块</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <span className="editor-toolbar-divider" aria-hidden="true" />
+          <Btn
+            label="代码块"
+            compact
+            icon={<Code2 />}
+            active={editor.isActive('codeBlock')}
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          />
+          <Btn
+            label="加粗"
+            compact
+            icon={<Bold />}
+            active={editor.isActive('bold')}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          />
+          <Btn
+            label="斜体"
+            compact
+            icon={<Italic />}
+            active={editor.isActive('italic')}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          />
+          <Btn
+            label="下划线"
+            compact
+            icon={<Underline />}
+            active={editor.isActive('underline')}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+          />
+          <span className="editor-toolbar-divider" aria-hidden="true" />
+          <Btn
+            label="无序列表"
+            compact
+            icon={<List />}
+            active={editor.isActive('bulletList')}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          />
+          <Btn
+            label="有序列表"
+            compact
+            icon={<ListOrdered />}
+            active={editor.isActive('orderedList')}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          />
+          <Btn
+            label="引用"
+            compact
+            icon={<Quote />}
+            active={editor.isActive('blockquote')}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          />
+        </div>
+        <div
+          className="editor-toolbar-row editor-toolbar-structure"
+          role="group"
+          aria-label="结构插入"
+        >
+          <Btn
+            label="分隔线"
+            ariaLabel="插入分隔线"
+            icon={<Minus />}
+            onClick={() =>
+              editor.chain().focus().insertContent({ type: 'divider' }).run()
+            }
+          />
+          <Btn
+            label="分页"
+            ariaLabel="插入分页"
+            icon={<PanelTopOpen />}
+            onClick={() => insertRootPageBreak(editor)}
+          />
+          <Btn
+            label="图片"
+            ariaLabel="插入图片"
+            icon={<ImagePlus />}
+            ariaDisabled={!onInsertImageClick}
+            onClick={() => onInsertImageClick?.()}
+          />
+          <Btn
+            label="短语不拆"
+            icon={<WrapText />}
+            active={noWrapActive}
+            ariaDisabled={!canToggleNoWrap}
+            describedBy={noWrapHintId}
+            onClick={toggleNoWrapPhrase}
+          />
+        </div>
+      </div>
+      <div id={noWrapHintId} className="editor-toolbar-hint">
+        {noWrapHint}
       </div>
     </div>
-  )
-}
-
-function ToolbarMenuItem({
-  icon,
-  label,
-  active = false,
-  disabled = false,
-  onSelect,
-}: {
-  icon: ReactNode
-  label: string
-  active?: boolean
-  disabled?: boolean
-  onSelect: () => void
-}) {
-  return (
-    <DropdownMenu.Item
-      className={`editor-toolbar-menu-item${active ? ' is-active' : ''}`}
-      disabled={disabled}
-      onSelect={onSelect}
-    >
-      <span aria-hidden="true">{icon}</span>
-      {label}
-    </DropdownMenu.Item>
   )
 }
 
