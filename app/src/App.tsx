@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import {
   EditorPane,
   type EditorHandle,
@@ -46,7 +54,9 @@ import {
   type Asset,
 } from '@/lib/builtinAssets'
 import {
+  getFontRegistryRevision,
   loadAllUserFontsWithReport,
+  subscribeFontRegistryRevision,
   type UserFontLoadReport,
 } from '@/lib/fontRegistry'
 import {
@@ -261,6 +271,11 @@ function App() {
   // 收集多页 .page DOM 节点供导出截图使用
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
   const [userFontFamilies, setUserFontFamilies] = useState<string[]>([])
+  const fontRegistryRevision = useSyncExternalStore(
+    subscribeFontRegistryRevision,
+    getFontRegistryRevision,
+    getFontRegistryRevision,
+  )
   // 用户保存的主题列表，由 App 集中维护，同时供 Toolbar 下拉和 ThemeLibrary 卡片使用
   const [userThemes, setUserThemes] = useState<Theme[]>([])
   // 当前光标下图片节点的状态，Toolbar「图片宽度」下拉据此显示当前值/启用
@@ -363,6 +378,7 @@ function App() {
     density,
     h1Width,
     userFontFamilies.join(','),
+    fontRegistryRevision,
   ].join('|')
 
   const selectActiveDraft = useCallback((identity: DraftIdentity) => {
@@ -1598,7 +1614,7 @@ function App() {
   }
 
   // CSS var 注入
-  useEffect(() => {
+  useInsertionEffect(() => {
     const root = document.documentElement
     root.style.setProperty('--font-h1', fontH1)
     root.style.setProperty('--font-h2', fontH2)

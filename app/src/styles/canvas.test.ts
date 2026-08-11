@@ -109,3 +109,39 @@ describe('theme-public-exam-landscape canvas CSS', () => {
     ).toBe(true)
   })
 })
+
+describe('字体光学对齐 CSS 契约', () => {
+  it('H2 竖线用运行时字形中线/高度，并保留无 JS 回退', () => {
+    const bar = findRule('.content h2::before')
+    expect(property(bar, 'top')).toBe('var(--h2-optical-center-y, 50%)')
+    expect(property(bar, 'bottom')).toBe('auto')
+    expect(property(bar, 'height')).toBe(
+      'var(--h2-optical-bar-height, 92%)',
+    )
+    expect(property(bar, 'transform')).toBe('translateY(-50%)')
+  })
+
+  it('只在 marker 已装饰时关闭原生序号，且列宽/垂直位移都走度量变量', () => {
+    const list = findRule(
+      '.content ol[data-optical-list-marker-columns]',
+    )
+    expect(property(list, 'list-style')).toBe('none')
+    expect(property(list, 'padding-left')).toContain(
+      'var(--optical-list-marker-column-width, 2ch)',
+    )
+
+    const marker = findRule(
+      '.content ol[data-optical-list-marker-columns] > li > .optical-list-marker',
+    )
+    expect(property(marker, 'position')).toBe('absolute')
+    expect(property(marker, 'top')).toBe('0')
+    expect(property(marker, 'right')).toBe('calc(100% + 8px)')
+    expect(property(marker, 'font')).toBe('inherit')
+    expect(property(marker, 'width')).toBe(
+      'var(--optical-list-marker-column-width, 2ch)',
+    )
+    expect(property(marker, 'transform')).toBe(
+      'translateY(var(--optical-list-marker-shift-y, 0))',
+    )
+  })
+})

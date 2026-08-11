@@ -1,10 +1,20 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { OVERLAY_MAP, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
 import { DENSITY_MAP } from '@/lib/density'
 import { computeFontSizeVars } from '@/lib/fontSize'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas'
+import {
+  calibratePageTypography,
+  calibratePageTypographyNow,
+} from '@/lib/opticalTypography'
 
 // 9:15 主题缩略图：渲染缩小的真实 .page，1:1 复用 canvas.css 样式
 // 通过 inline style 把主题的 CSS vars 注入到本地容器，不污染 :root
@@ -28,6 +38,8 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     logoSrc: '',
   })
   const assetRevisionRef = useRef(0)
+  const typographyRevisionRef = useRef(0)
+  const pageRef = useRef<HTMLDivElement | null>(null)
 
   // 解析结果与请求 id pair 绑定。theme 切换后旧 pair 立即失效，
   // 在新资源返回前两个 src 都视为空，避免闪现「新主题 + 旧封面」。
@@ -97,6 +109,38 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
   }
   const isPublicExam = theme.themeClass === 'theme-public-exam-landscape'
 
+  useLayoutEffect(() => {
+    if (pageRef.current) calibratePageTypographyNow(pageRef.current, false)
+  })
+
+  useLayoutEffect(() => {
+    const page = pageRef.current
+    if (!page) return
+    const controller = new AbortController()
+    const revision = ++typographyRevisionRef.current
+    void calibratePageTypography(page, {
+      signal: controller.signal,
+      includeLists: false,
+    }).then(() => {
+      if (
+        controller.signal.aborted ||
+        revision !== typographyRevisionRef.current
+      ) {
+        return
+      }
+      // 读布局让缩略图在当前帧确认新的光学变量。
+      void page.offsetHeight
+    })
+    return () => controller.abort()
+  }, [
+    scale,
+    theme.density,
+    theme.fontH2,
+    theme.fontSize,
+    theme.h2Bold,
+    theme.themeClass,
+  ])
+
   return (
     <div
       style={{
@@ -116,6 +160,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
         }}
       >
         <div
+          ref={pageRef}
           className={`page page--first ${theme.themeClass}`}
           style={{ boxShadow: 'none' }}
         >

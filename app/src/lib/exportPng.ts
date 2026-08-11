@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 import { getUserFontFaceCss } from './fontRegistry'
+import { calibratePageTypography } from './opticalTypography'
 
 // v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
@@ -90,6 +91,16 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
         })
       }),
     )
+
+    // 只校准离屏 stage 内的 deep clone，绝不碰 React 正在显示的
+    // source `.page`。H2 使用 ::before，html2canvas 可能在 onclone
+    // 之前就物化伪元素，所以真实字形中线必须在此时完成并跟随
+    // inline CSS vars / marker spans 一起进入后续 iframe clone。
+    await calibratePageTypography(cloned, {
+      fontTimeoutMs: 5_000,
+      recalibrateOnLateFonts: false,
+      renderTarget: 'html2canvas',
+    })
     void cloned.offsetHeight
 
     // 4. 在 onclone 钩子里注入完整 CSS + 拷贝 :root 的 inline CSS vars
@@ -107,7 +118,7 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
-      onclone: async (clonedDoc) => {
+      onclone: async (clonedDoc, clonedPage) => {
         // 注入完整 CSS：iframe 不需要从网络加载 stylesheet 就能拿到所有规则
         const styleEl = clonedDoc.createElement('style')
         styleEl.textContent = cssText
@@ -120,9 +131,21 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
             current ? `${current};${rootInlineStyle}` : rootInlineStyle,
           )
         }
-        // 等 cloned doc 里的字体（含刚注入的用户字体 @font-face）加载完再截图，
-        // 否则 iframe 里布局按 fallback 字体度量，换行位置会错。3s 兜底防卡死
+        // 先强制请求副本的精确 H2/body 字体，再让 html2canvas
+        // 解析文字 bounds。仅 await fonts.ready 不够：新 @font-face 刚注入
+        // 但尚未触发布局时，ready 可能立即解析，随后的 Range bounds
+        // 仍会用 fallback，导致导出文字相对竖线上移。
         try {
+          // html2canvas 会把本次 referenceElement 作为第二参传入。
+          // 不查询 clonedDoc 的“第一个 stage”，否则并行导出 A/B 时
+          // B 的 iframe 可能误校准 A，导致 unicode-range 字体漏载。
+          void clonedPage.offsetHeight
+          await calibratePageTypography(clonedPage, {
+            fontTimeoutMs: 3_000,
+            recalibrateOnLateFonts: false,
+            renderTarget: 'html2canvas',
+          })
+          void clonedPage.offsetHeight
           await Promise.race([
             clonedDoc.fonts.ready,
             new Promise((r) => setTimeout(r, 3000)),

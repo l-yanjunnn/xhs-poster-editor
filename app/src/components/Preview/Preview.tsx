@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -24,6 +25,10 @@ import {
   snapImageWidth,
   type ImageAlign,
 } from '@/lib/imageModel'
+import {
+  calibratePageTypography,
+  calibratePageTypographyNow,
+} from '@/lib/opticalTypography'
 import type { ThemeKey } from '@/lib/themes'
 
 interface Props {
@@ -284,6 +289,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   const pageRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const gestureRef = useRef<ActiveGesture | null>(null)
+  const typographyRevisionRef = useRef(0)
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
   const [canvasGeometry, setCanvasGeometry] =
     useState<PreviewCanvasGeometry | null>(null)
@@ -293,14 +299,19 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   })
   const [overflowing, setOverflowing] = useState(false)
   const isFirstPage = pageIndex === 0
+  const contentMarkup = useMemo(() => ({ __html: html }), [html])
 
-  // `dangerouslySetInnerHTML` 的容器可能在任意父级更新中重用或
-  // 重建后代节点。每次 commit 后都恢复图片语义，避免可键盘操作性丢失。
+  // 保持 `dangerouslySetInnerHTML` prop 的引用稳定，避免选框、overflow
+  // 等内部状态更新时 React 重写整棵内容 DOM。只在实际排版输入变化时，
+  // 于绘制前恢复图片语义、展示 marker 与光学变量。
   useLayoutEffect(() => {
     if (contentRef.current) {
       makeContentImagesKeyboardAccessible(contentRef.current)
     }
-  })
+    if (pageRef.current) {
+      calibratePageTypographyNow(pageRef.current, true)
+    }
+  }, [html, isFirstPage, layoutRevision, previewScale, themeClass])
 
   const findSelectedImage = useCallback(() => {
     if (!selectedImageId || !contentRef.current) return null
@@ -379,6 +390,39 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     },
     [refreshCanvasGeometry],
   )
+
+  // H2 竖线和有序列表编号是字形伴随元素：首帧先同步
+  // 注入展示 marker，再等精确字体完成后复测。Abort + revision
+  // 防止快速 A→B 切字体时，A 的慢结果回写到 B 上。
+  useLayoutEffect(() => {
+    const page = pageRef.current
+    if (!page) return
+    const controller = new AbortController()
+    const revision = ++typographyRevisionRef.current
+    void calibratePageTypography(page, { signal: controller.signal }).then(
+      () => {
+        if (
+          controller.signal.aborted ||
+          revision !== typographyRevisionRef.current
+        ) {
+          return
+        }
+        const geometry = refreshCanvasGeometry()
+        measureSelection(geometry)
+        measureOverflow(geometry)
+      },
+    )
+    return () => controller.abort()
+  }, [
+    html,
+    isFirstPage,
+    layoutRevision,
+    measureOverflow,
+    measureSelection,
+    previewScale,
+    refreshCanvasGeometry,
+    themeClass,
+  ])
 
   useLayoutEffect(() => {
     const content = contentRef.current
@@ -726,7 +770,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
             <div
               ref={contentRef}
               className="content"
-              dangerouslySetInnerHTML={{ __html: html }}
+              dangerouslySetInnerHTML={contentMarkup}
             />
             {pageTotal > 1 && (
               <div className="page-tag">

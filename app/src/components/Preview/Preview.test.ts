@@ -324,3 +324,69 @@ describe('Preview page-role geometry', () => {
     )
   })
 })
+
+describe('Preview optical list markers', () => {
+  it('HTML 替换后重建展示序号，布局 revision 复测不会重复注入', async () => {
+    installRectMock()
+    const firstHtml =
+      '<ol start="9"><li><p>第九项</p></li><li><p>第十项</p></li></ol>'
+    const item = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: firstHtml, layoutRevision: 'font-a' },
+    )
+
+    const labels = () =>
+      Array.from(
+        item.host.querySelectorAll<HTMLElement>(
+          '[data-optical-list-marker]',
+        ),
+        (marker) => marker.textContent,
+      )
+    expect(labels()).toEqual(['9.', '10.'])
+    expect(
+      item.host.querySelector('ol')?.getAttribute(
+        'data-optical-list-marker-columns',
+      ),
+    ).toBe('3')
+    expect(
+      item.host.querySelector('[data-optical-list-marker]')?.getAttribute(
+        'aria-hidden',
+      ),
+    ).toBeNull()
+    const firstMarker = item.host.querySelector('[data-optical-list-marker]')
+
+    await act(async () => {
+      item.root.render(
+        createElement(Preview, {
+          ref: pageRefWithPadding({ x: 96, top: 180, bottom: 300 }),
+          html: firstHtml,
+          themeClass: '',
+          previewScale: PREVIEW_SCALE,
+          layoutRevision: 'font-b',
+        }),
+      )
+    })
+    expect(labels()).toEqual(['9.', '10.'])
+    expect(
+      item.host.querySelectorAll('[data-optical-list-marker]'),
+    ).toHaveLength(2)
+    expect(item.host.querySelector('[data-optical-list-marker]')).toBe(
+      firstMarker,
+    )
+
+    await act(async () => {
+      item.root.render(
+        createElement(Preview, {
+          ref: pageRefWithPadding({ x: 96, top: 180, bottom: 300 }),
+          html: '<ol reversed><li><p>A</p></li><li value="7"><p>B</p></li></ol>',
+          themeClass: '',
+          previewScale: PREVIEW_SCALE,
+          layoutRevision: 'font-b',
+        }),
+      )
+    })
+    expect(labels()).toEqual(['2.', '7.'])
+    expect(item.host.querySelector('.content')?.textContent).toContain('A')
+    expect(item.host.querySelector('.content')?.textContent).toContain('B')
+  })
+})
