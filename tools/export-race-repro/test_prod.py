@@ -1,6 +1,6 @@
 """Hit a production URL, export multiple rounds, dump PNG sizes.
 
-Usage: python3 test_prod.py [URL] [ROUNDS]
+Usage: python3 test_prod.py [URL] [ROUNDS] [EXPECTED_VERSION]
 """
 import asyncio
 import shutil
@@ -20,6 +20,7 @@ URL = (
     else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
 )
 ROUNDS = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+EXPECTED_VERSION = sys.argv[3] if len(sys.argv) > 3 else "v1.5.0"
 USE_PROXY = "workers.dev" in URL
 
 
@@ -48,7 +49,7 @@ async def run_round(round_idx: int):
         }""")
         await page.wait_for_timeout(8000)  # let fonts/images load
         version = (await page.locator(".topbar-version").text_content()) or ""
-        assert version == "v1.4.1", f"unexpected version: {version}"
+        assert version == EXPECTED_VERSION, f"unexpected version: {version}"
         await page.get_by_role("button", name="导出 PNG").click()
         await page.wait_for_selector('input[type="text"]', timeout=10000)
         await page.fill('input[type="text"]', f"prod-r{round_idx}")

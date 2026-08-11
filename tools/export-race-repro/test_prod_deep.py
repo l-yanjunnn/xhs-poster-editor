@@ -1,8 +1,8 @@
-"""v1.4.1+ 发版标准深度回归：三主题导出像素校验 + 用户字体导出验证。
+"""v1.5.0+ 发版标准深度回归：三主题导出像素校验 + 用户字体导出验证。
 
 用法：
-    python3 tools/export-race-repro/test_prod_deep.py [URL]
-    URL 默认 Cloudflare prod；测大陆通道传 http://xhsposter.tshzchen.cn
+    python3 tools/export-race-repro/test_prod_deep.py [URL] [EXPECTED_VERSION]
+    URL 默认 Cloudflare prod；测大陆通道传 https://xhsposter.tshzchen.cn
 
 前提：系统 proxy 127.0.0.1:7897（测大陆通道时脚本自动直连不走代理）
 """
@@ -16,6 +16,7 @@ from PIL import Image
 from playwright.async_api import async_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.0"
 USE_PROXY = "workers.dev" in URL  # 大陆通道直连
 FONT_FILE = "/System/Library/Fonts/Supplemental/Comic Sans MS.ttf"
 OUT = Path("/tmp/prod_deep_test")
@@ -110,8 +111,8 @@ async def main():
             }"""
         )
         print(f"页面版本信息: {version}, js={js_hash}")
-        if version != "v1.4.1":
-            problems.append(f"线上版本 {version} ≠ v1.4.1")
+        if version != EXPECTED_VERSION:
+            problems.append(f"线上版本 {version} ≠ {EXPECTED_VERSION}")
 
         # ---- 内容换成单页拉丁 H1（Comic Sans 无中文字形，且单页导出直接出 PNG）----
         editor = page.locator(".tiptap-editor .ProseMirror, .ProseMirror").first
