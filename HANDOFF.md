@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-11（v1.4.1 线上状态不变；v1.5.0「公考双底图模板版」已在本地完成实现、联合回归和用户视觉验收，当前为待发布候选版；尚未 bump/推送/部署/打 tag。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-11（v1.5.0「公考双底图模板版」已完成 Cloudflare + OSS/CDN 双轨发布、生产回归、tag 与不可覆盖归档。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -10,15 +10,15 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.4.1**。正式代码提交 `d89b927`，tag `v1.4.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-CJUSefBL.js`，页面版本号均已核验。`v1.4.1` 仅同步默认 5 页教程到新三栏界面，V1.4 功能主体提交为 `61b6a9b` / tag `v1.4.0` |
-| 本地归档 | 当前完整构建在 `app/dist/`；不可覆盖的应用核心快照在 `archive/dist-v1.4.1/`，`archive/dist-v1.4.0/` 保留首发快照；字体清单见各归档的 `FONTS-MANIFEST.txt`，完整复原走对应 tag + `bash ci.sh` |
-| 状态 | **v1.4.1 双轨稳定在线；v1.5.0 本地候选版已完成并视觉通过**。本地 `main` 当前以 `86a5949` 收口，已包含顶层安全分页、固定两行工具栏、V2 双底图主题/草稿、「公考·山水卷」与基于真实字形的标题/有序列表中线校准；未推送、未部署，不得将本地状态写成线上已发布 |
-| 待发布 | **v1.5.0 仅剩发版闭环**：代码、自动化回归、真实 Chromium 多字体/多字号导出和最终 v3 视觉证据均已验收；用户已确认视觉无问题，但尚未明确下达「可以发布」的外部发布授权。授权后再 bump `app/package.json` 至 `1.5.0`、双轨部署、生产回归、tag、归档和公告；Markdown 导入/自动编排继续顺延 |
+| 线上版本 | **v1.5.0**。发布提交 `227b0da`，tag `v1.5.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-D0LqeUgP.js` + `assets/index-BQdpJR0I.css`，页面版本号与资源 SHA-256 均已核验一致 |
+| 本地归档 | 当前完整构建在 `app/dist/`；v1.5.0 不可覆盖核心快照在 `archive/dist-v1.5.0/`（9.5M，排除字体 3337 个，清单见 `FONTS-MANIFEST.txt`）；`archive/dist-v1.4.0/` / `dist-v1.4.1/` 继续保留，完整复原走对应 tag + `bash ci.sh` |
+| 状态 | **v1.5.0 双轨稳定在线**。已发布顶层安全分页、固定两行工具栏、V2 双底图主题/草稿、「公考·山水卷」、封面主/副标题 HEX 控件，以及基于真实字形的 H2 竖线/有序列表序号中线校准；V1 旧草稿和旧主题保持兼容 |
+| 发布闭环 | **2026-08-11 15:48 CST 完成**：用户明确授权发布；`main` 与精确 tag 已推送；Cloudflare + OSS/CDN 双轨均上线同一构建；两入口的 1/2/5 页公考路由、语义色、列表分页、PNG/ZIP 尺寸和字形中线均通过，旧三主题与用户字体也完成深回归；专业公告草稿见 `docs/RELEASE-v1.5.0.md`，未经单独确认不外发；Markdown 导入/自动编排继续顺延 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | 线上 v1.4.1：vitest 81/81、tsc -b、ESLint、build、diff-check、`test_v140_local.py` 全绿；2026-08-10 23:52 CST 双生产入口 `test_prod_deep.py` 均通过，两边新版 5 页教程各导出 5/5，全部为 2160×3600。本地 v1.5.0 候选版：Vitest **32 文件 / 217 测试**、tsc -b、ESLint、Vite build、diff-check 全绿；`test_v150_local.py` 完整通过，覆盖分页、草稿、双底图、图片交互、导出预检和 2 页公考 ZIP；真实 Chromium 完成 Noto/LXGW/苹方/长仿宋/龙藏体等多字体、32–48px、单/双行与中英数混排的预览/导出中线校准，误差 0–1.5 个导出原生像素 |
+| 测试基线 | v1.5.0 本地：Vitest **32 文件 / 217 测试**、tsc -b、ESLint、Vite build、`bash ci.sh`、diff-check、`test_v150_local.py` 全绿；真实 Chromium 多字体/多字号/混排中线误差 0–1.5 个导出原生像素。v1.5.0 生产：Cloudflare 与 OSS/CDN 分别运行 `test_v150_prod.py`，1/2/5 页全通过，H2 竖线误差 0.5px、列表序号误差 0px；两入口顺序运行 `test_prod_deep.py`，雅致/极简白/深夜黑与用户字体均通过，均加载 `index-D0LqeUgP.js` |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
@@ -57,12 +57,12 @@
    ```bash
    cd app
    ./node_modules/.bin/tsc -b        # 类型检查
-   ./node_modules/.bin/vitest run    # 单测（当前本地候选版 217 个）
+   ./node_modules/.bin/vitest run    # 单测（当前 217 个）
    ./node_modules/.bin/vite build    # 构建
    ```
 4. **UI 改动**：`vite preview` + Playwright 截图自查 → 用户目检确认后再部署
 5. **部署**：`git push origin main`，等 1–3 分钟自动上线
-6. **⚠️ 凡碰导出路径（exportPng.ts / canvas.css / Preview）**：部署后**必须在 prod URL 上 playwright 实测**（三主题 × 多页，采样像素而不是肉眼看图）。本地 preview 永远复现不了 prod 的 iframe CSS 问题，v1~v7 八轮全吃过这个亏。回归脚本：`tools/export-race-repro/`（test_prod.py 需系统 proxy 127.0.0.1:7897）
+6. **⚠️ 凡碰导出路径（exportPng.ts / canvas.css / Preview）**：部署后**必须在 prod URL 上 playwright 实测**（三主题 × 多页，采样像素而不是肉眼看图）。本地 preview 永远复现不了 prod 的 iframe CSS 问题，v1~v7 八轮全吃过这个亏。回归脚本：`tools/export-race-repro/test_v150_prod.py` + `test_prod_deep.py`（Cloudflare 入口需系统 proxy 127.0.0.1:7897）
 7. **收尾**：更新本文件 §0 现状快照（+涉及的章节）；里程碑级进展同步 `WorkLog-Obsidian/3-Projects/xhs-poster-小红书排版编辑器.md`
 
 ### 版本与上线闭环（2026-08-10 起，对齐沃林发圈工具工作流）
@@ -78,9 +78,9 @@
 1. bump `app/package.json` version
 2. 本地验证三连 + UI 改动 Playwright 截图自查
 3. **用户目检确认**后才部署
-4. `git push origin main`（= Cloudflare 轨）+ `bash tools/deploy-oss.sh`（= 阿里云轨，**每版必推，不允许只推一轨**）+ `git tag vX.Y.Z && git push --tags`
+4. `git push origin main`（= Cloudflare 轨）+ `bash tools/deploy-oss.sh`（= 阿里云轨，**每版必推，不允许只推一轨**）+ `git tag vX.Y.Z && git push origin refs/tags/vX.Y.Z`（只推本版精确 tag）
 5. 导出路径改动：prod URL playwright 实测（§2 第 6 步）
-6. **归档**：`bash tools/archive-release.sh` → `archive/dist-vX.Y.Z/`（对齐发圈工具文件管理法：历史版本永留 archive/，同版本拒绝覆盖；归档=应用核心 ~6MB，字体走 manifest + git tag 复原）
+6. **归档**：`bash tools/archive-release.sh` → `archive/dist-vX.Y.Z/`（对齐发圈工具文件管理法：历史版本永留 archive/，同版本拒绝覆盖；核心体积以当版构建为准，v1.5.0 为 9.5M，字体走 manifest + git tag 复原）
 7. 更新 HANDOFF §0 版本行 + USAGE.md（如用户可感知的功能变化）
 8. **发版公告必须专业、完整**（含工具网址 + 本版变化摘要 + 必要注意事项），使用**飞书旧企业租户的机器人**发到刘彦君私聊，用户确认后再自行转发；发送前仍须核对租户、机器人和接收人身份
 
@@ -98,13 +98,13 @@ HTTPS：CAS 免费 DV 证书（CertId 26549959，2026-08-10 签发，1 年期，
 
 | 模块 | 内容 |
 |---|---|
-| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、选中短语不拆行（≤12 字）、固定 `#7B3B8B` 正文荧光笔（透明度 0%–100%）、撤销重做、插入图片、手动分页符、分隔线；粘贴/恢复时保守清理中文粗体边界异常空格；图片保存稳定 `imageId / width / align / assetId` 语义属性 |
+| 编辑器（Tiptap） | H1/H2/H3、正文、引用、代码块、列表、加粗、下划线、选中短语不拆行（≤12 字）、固定 `#7B3B8B` 正文荧光笔（透明度 0%–100%）、撤销重做、插入图片、手动分页符、分隔线；工具栏固定两行全部常驻；分页永远归一到 `doc` 根层，有序列表跨页后序号连续；图片保存稳定 `imageId / width / align / assetId` 语义属性 |
 | 顶部全局栏 | 版本、撤销/重做、草稿保存状态与管理、裁切参考、排版参考、磁吸和唯一强 CTA「导出 PNG」；对象样式不再挤在顶栏 |
-| 中央成品画布 | 多页真实 9:15 预览（自适应缩放）；是唯一图片直接操作面：点击选图、四角等比缩放、顶部抓手左/中/右对齐、常用宽度与位置磁吸、Option/Alt 临时旁路、Esc/取消回滚；首页中心 3:4 裁切参考、独立版心参考线、页码角标均只属编辑层 |
-| 右侧上下文检查器 | 页面态显示主题、背景、Logo、字体和全局排版；文字态显示排版、短语不拆与荧光笔；图片态只显示对齐、宽度、替换、删除和溢出提示；高级字体设置按需展开 |
+| 中央成品画布 | 多页真实 9:15 预览（自适应缩放）；是唯一图片直接操作面：点击选图、四角等比缩放、顶部抓手左/中/右对齐、常用宽度与位置磁吸、Option/Alt 临时旁路、Esc/取消回滚；公考主题按当前页序自动路由 Cover/Inner；H2 竖线和有序列表序号按真实字形中线校准；裁切/版心参考和页码角标均只属编辑层 |
+| 右侧上下文检查器 | 页面态显示主题、背景、Logo、字体和全局排版；公考主题另显示封面主/副标题 HEX 与「恢复模板色」；文字态显示排版、短语不拆与荧光笔；图片态只显示对齐、宽度、替换、删除和溢出提示；高级字体设置按需展开 |
 | 最近操作 | 显示本会话最近 3–5 条已提交动作，不持久化、不另造历史系统；一次图片手势只生成一条动作与一个 undo 事务 |
-| 草稿库 | IndexedDB `xhs-poster-documents` 保存完整 Tiptap JSON + 15 项样式/素材 id；900ms 自动保存、同步 WAL 保护立即关页、刷新恢复、另存/切换/删除；写入串行，并用浏览器原子 Web Lock 让第二标签页只读，防旧快照覆盖新编辑 |
-| 主题库 | 内置 3（雅致/极简白/深夜黑）+ 用户主题（IndexedDB `xhs-poster-themes`），9:15 真图缩略图；v1.3 起新主题只存样式，历史含正文主题仍可兼容打开 |
+| 草稿库 | IndexedDB `xhs-poster-documents` 保存完整 Tiptap JSON + V2 样式/双底图/语义色资产 id；900ms 自动保存、同步 WAL 保护立即关页、刷新恢复、另存/切换/删除；严格兼容 V1 草稿，写入串行，并用浏览器原子 Web Lock 让第二标签页只读 |
+| 主题库 | 内置 4（雅致/极简白/深夜黑/公考·山水卷）+ 用户主题（IndexedDB `xhs-poster-themes`），9:15 真图缩略图；公考主题只套用双底图与样式，不覆盖正文；历史含正文主题仍可兼容打开 |
 | 素材库 | 背景/Logo/图片三 tab × 内置/上传，IndexedDB `xhs-poster` 存 Blob |
 | 字体库 | 拖拽上传 ttf/otf/woff/woff2/ttc，IndexedDB `xhs-poster-fonts`，FontFace 注册，启动时全量恢复 |
 | 导出 | 单页 PNG / 多页 zip，重命名弹窗（默认取首个 H1），同名自动追 -2/-3 序号，scale 2；导出前统一等待资源，失败项可重试或明确选择继续；选框、手柄、参考线、磁吸线、最近操作与溢出提示均不进成品 |
@@ -172,11 +172,11 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ### 当前仓库架构（exportPng.ts）
 
-两层 v8 导出基座之上，v1.5 本地候选版又增加了真实字形校准层：
+两层 v8 导出基座之上，v1.5.0 又增加了真实字形校准层：
 
 1. **离屏渲染**（v7 引入）：deep clone `.page` 到 body 直接子节点的 fixed 屏外 stage（无 transform 祖先），bbox 由画布常量固定为 1080×1800。预览的 `transform: scale(0.4)` 与导出彻底解耦，源 DOM 零修改
 2. **onclone 注入全量 CSS**（v8 引入）：html2canvas-pro 把 cloned DOM 放进 about:blank iframe 截图，prod 上 iframe 跨域加载 `<link>` stylesheet 会被 CORS 拦掉 → cloned doc 裸渲染。修法：`collectAllCss()` 把 `document.styleSheets` 全部 cssRules 转 text 注入 cloned doc `<head>`，同时拷贝 `:root` 的 inline CSS vars。对未来新主题/新素材天然鲁棒（全量复制，不依赖具体类名）
-3. **真实字形中线校准**（v1.5 本地候选）：`typographyMetrics.ts` 通过 canvas 的 `actualBoundingBoxAscent/Descent` 按实际字体、字号、字重和每个 grapheme 测量可见字形；`opticalTypography.ts` 只对渲染面校准 H2 前竖线与标题、列表首个可见行的序号与文字中线。预览在字体 revision 变化后异步重算；导出先校准屏外 stage，再在 `onclone` 中以第二个 reference element 复算 iframe 的真实字体，并始终保持源 React DOM 零修改
+3. **真实字形中线校准**（v1.5.0）：`typographyMetrics.ts` 通过 canvas 的 `actualBoundingBoxAscent/Descent` 按实际字体、字号、字重和每个 grapheme 测量可见字形；`opticalTypography.ts` 只对渲染面校准 H2 前竖线与标题、列表首个可见行的序号与文字中线。预览在字体 revision 变化后异步重算；导出先校准屏外 stage，再在 `onclone` 中以第二个 reference element 复算 iframe 的真实字体，并始终保持源 React DOM 零修改
 
 辅助机制：img 解码等待（5s 兜底）、`document.fonts.ready`、字体注册表 revision/缓存失效、异步校准 abort guard、`hasRaceArtifact` 检测 + retry ×2（v5 遗留，v8 下基本不触发，留作兜底）、下载 60s 后才 revoke blob URL。
 
@@ -329,7 +329,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. **完整可点击回跳的修改时间线暂不做**：Tiptap 没有现成动作标签与任意回跳能力，为它另造持久快照系统会把图片交互版本拖成历史系统重构；v1.4 先用轻量最近操作 + 原生撤销重做验证价值
 4. **独立自诊断页暂不做**：本版先完成资源就绪检查、局部降级和原地重试；只有真实故障数据证明需要时，再建设完整自诊断页
 
-### v1.5.0「公考双底图模板版」（2026-08-11 本地完成且视觉通过；待发布）
+### v1.5.0「公考双底图模板版」（2026-08-11 已双轨上线）
 
 #### 需求与产品定义
 
@@ -504,7 +504,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - 合并为一个用户版本，只需一次 V1→V2 迁移、一轮完整导出验收、一次双轨部署和一份专业公告；内部用独立工作包/提交又能让问题可定位、可回退
 - 只有当公考模板明显延期，或线上分页缺陷需要立即止血时，才把「列表安全分页」先独立发为 **v1.4.2**，再发 v1.5.0；不得把多个不同构建都叫 v1.5.0
 
-#### 实施完成记录与发布门禁
+#### 实施完成记录与发布闭环
 
 1. **WP1·分页可靠性 ✅**：`b4e9088` 实现顶层安全分页，`fbb9c03` 补强粘贴/恢复等内容边界的根层不变量；无序/有序/嵌套列表分页已回归
 2. **WP2·工具可见性 ✅**：`faf109a` 将正文工具栏改为固定两行常驻，删除「更多」主路径，并通过第一轮用户目检
@@ -512,12 +512,12 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 4. **WP4·公考视觉闭环 ✅**：`589694f` 接入页序路由、内置资产、「公考·山水卷」、专属 CSS、两个 HEX 控件、资源降级和导出预检
 5. **WP4.1·真实字形光学对齐 ✅**：`86a5949` 完成 H2 标题与竖线、有序列表序号与首行文字的中线校准；覆盖预览、ThemePreview、html2canvas 导出、字体冷加载/切换、混合字体和可访问列表语义。最终 v3 预览/导出已获用户视觉确认
 6. **WP5·联合回归 ✅**：32 文件 / 217 单测、tsc、ESLint、build、diff-check、`test_v150_local.py` 和真实 Chromium 多字体/多字号像素校验全绿；独立审计无 P0/P1/P2 或阻断项
-7. **发布门禁 ⏳**：本地实现和视觉验收已完成，但 `app/package.json` 仍为 `1.4.1`，本地提交未推送。只有用户进一步明确授权「可以发布」后，才 bump 至 v1.5.0，执行 Cloudflare + OSS/CDN 双轨部署、tag，并在两入口各做 1/2/5 页背景 + 主/副标题颜色 + 列表分页 + 字形中线回归，再归档、更新 USAGE/项目日志和准备专业公告草稿
+7. **发布闭环 ✅**：用户于 2026-08-11 明确授权「可以发布」；`227b0da` 将版本升至 v1.5.0 并补齐生产回归脚本。Cloudflare + OSS/CDN 双轨部署同一 `index-D0LqeUgP.js` / `index-BQdpJR0I.css`，tag `v1.5.0` 已推送；两入口的 1/2/5 页背景、主/副标题色、列表分页、字形中线、旧三主题与用户字体回归全绿，`archive/dist-v1.5.0/` 已按不覆盖原则归档；公告草稿在 `docs/RELEASE-v1.5.0.md`，外发仍需按 §2 第 8 步并结合 §9 核对飞书身份
 
-### 后续版本路线（v1.5.0 已确认；其后仍是候选，开工前再确认）
+### 后续版本路线（v1.5.0 已上线；其后仍是候选，开工前再确认）
 
 1. **v1.4.1 桌面交互与可靠性版（已上线）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则；补丁版同步默认 5 页教程
-2. **v1.5.0 公考双底图模板版（本地候选版已完成并视觉通过，待发布）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，标题竖线/列表序号按真实字形中线对齐，旧草稿/主题兼容、资源恢复与高清导出闭环
+2. **v1.5.0 公考双底图模板版（2026-08-11 已完成并双轨上线）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，标题竖线/列表序号按真实字形中线对齐，旧草稿/主题兼容、资源恢复与高清导出闭环
 3. **v1.6.0 视觉资产质量版**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、字体与图片在预览/导出中的一致性、加载性能优化
 4. **v1.7.0 文档自动编排版（已顺延）**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
 5. **v1.8.0 交付与诊断版（按需要）**：PWA 安装、部署/资源诊断、稳定运行后简化 `hasRaceArtifact/retry`；Tauri macOS `.app` 只在确有离线桌面分发需求时再评估，不与 PWA 同时默认开工
@@ -542,14 +542,14 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ## 10. 新会话开场建议
 
-v1.5.0 发布候选版接手开场：
+v1.5.0 上线后接手开场：
 
 ```
 我在继续做小红书排版编辑器项目。请先完整读取：
 
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/HANDOFF.md
 
-§8 的 v1.5.0「公考双底图模板版」已在本地 main 完成，最后实现提交为 `86a5949`，用户已确认视觉无问题。线上仍是 v1.4.1，`app/package.json` 也仍为 1.4.1；本地提交未推送、未部署、未 tag、未归档。先读 §0/§2/§5/§8 并核对 git 状态。只有我在当前任务明确说「可以发布」后，才按双轨闭环执行 v1.5.0 发版；否则只做本地可逆检查，不触发外部写入。
+§8 的 v1.5.0「公考双底图模板版」已于 2026-08-11 完成 Cloudflare + OSS/CDN 双轨上线，发布提交/tag 为 `227b0da` / `v1.5.0`，两轨均加载 `index-D0LqeUgP.js`。生产 1/2/5 页公考矩阵、旧三主题、用户字体与字形中线回归全绿，归档在 `archive/dist-v1.5.0/`。下一迭代尚未立项；先读 §0/§2/§5/§8 并核对真实仓库与线上状态，再根据用户当前需求评估范围，不自动开工 v1.6。
 ```
 
 通用开场：

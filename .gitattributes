@@ -1,0 +1,2 @@
+# Release archives are byte-for-byte production snapshots. Do not normalize or diff minified bundles as text.
+archive/dist-*/assets/*.js binary
