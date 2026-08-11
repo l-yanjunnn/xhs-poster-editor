@@ -27,10 +27,12 @@ import {
   WrapText,
 } from 'lucide-react'
 import { closeHistory, history } from '@tiptap/pm/history'
-import { Fragment, Slice } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import type { PosterImageAttributes } from './ImageExtension'
-import { normalizeIncomingContent } from './contentNormalization'
+import {
+  normalizeIncomingContent,
+  stripPastedImageIds,
+} from './contentNormalization'
 import { createEditorExtensions } from './editorExtensions'
 import { insertRootPageBreak } from './pageBreakCommand'
 import {
@@ -187,26 +189,6 @@ const DEFAULT_CONTENT = `
 <blockquote>导出尺寸 2160 × 3600，真实 9:15（3:5），scale 2 高清。</blockquote>
 <p>开始写你自己的内容吧 ✦</p>
 `
-
-// 内部复制图片会同时复制 data-image-id。粘贴前清空 ID，
-// PosterImage 插件就会为新节点分配独立身份，原图 ID 不变。
-function stripPastedImageIds(slice: Slice): Slice {
-  function mapFragment(fragment: Fragment): Fragment {
-    const nodes = Array.from({ length: fragment.childCount }, (_, index) => {
-      const node = fragment.child(index)
-      if (node.type.name === 'image') {
-        return node.type.create(
-          { ...node.attrs, imageId: null },
-          node.content,
-          node.marks,
-        )
-      }
-      return node.content.size > 0 ? node.copy(mapFragment(node.content)) : node
-    })
-    return Fragment.fromArray(nodes)
-  }
-  return new Slice(mapFragment(slice.content), slice.openStart, slice.openEnd)
-}
 
 interface FoundImage {
   pos: number

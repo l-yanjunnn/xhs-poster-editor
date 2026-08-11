@@ -152,4 +152,81 @@ describe('page-break content normalization', () => {
       'bulletList',
     ])
   })
+
+  it('keeps a legacy start-of-item break before the item and removes its ghost paragraph', () => {
+    const normalized = normalizePageBreakJson<PageBreakJsonNode>({
+      type: 'doc',
+      content: [
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [paragraph(), { type: 'horizontalRule' }, paragraph('当前项')],
+            },
+            listItem('后一项'),
+          ],
+        },
+      ],
+    })
+
+    expect(normalized.content?.map((node) => node.type)).toEqual([
+      'horizontalRule',
+      'bulletList',
+    ])
+    expect(JSON.stringify(normalized.content?.[1])).toContain('当前项')
+    expect(JSON.stringify(normalized.content?.[1])).not.toContain(
+      '"type":"paragraph"},{"type":"paragraph"',
+    )
+  })
+
+  it('keeps a legacy middle/end break after the whole item and trims its trailing ghost', () => {
+    const normalized = normalizePageBreakJson<PageBreakJsonNode>({
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          attrs: { start: 4 },
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                paragraph('前半'),
+                { type: 'horizontalRule' },
+                paragraph('后半'),
+                paragraph(),
+              ],
+            },
+            listItem('下一项'),
+          ],
+        },
+      ],
+    })
+
+    expect(normalized.content?.map((node) => node.type)).toEqual([
+      'orderedList',
+      'horizontalRule',
+      'orderedList',
+    ])
+    expect(JSON.stringify(normalized.content?.[0])).toContain('前半')
+    expect(JSON.stringify(normalized.content?.[0])).toContain('后半')
+    expect(normalized.content?.[2]?.attrs?.start).toBe(5)
+    const firstItem = normalized.content?.[0]?.content?.[0]
+    expect(firstItem?.content?.at(-1)?.content?.[0]?.text).toBe('后半')
+  })
+
+  it('recursively prunes HTML ghost lists created only by nested page breaks', () => {
+    const normalized = normalizePageBreakHtml(
+      '<ul><li><p>外层</p><ul><li><p></p><hr class="page-break"></li></ul></li><li><p>下一项</p></li></ul>',
+    )
+    const parsed = new DOMParser().parseFromString(normalized, 'text/html')
+
+    expect(parsed.body.querySelectorAll('hr.page-break')).toHaveLength(1)
+    expect(parsed.body.querySelector('ul ul')).toBeNull()
+    expect(
+      Array.from(parsed.body.querySelectorAll('li')).map((item) =>
+        item.textContent?.trim(),
+      ),
+    ).toEqual(['外层', '下一项'])
+  })
 })

@@ -1,8 +1,12 @@
-import { Node } from '@tiptap/react'
+import { Extension, Node } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { Plugin } from '@tiptap/pm/state'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { normalizePageBreakJson } from '@/lib/pageBreak'
 import { PosterImage } from './ImageExtension'
 import { NoWrapPhrase } from './NoWrapPhrase'
 import { TextHighlight } from './TextHighlight'
+import { handlePageBreakPaste } from './pageBreakCommand'
 
 // 分页节点不属于 block group，因此 listItem/blockquote 的内容表达式无法再
 // 接纳它；只有根文档显式允许 pageBreak，结构不变量由 schema 兜底。
@@ -38,6 +42,52 @@ export const Divider = Node.create({
   },
 })
 
+function hasNestedPageBreak(document: ProseMirrorNode): boolean {
+  let found = false
+  document.descendants((node, _position, parent) => {
+    if (
+      node.type.name === 'horizontalRule' &&
+      parent?.type.name !== 'doc'
+    ) {
+      found = true
+      return false
+    }
+    return !found
+  })
+  return found
+}
+
+const PageBreakInvariants = Extension.create({
+  name: 'pageBreakInvariants',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          handlePaste: (view, event) => handlePageBreakPaste(view, event),
+        },
+        appendTransaction(transactions, _oldState, newState) {
+          if (
+            !transactions.some((transaction) => transaction.docChanged) ||
+            !hasNestedPageBreak(newState.doc)
+          ) {
+            return null
+          }
+          const normalizedJson = normalizePageBreakJson(newState.doc.toJSON())
+          const normalizedDocument = newState.schema.nodeFromJSON(normalizedJson)
+          if (normalizedDocument.eq(newState.doc)) return null
+          return newState.tr
+            .replaceWith(
+              0,
+              newState.doc.content.size,
+              normalizedDocument.content,
+            )
+            .setMeta('pageBreakInvariant', true)
+        },
+      }),
+    ]
+  },
+})
+
 /** 编辑器与测试共用同一套生产 schema，避免 StarterKit 测试漏掉分页约束。 */
 export function createEditorExtensions() {
   return [
@@ -48,6 +98,7 @@ export function createEditorExtensions() {
     PosterDocument,
     RootPageBreak,
     Divider,
+    PageBreakInvariants,
     NoWrapPhrase,
     TextHighlight,
     PosterImage.configure({ inline: false, allowBase64: true }),

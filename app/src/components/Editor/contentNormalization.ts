@@ -2,6 +2,7 @@ import {
   normalizeImageDocument,
   type ImageNodeLike,
 } from '@/lib/imageModel'
+import { Fragment, Slice } from '@tiptap/pm/model'
 import {
   normalizePageBreakHtml,
   normalizePageBreakJson,
@@ -18,4 +19,23 @@ export function normalizeIncomingContent(
     : normalizeImageDocument(
         normalizePageBreakJson(normalizedText) as ImageNodeLike,
       )
+}
+
+/** 内部复制图片会带出稳定 ID；粘贴副本必须重新分配身份。 */
+export function stripPastedImageIds(slice: Slice): Slice {
+  function mapFragment(fragment: Fragment): Fragment {
+    const nodes = Array.from({ length: fragment.childCount }, (_, index) => {
+      const node = fragment.child(index)
+      if (node.type.name === 'image') {
+        return node.type.create(
+          { ...node.attrs, imageId: null },
+          node.content,
+          node.marks,
+        )
+      }
+      return node.content.size > 0 ? node.copy(mapFragment(node.content)) : node
+    })
+    return Fragment.fromArray(nodes)
+  }
+  return new Slice(mapFragment(slice.content), slice.openStart, slice.openEnd)
 }

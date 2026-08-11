@@ -1,9 +1,12 @@
 import { Editor } from '@tiptap/react'
 import { TextSelection } from '@tiptap/pm/state'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { splitIntoPages } from '@/lib/splitPages'
 import { createEditorExtensions } from './editorExtensions'
-import { insertRootPageBreak } from './pageBreakCommand'
+import {
+  handlePageBreakPaste,
+  insertRootPageBreak,
+} from './pageBreakCommand'
 
 function makeEditor(content: object | string): Editor {
   return new Editor({
@@ -59,6 +62,26 @@ describe('insertRootPageBreak', () => {
     expect(splitIntoPages(editor.getHTML())).toHaveLength(2)
     expectOnlyRootPageBreaks(editor)
     editor.destroy()
+  })
+
+  it('places the cursor in an editable new page after paragraph-end and empty-block breaks', () => {
+    for (const html of ['<p>段尾</p>', '<h1>标题</h1>', '<p></p>']) {
+      const editor = makeEditor(html)
+      const position = editor.state.doc.firstChild?.content.size
+        ? editor.state.doc.firstChild.content.size + 1
+        : 1
+      editor.commands.setTextSelection(position)
+
+      insertRootPageBreak(editor)
+
+      expect(editor.state.selection).toBeInstanceOf(TextSelection)
+      editor.commands.insertContent('新页输入')
+      const pages = splitIntoPages(editor.getHTML())
+      expect(pages).toHaveLength(2)
+      expect(pages[1]).toContain('新页输入')
+      expectOnlyRootPageBreaks(editor)
+      editor.destroy()
+    }
   })
 
   it('splits a bullet list after the whole current item, never inside its text', () => {
@@ -198,5 +221,39 @@ describe('insertRootPageBreak', () => {
     expect(rootTypes(codeEditor)).toContain('horizontalRule')
     expectOnlyRootPageBreaks(codeEditor)
     codeEditor.destroy()
+  })
+
+  it('takes over page-break paste at a list boundary without merging existing text', () => {
+    const editor = makeEditor(
+      '<ol start="8"><li><p>已有一</p></li><li><p>已有二</p></li></ol>',
+    )
+    setCursor(editor, '已有一', 2)
+    const before = editor.getJSON()
+    const preventDefault = vi.fn()
+    const event = {
+      clipboardData: {
+        getData: (type: string) =>
+          type === 'text/html'
+            ? '<ol start="4"><li><p>粘贴四</p><hr class="page-break"></li><li><p>粘贴五</p></li></ol>'
+            : '',
+      },
+      preventDefault,
+    } as unknown as ClipboardEvent
+
+    expect(handlePageBreakPaste(editor.view, event)).toBe(true)
+
+    expect(preventDefault).toHaveBeenCalledOnce()
+    expect(editor.state.doc.textContent).toBe('已有一粘贴四粘贴五已有二')
+    expectOnlyRootPageBreaks(editor)
+    expect(splitIntoPages(editor.getHTML())).toHaveLength(2)
+    const lists = editor.getJSON().content?.filter((node) =>
+      ['orderedList', 'bulletList'].includes(node.type),
+    )
+    expect(lists?.map((list) => list.attrs?.start)).toEqual([8, 4, 5, 9])
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getJSON()).toEqual(before)
+    expect(editor.commands.redo()).toBe(true)
+    expect(editor.state.doc.textContent).toBe('已有一粘贴四粘贴五已有二')
+    editor.destroy()
   })
 })

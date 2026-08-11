@@ -184,4 +184,52 @@ describe('v1.4 editor extensions', () => {
     expect(json.content?.[2]?.attrs?.start).toBe(5)
     editor.destroy()
   })
+
+  it('guards raw editor.commands.setContent and keeps normalization in one history event', () => {
+    const editor = makeEditor('<p>操作前</p>')
+    editor.commands.setTextSelection(2)
+    const before = editor.getJSON()
+
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          attrs: { start: 4 },
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: '第四项' }] },
+                { type: 'horizontalRule' },
+              ],
+            },
+            {
+              type: 'listItem',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: '第五项' }] },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(editor.getJSON().content?.slice(0, 3).map((node) => node.type)).toEqual([
+      'orderedList',
+      'horizontalRule',
+      'orderedList',
+    ])
+    editor.state.doc.descendants((node, _position, parent) => {
+      if (node.type.name === 'horizontalRule') {
+        expect(parent?.type.name).toBe('doc')
+      }
+      return true
+    })
+    expect(editor.commands.undo()).toBe(true)
+    expect(editor.getJSON()).toEqual(before)
+    expect(editor.commands.redo()).toBe(true)
+    expect(editor.getJSON().content?.[1]?.type).toBe('horizontalRule')
+    editor.destroy()
+  })
 })

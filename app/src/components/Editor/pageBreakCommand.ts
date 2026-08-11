@@ -1,5 +1,10 @@
 import type { Editor } from '@tiptap/react'
-import { Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model'
+import {
+  DOMParser as ProseMirrorDOMParser,
+  Fragment,
+  Slice,
+  type Node as ProseMirrorNode,
+} from '@tiptap/pm/model'
 import { closeHistory } from '@tiptap/pm/history'
 import {
   NodeSelection,
@@ -7,6 +12,10 @@ import {
   TextSelection,
   type Transaction,
 } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
+import { normalizePageBreakHtml } from '@/lib/pageBreak'
+import { normalizeChineseBoldBoundaryWhitespaceHtml } from '@/lib/textReliability'
+import { stripPastedImageIds } from './contentNormalization'
 
 function isList(node: ProseMirrorNode): boolean {
   return node.type.name === 'bulletList' || node.type.name === 'orderedList'
@@ -162,13 +171,132 @@ export function insertRootPageBreak(editor: Editor): boolean {
     placeSelectionAfterBreak(transaction, selection.to + 1)
   } else {
     transaction.replaceSelectionWith(pageBreak.create())
-    const forward = Selection.findFrom(
-      transaction.doc.resolve(transaction.selection.from),
-      1,
-      true,
-    )
-    if (forward) transaction.setSelection(forward)
+    if (transaction.selection instanceof TextSelection) {
+      const forward = Selection.findFrom(
+        transaction.doc.resolve(transaction.selection.from),
+        1,
+        true,
+      )
+      if (forward) transaction.setSelection(forward)
+    } else {
+      placeSelectionAfterBreak(transaction, transaction.selection.to)
+    }
   }
   editor.view.dispatch(closeHistory(transaction).scrollIntoView())
   return true
+}
+
+function fragmentNodes(fragment: Fragment): ProseMirrorNode[] {
+  return Array.from({ length: fragment.childCount }, (_, index) =>
+    fragment.child(index),
+  )
+}
+
+function selectAfterPastedContent(
+  transaction: Transaction,
+  end: number,
+  lastNode: ProseMirrorNode | undefined,
+): void {
+  if (lastNode?.type.name === 'horizontalRule') {
+    placeSelectionAfterBreak(transaction, end)
+    return
+  }
+  const backward = Selection.findFrom(transaction.doc.resolve(end), -1, true)
+  const forward = Selection.findFrom(transaction.doc.resolve(end), 1, true)
+  if (backward ?? forward) transaction.setSelection((backward ?? forward)!)
+}
+
+/** 含分页的粘贴必须在根边界接管，不能交给默认 fitter 拼入当前 li。 */
+function insertRootPasteFragment(view: EditorView, content: Fragment): boolean {
+  const { state } = view
+  const { selection } = state
+  const { $from } = selection
+  const insertedNodes = fragmentNodes(content)
+  if (insertedNodes.length === 0) return false
+
+  if (
+    $from.depth >= 2 &&
+    isList($from.node(1)) &&
+    $from.node(2).type.name === 'listItem'
+  ) {
+    const list = $from.node(1)
+    const itemIndex = $from.index(1)
+    const item = list.child(itemIndex)
+    const firstChild = item.firstChild
+    const atItemStart =
+      selection.empty &&
+      Boolean(firstChild?.isTextblock) &&
+      $from.parent === firstChild &&
+      $from.parentOffset === 0
+    const consumeEmptyItem = isEmptyListItem(item)
+    const splitBeforeIndex =
+      consumeEmptyItem || atItemStart ? itemIndex : itemIndex + 1
+    const prefixItems: ProseMirrorNode[] = []
+    const suffixItems: ProseMirrorNode[] = []
+    for (let index = 0; index < list.childCount; index += 1) {
+      if (consumeEmptyItem && index === itemIndex) continue
+      const target = index < splitBeforeIndex ? prefixItems : suffixItems
+      target.push(list.child(index))
+    }
+    const prefix = createListSegment(list, prefixItems, 0)
+    const suffix = createListSegment(list, suffixItems, prefixItems.length)
+    const replacement = [prefix, ...insertedNodes, suffix].filter(
+      (node): node is ProseMirrorNode => Boolean(node),
+    )
+    const from = $from.before(1)
+    const transaction = state.tr.replaceWith(
+      from,
+      from + list.nodeSize,
+      Fragment.fromArray(replacement),
+    )
+    const insertedEnd = from + (prefix?.nodeSize ?? 0) + content.size
+    selectAfterPastedContent(
+      transaction,
+      insertedEnd,
+      insertedNodes.at(-1),
+    )
+    view.dispatch(closeHistory(transaction).scrollIntoView())
+    return true
+  }
+
+  if ($from.depth >= 1 && $from.node(1).type.name === 'blockquote') {
+    const insertAt = $from.after(1)
+    const transaction = state.tr.insert(insertAt, content)
+    selectAfterPastedContent(
+      transaction,
+      insertAt + content.size,
+      insertedNodes.at(-1),
+    )
+    view.dispatch(closeHistory(transaction).scrollIntoView())
+    return true
+  }
+
+  const transaction = state.tr.replaceSelection(new Slice(content, 0, 0))
+  view.dispatch(closeHistory(transaction).scrollIntoView())
+  return true
+}
+
+export function handlePageBreakPaste(
+  view: EditorView,
+  event: ClipboardEvent,
+): boolean {
+  const html = event.clipboardData?.getData('text/html') ?? ''
+  if (!html) return false
+  const probe = document.createElement('div')
+  probe.innerHTML = html
+  if (!probe.querySelector('hr:not(.divider)')) return false
+
+  const normalizedHtml = normalizePageBreakHtml(
+    normalizeChineseBoldBoundaryWhitespaceHtml(html),
+  )
+  const container = document.createElement('div')
+  container.innerHTML = normalizedHtml
+  const pastedDocument = ProseMirrorDOMParser.fromSchema(
+    view.state.schema,
+  ).parse(container)
+  const pastedSlice = stripPastedImageIds(
+    new Slice(pastedDocument.content, 0, 0),
+  )
+  event.preventDefault()
+  return insertRootPasteFragment(view, pastedSlice.content)
 }

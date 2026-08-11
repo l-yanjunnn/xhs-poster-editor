@@ -30,43 +30,109 @@ function hasVisibleJsonContent(node: PageBreakJsonNode): boolean {
 
 interface CleanedJsonNode {
   node: PageBreakJsonNode | null
-  pageBreaks: number
+  breaksBefore: number
+  breaksAfter: number
 }
 
-/**
- * 清掉容器内部的分页节点并计数。分页会由调用方放到当前最外层块之后，
- * 这样 blockquote 与嵌套列表都不会留下 schema 合法但画布无法消费的分页。
- */
-function cleanNestedJsonNode(node: PageBreakJsonNode): CleanedJsonNode {
+interface BreakScan {
+  breaksBefore: number
+  breaksAfter: number
+  sawVisibleContent: boolean
+}
+
+function scanJsonBreakPlacement(node: PageBreakJsonNode, scan: BreakScan): void {
   if (isPageBreakJsonNode(node)) {
-    return { node: null, pageBreaks: 1 }
+    if (scan.sawVisibleContent) scan.breaksAfter += 1
+    else scan.breaksBefore += 1
+    return
   }
-  if (!node.content) {
-    return { node: { ...node }, pageBreaks: 0 }
+  if (
+    (node.type === 'text' && Boolean(node.text)) ||
+    node.type === 'image' ||
+    node.type === 'divider' ||
+    node.type === 'hardBreak'
+  ) {
+    scan.sawVisibleContent = true
   }
+  node.content?.forEach((child) => scanJsonBreakPlacement(child, scan))
+}
 
+function cleanJsonTree(node: PageBreakJsonNode): PageBreakJsonNode | null {
+  if (isPageBreakJsonNode(node)) return null
+  if (!node.content) return { ...node }
   const content: PageBreakJsonNode[] = []
-  let pageBreaks = 0
   for (const child of node.content) {
-    const cleaned = cleanNestedJsonNode(child)
-    pageBreaks += cleaned.pageBreaks
-    if (!cleaned.node) continue
-
-    // 只消费“因分页清理而变空”的列表项；用户原本的空列表项保持不变。
+    const scan: BreakScan = {
+      breaksBefore: 0,
+      breaksAfter: 0,
+      sawVisibleContent: false,
+    }
+    scanJsonBreakPlacement(child, scan)
+    const cleaned = cleanJsonTree(child)
+    if (!cleaned) continue
     if (
       child.type === 'listItem' &&
-      cleaned.pageBreaks > 0 &&
-      !hasVisibleJsonContent(cleaned.node)
+      scan.breaksBefore + scan.breaksAfter > 0 &&
+      !hasVisibleJsonContent(cleaned)
     ) {
       continue
     }
-    content.push(cleaned.node)
+    content.push(cleaned)
   }
+  if (
+    (isListJsonNode(node) || node.type === 'blockquote') &&
+    content.length === 0
+  ) {
+    return null
+  }
+  return { ...node, content }
+}
 
-  if (isListJsonNode(node) && content.length === 0) {
-    return { node: null, pageBreaks }
+function isEmptyJsonBlock(node: PageBreakJsonNode): boolean {
+  return (
+    (node.type === 'paragraph' ||
+      node.type === 'heading' ||
+      node.type === 'codeBlock') &&
+    !hasVisibleJsonContent(node)
+  )
+}
+
+function trimBreakAdjacentEmptyJsonBlocks(
+  node: PageBreakJsonNode,
+  trimStart: boolean,
+  trimEnd: boolean,
+): PageBreakJsonNode {
+  if (!node.content) return node
+  const content = [...node.content]
+  if (trimStart) {
+    while (content[0] && isEmptyJsonBlock(content[0])) content.shift()
   }
-  return { node: { ...node, content }, pageBreaks }
+  if (trimEnd) {
+    while (content.at(-1) && isEmptyJsonBlock(content.at(-1)!)) content.pop()
+  }
+  return { ...node, content }
+}
+
+/** 清掉嵌套分页，同时保留它相对当前最外层块的前/后语义。 */
+function cleanNestedJsonNode(node: PageBreakJsonNode): CleanedJsonNode {
+  const scan: BreakScan = {
+    breaksBefore: 0,
+    breaksAfter: 0,
+    sawVisibleContent: false,
+  }
+  scanJsonBreakPlacement(node, scan)
+  const cleaned = cleanJsonTree(node)
+  return {
+    node: cleaned
+      ? trimBreakAdjacentEmptyJsonBlocks(
+          cleaned,
+          scan.breaksBefore > 0,
+          scan.breaksAfter > 0,
+        )
+      : null,
+    breaksBefore: scan.breaksBefore,
+    breaksAfter: scan.breaksAfter,
+  }
 }
 
 function pageBreakJsonNode(): PageBreakJsonNode {
@@ -107,10 +173,11 @@ function normalizeRootListJson(node: PageBreakJsonNode): PageBreakJsonNode[] {
     }
 
     const cleaned = cleanNestedJsonNode(child)
+    if (cleaned.breaksBefore > 0) appendBreaks(cleaned.breaksBefore)
     if (cleaned.node) {
       const consumeEmptyItem =
         child.type === 'listItem' &&
-        cleaned.pageBreaks > 0 &&
+        cleaned.breaksBefore + cleaned.breaksAfter > 0 &&
         !hasVisibleJsonContent(cleaned.node)
       if (!consumeEmptyItem) {
         if (currentItems.length === 0) currentStartOffset = keptItemCount
@@ -118,7 +185,7 @@ function normalizeRootListJson(node: PageBreakJsonNode): PageBreakJsonNode[] {
         if (child.type === 'listItem') keptItemCount += 1
       }
     }
-    if (cleaned.pageBreaks > 0) appendBreaks(cleaned.pageBreaks)
+    if (cleaned.breaksAfter > 0) appendBreaks(cleaned.breaksAfter)
   }
   flushList()
   return output
@@ -146,15 +213,18 @@ export function normalizePageBreakJson<T extends object>(document: T): T {
     }
 
     const cleaned = cleanNestedJsonNode(child)
+    for (let index = 0; index < cleaned.breaksBefore; index += 1) {
+      content.push(pageBreakJsonNode())
+    }
     if (cleaned.node) content.push(cleaned.node)
-    for (let index = 0; index < cleaned.pageBreaks; index += 1) {
+    for (let index = 0; index < cleaned.breaksAfter; index += 1) {
       content.push(pageBreakJsonNode())
     }
   }
   return { ...root, content } as T
 }
 
-function isPageBreakElement(node: Element): node is HTMLElement {
+function isPageBreakElement(node: Element): boolean {
   return node.tagName === 'HR' && !node.classList.contains('divider')
 }
 
@@ -165,10 +235,89 @@ function hasVisibleDomContent(node: Element): boolean {
   )
 }
 
-function removeNestedPageBreakElements(node: Element): number {
+function removeNestedPageBreakElements(node: Element): void {
   const pageBreaks = Array.from(node.querySelectorAll('hr:not(.divider)'))
   for (const pageBreak of pageBreaks) pageBreak.remove()
-  return pageBreaks.length
+}
+
+function scanDomBreakPlacement(node: Node, scan: BreakScan): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    if (node.textContent?.trim()) scan.sawVisibleContent = true
+    return
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return
+  const element = node as Element
+  if (isPageBreakElement(element)) {
+    if (scan.sawVisibleContent) scan.breaksAfter += 1
+    else scan.breaksBefore += 1
+    return
+  }
+  if (
+    ['IMG', 'BR', 'VIDEO', 'AUDIO', 'IFRAME', 'TABLE'].includes(
+      element.tagName,
+    ) ||
+    (element.tagName === 'HR' && element.classList.contains('divider'))
+  ) {
+    scan.sawVisibleContent = true
+  }
+  Array.from(element.childNodes).forEach((child) =>
+    scanDomBreakPlacement(child, scan),
+  )
+}
+
+function isEmptyDomBlock(node: Element): boolean {
+  return (
+    ['P', 'H1', 'H2', 'H3', 'PRE'].includes(node.tagName) &&
+    !hasVisibleDomContent(node)
+  )
+}
+
+function pruneEmptyBreakContainers(node: Element): void {
+  const candidates = Array.from(
+    node.querySelectorAll('li, ul, ol, blockquote'),
+  ).reverse()
+  for (const candidate of candidates) {
+    if (!hasVisibleDomContent(candidate)) candidate.remove()
+  }
+}
+
+interface CleanedDomNode {
+  node: HTMLElement | null
+  breaksBefore: number
+  breaksAfter: number
+}
+
+function cleanNestedDomElement(node: HTMLElement): CleanedDomNode {
+  const scan: BreakScan = {
+    breaksBefore: 0,
+    breaksAfter: 0,
+    sawVisibleContent: false,
+  }
+  scanDomBreakPlacement(node, scan)
+  const clone = node.cloneNode(true) as HTMLElement
+  removeNestedPageBreakElements(clone)
+  if (scan.breaksBefore + scan.breaksAfter > 0) {
+    pruneEmptyBreakContainers(clone)
+    if (scan.breaksBefore > 0) {
+      while (clone.firstElementChild && isEmptyDomBlock(clone.firstElementChild)) {
+        clone.firstElementChild.remove()
+      }
+    }
+    if (scan.breaksAfter > 0) {
+      while (clone.lastElementChild && isEmptyDomBlock(clone.lastElementChild)) {
+        clone.lastElementChild.remove()
+      }
+    }
+  }
+  return {
+    node:
+      scan.breaksBefore + scan.breaksAfter > 0 &&
+      !hasVisibleDomContent(clone)
+        ? null
+        : clone,
+    breaksBefore: scan.breaksBefore,
+    breaksAfter: scan.breaksAfter,
+  }
 }
 
 function createPageBreakElement(document: Document): HTMLElement {
@@ -210,16 +359,18 @@ function normalizeRootListElement(list: HTMLElement): Node[] {
       continue
     }
 
-    const clone = child.cloneNode(true) as HTMLElement
-    const pageBreaks = removeNestedPageBreakElements(clone)
+    const cleaned = cleanNestedDomElement(child as HTMLElement)
+    if (cleaned.breaksBefore > 0) appendBreaks(cleaned.breaksBefore)
     const consumeEmptyItem =
-      clone.tagName === 'LI' && pageBreaks > 0 && !hasVisibleDomContent(clone)
-    if (!consumeEmptyItem) {
+      child.tagName === 'LI' &&
+      cleaned.breaksBefore + cleaned.breaksAfter > 0 &&
+      !cleaned.node
+    if (!consumeEmptyItem && cleaned.node) {
       if (currentItems.length === 0) currentStartOffset = keptItemCount
-      currentItems.push(clone)
-      if (clone.tagName === 'LI') keptItemCount += 1
+      currentItems.push(cleaned.node)
+      if (cleaned.node.tagName === 'LI') keptItemCount += 1
     }
-    if (pageBreaks > 0) appendBreaks(pageBreaks)
+    if (cleaned.breaksAfter > 0) appendBreaks(cleaned.breaksAfter)
   }
   flushList()
   return output
@@ -231,34 +382,34 @@ function normalizeRootListElement(list: HTMLElement): Node[] {
  */
 export function normalizePageBreakHtml(html: string): string {
   if (typeof DOMParser === 'undefined') return html
-  const parsed = new DOMParser().parseFromString(
-    `<div id="page-break-normalize-root">${html}</div>`,
-    'text/html',
-  )
-  const root = parsed.getElementById('page-break-normalize-root')
-  if (!root) return html
+  const parsed = new DOMParser().parseFromString('', 'text/html')
+  const root = parsed.createElement('div')
+  root.innerHTML = html
 
   const output: Node[] = []
   for (const child of Array.from(root.childNodes)) {
-    if (!(child instanceof Element)) {
+    if (child.nodeType !== Node.ELEMENT_NODE) {
       output.push(child.cloneNode(true))
       continue
     }
-    if (isPageBreakElement(child)) {
-      const pageBreak = child.cloneNode(true) as HTMLElement
+    const element = child as HTMLElement
+    if (isPageBreakElement(element)) {
+      const pageBreak = element.cloneNode(true) as HTMLElement
       pageBreak.classList.add('page-break')
       output.push(pageBreak)
       continue
     }
-    if (child.tagName === 'UL' || child.tagName === 'OL') {
-      output.push(...normalizeRootListElement(child as HTMLElement))
+    if (element.tagName === 'UL' || element.tagName === 'OL') {
+      output.push(...normalizeRootListElement(element))
       continue
     }
 
-    const clone = child.cloneNode(true) as HTMLElement
-    const pageBreaks = removeNestedPageBreakElements(clone)
-    if (pageBreaks === 0 || hasVisibleDomContent(clone)) output.push(clone)
-    for (let index = 0; index < pageBreaks; index += 1) {
+    const cleaned = cleanNestedDomElement(element)
+    for (let index = 0; index < cleaned.breaksBefore; index += 1) {
+      output.push(createPageBreakElement(parsed))
+    }
+    if (cleaned.node) output.push(cleaned.node)
+    for (let index = 0; index < cleaned.breaksAfter; index += 1) {
       output.push(createPageBreakElement(parsed))
     }
   }
