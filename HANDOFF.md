@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-11（v1.5.1「高频编辑修复版」已完成 Cloudflare + OSS/CDN 双轨上线、生产回归、精确 tag 与不可覆盖归档；专业公告待完成最后发送与回读。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-11（v1.5.1「高频编辑修复版」已完成 Cloudflare + OSS/CDN 双轨上线、生产回归、精确 tag、不可覆盖归档与专业公告回读，发布闭环全部完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -13,8 +13,8 @@
 | 线上版本 | **v1.5.1**。发布提交/tag 为 `dd137f1` / `v1.5.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-BTEjTexi.js` + `assets/index-Cgni992D.css`，两入口与本地/归档资源 SHA-256 完全一致；`v1.5.0` tag 继续固定在 `227b0da` |
 | 本地归档 | 当前完整构建在 `app/dist/`；v1.5.1 不可覆盖核心快照在 `archive/dist-v1.5.1/`（9.5M，排除字体 3337 个，清单见 `FONTS-MANIFEST.txt`）；v1.5.0 / v1.4.1 / v1.4.0 归档继续保留，完整复原走对应 tag + `bash ci.sh` |
 | 状态 | **v1.5.1 双轨稳定在线**。全局 Command/Ctrl+Z 与安全 redo、H1–H3 整段语义和边界修复、隐藏 H4–H6 入口、公考 Cover 独立建议内容区均已发布；公考 Inner、旧主题、旧草稿和导出保持兼容 |
-| 当前迭代 | **v1.5.1 WP1–WP4 的实现、用户目检、双轨发布、生产回归、tag 与归档均已完成；仅剩专业公告发送/回读**。复杂网格仍明确否决；公考 Cover 为 `x=120/960、y=300/1500`，Inner 独立保持 `x=96/984、y=180/1500`，没有统一安全区。字体本地化/减重和结构化封面属于 v1.6 候选，不静默塞进补丁 |
-| v1.5.1 发布闭环 | **技术闭环已完成**：`main` 与精确 `v1.5.1` tag 已推送，Cloudflare + OSS/CDN 双轨加载同一构建；两入口的 1/2/5 页、公考 Cover/Inner、标题字形、旧三主题、用户字体、2160×3600 导出和不依赖 dev hook 的 WP1–WP4 生产 UI 冒烟全绿；归档已生成。专业公告待按旧企业机器人身份发送至刘彦君 1v1 并回读 |
+| 当前迭代 | **v1.5.1 WP1–WP4 的实现、用户目检、双轨发布、生产回归、tag、归档与专业公告均已完成，当前没有未完成步骤**。复杂网格仍明确否决；公考 Cover 为 `x=120/960、y=300/1500`，Inner 独立保持 `x=96/984、y=180/1500`，没有统一安全区。字体本地化/减重和结构化封面属于 v1.6 候选，不静默塞进补丁 |
+| v1.5.1 发布闭环 | **2026-08-11 全部完成**：`main` 与精确 `v1.5.1` tag 已推送，Cloudflare + OSS/CDN 双轨加载同一构建；两入口的 1/2/5 页、公考 Cover/Inner、标题字形、旧三主题、用户字体、2160×3600 导出和不依赖 dev hook 的 WP1–WP4 生产 UI 冒烟全绿；归档已生成。19:04 CST 使用飞书旧企业租户 `default` 的「Claude聊天助手」机器人发送专业公告至刘彦君 1v1，消息 `om_x100b6884555fe8b4b16098c17098e27` 已回读确认 |
 | v1.5.0 发布闭环 | **2026-08-11 全部完成**：15:48 CST 完成 `main` / 精确 tag 推送、Cloudflare + OSS/CDN 双轨上线、两入口 1/2/5 页公考矩阵及旧三主题/用户字体深回归；16:10 CST 使用飞书旧企业租户的既有机器人将 `docs/RELEASE-v1.5.0.md` 专业公告发送至刘彦君 1v1 私聊并回读确认；Markdown 导入/自动编排继续顺延 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
@@ -522,7 +522,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 | 范围 | 当前状态 | 进度 | 下一门禁 |
 |---|---|---:|---|
 | v1.5.0 公考双底图模板版 | 已全部闭环 | **100%** | 只响应真实线上反馈；应用代码问题走新补丁版本，不移动 `v1.5.0` tag |
-| v1.5.1 高频编辑修复 | 技术发布闭环已完成 | **98%** | 发送并回读专业公告后标记 100% |
+| v1.5.1 高频编辑修复 | 已全部闭环 | **100%** | 只响应真实线上反馈；应用代码问题走新补丁版本，不移动 `v1.5.1` tag |
 | v1.6.0 视觉资产质量版 | 候选，尚未立项 | **0%** | 先完成 §5 CDN 字体生产预览/导出 A/B、字体请求/体积/性能盘点和字重兼容方案，再由用户确认范围与验收标准 |
 | v1.7.0 及以后 | 路线候选 | **0%** | 不与 v1.6 混做；分别等待明确场景和用户授权 |
 
@@ -575,7 +575,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 4. **WP4 · 封面建议内容区 ✅**：仅把公考 Cover 改为 `x=120/960、y=300/1500`，Inner 保持 `x=96/984、y=180/1500`，旧主题不动；保留五条简洁线，中线更淡且使用虚线，标签/提示均位于仅预览层。
 5. **验证证据**：Vitest 34 文件 / 253 测试、`tsc -b`、ESLint、Vite build、diff-check 全绿；`test_v151_local.py` 的真实 Chromium 焦点/选区矩阵与 `test_v150_local.py` 深回归全绿，参考层开关前后导出像素 SHA-256 一致；本地生产构建 `test_prod_deep.py` 三旧主题/用户字体全绿；1280×800、1440×900、1536×1024、标题菜单展开态和 safe-area Cover/Inner 的生产构建截图已自查，保存在 `docs/design/v1.5.1/`。
 6. **边界与门禁**：仅实施用户确认的 WP1–WP4；复杂网格、内页/旧主题安全区、字体本地化/减重、字重档位、结构化封面和 Markdown 均未实施；`app/package.json` 为 `1.5.1`。用户目检、双轨发布、生产回归、精确 tag 与归档已经完成。
-7. **发布证据**：发布提交/tag 为 `dd137f1` / `v1.5.1`；两入口与归档的 JS SHA-256 为 `97e669cc…e105a7`，CSS 为 `7d57c152…9efecb7c`。`archive/dist-v1.5.1/` 为 9.5M，排除字体 3337 个；`v1.5.0` tag 未移动。当前只剩专业公告发送和回读。
+7. **发布证据**：发布提交/tag 为 `dd137f1` / `v1.5.1`；两入口与归档的 JS SHA-256 为 `97e669cc…e105a7`，CSS 为 `7d57c152…9efecb7c`。`archive/dist-v1.5.1/` 为 9.5M，排除字体 3337 个；`v1.5.0` tag 未移动。19:04 CST 已使用飞书旧企业租户 `default` 的「Claude聊天助手」机器人将专业公告发送至刘彦君 1v1，消息 `om_x100b6884555fe8b4b16098c17098e27` 已回读确认；本版本无未完成步骤。
 
 ### 快捷键文档（已写入 USAGE/发布说明）
 
@@ -586,7 +586,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 ### 新任务开场提示
 
 ```
-继续小红书排版编辑器 v1.5.1。HANDOFF §10 的 WP1–WP4 已完成实现、用户目检、双轨上线、生产回归、精确 tag 与不可覆盖归档；当前仅剩专业公告发送/回读。请先读：
+继续小红书排版编辑器。v1.5.1 的 WP1–WP4 已完成实现、用户目检、双轨上线、生产回归、精确 tag、不可覆盖归档与专业公告回读，发布闭环已全部完成，当前无未完成步骤。开始任何新版本前请先读：
 
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/AGENTS.md（若存在）
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/CLAUDE.md（若存在）
@@ -594,5 +594,5 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/README.md
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/GRID-SYSTEM-DIAGNOSIS-2026-08-11.md
 
-v1.5.0 与 v1.5.1 的 tag 均已固定，不重做、不移动。先核对当前 git 状态、`docs/design/v1.5.1/` 与生产回归证据；完成公告后更新 §0 并结束本版本，不追加 v1.6 候选范围。
+v1.5.0 与 v1.5.1 的 tag 均已固定，不重做、不移动。先核对当前 git 状态、`docs/design/v1.5.1/` 与生产回归证据；不要重开已完成的 v1.5.1，也不要在未获用户确认时追加 v1.6 候选范围。
 ```
