@@ -1,4 +1,4 @@
-"""v1.5.x 生产回归：公考双底图、列表分页、高清导出与字形中线。
+"""v1.5.x 基座 / v1.7+ 生产回归：双底图、分页、高清导出与字形中线。
 
 这个脚本只使用用户可见 UI 和生产 DOM，不依赖 dev-only 的
 ``window.__editor`` / ``window.__test`` 钩子。每个用例使用全新 Chromium
@@ -30,7 +30,7 @@ URL = (
     if len(sys.argv) > 1
     else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
 )
-EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.1"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.7.0"
 USE_PROXY = "workers.dev" in URL
 CANVAS_SIZE = (2160, 3600)
 PAGE_WIDTH = 1080
@@ -375,34 +375,35 @@ async def export_current(
     )
     await button.click()
     dialog = page.get_by_role("dialog")
-    await dialog.get_by_placeholder("输入文件名").fill(name)
+    await dialog.get_by_label("文档主题", exact=True).fill(name)
+    await dialog.locator("button").filter(has_text=re.compile(r"兼容 ZIP")).first.click()
+    await dialog.get_by_label("ZIP 默认名称", exact=True).fill(f"{name}.zip")
     async with page.expect_download(timeout=180_000) as download_info:
-        await dialog.get_by_role("button", name="导出", exact=True).click()
+        await dialog.get_by_role(
+            "button",
+            name=f"导出全部 {expected_pages} 张",
+            exact=True,
+        ).last.click()
     download = await download_info.value
     suffix = Path(download.suggested_filename).suffix.lower()
-    assert suffix == (".png" if expected_pages == 1 else ".zip"), (
-        download.suggested_filename
-    )
+    assert suffix == ".zip", download.suggested_filename
     artifact = OUT / download.suggested_filename
     await download.save_as(artifact)
     await dialog.wait_for(state="hidden")
 
-    if suffix == ".png":
-        images = [artifact.read_bytes()]
-    else:
-        with zipfile.ZipFile(artifact) as archive:
-            members = [
-                item
-                for item in archive.namelist()
-                if item.lower().endswith(".png")
-            ]
-            members.sort(
-                key=lambda item: int(
-                    re.search(r"-(\d+)\.png$", item, re.IGNORECASE).group(1)
-                )
+    with zipfile.ZipFile(artifact) as archive:
+        members = [
+            item
+            for item in archive.namelist()
+            if item.lower().endswith(".png")
+        ]
+        members.sort(
+            key=lambda item: int(
+                re.match(r"^(\d+)_", Path(item).name).group(1)
             )
-            assert len(members) == expected_pages, members
-            images = [archive.read(member) for member in members]
+        )
+        assert len(members) == expected_pages, members
+        images = [archive.read(member) for member in members]
 
     assert len(images) == expected_pages, len(images)
     for index, data in enumerate(images, start=1):
@@ -540,6 +541,12 @@ async def run_case(browser: Browser, case: str) -> None:
     context = await browser.new_context(
         viewport={"width": 1536, "height": 1024},
         accept_downloads=True,
+    )
+    # v1.7 的 ZIP 在支持系统另存为时会使用 native picker；
+    # 生产像素回归固定关闭该能力，以便在无人值守 Chromium 中收取真实 ZIP download。
+    await context.add_init_script(
+        "Object.defineProperty(window, 'showSaveFilePicker', "
+        "{ configurable: true, value: undefined })"
     )
     page = await context.new_page()
     page.set_default_timeout(30_000)

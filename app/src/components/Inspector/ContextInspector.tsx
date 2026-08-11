@@ -8,10 +8,13 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  Check,
+  Copy,
   FileImage,
   FolderOpen,
   Highlighter,
   ImagePlus,
+  MessageSquareText,
   Palette,
   RotateCcw,
   RefreshCw,
@@ -72,6 +75,9 @@ export interface ResourceIssue {
 }
 
 interface Props {
+  releaseCopy: string
+  releaseCopySourceName: string | null
+  onReleaseCopyChange: (value: string) => void
   imageState: ImageState
   textSelectionState: TextSelectionState
   recentActions: RecentAction[]
@@ -135,6 +141,17 @@ export function ContextInspector(props: Props) {
   return (
     <aside className="context-inspector" aria-label="当前对象属性">
       <div className="inspector-context-label">
+        <span>当前草稿</span>
+        <strong>{props.releaseCopySourceName ? '导入生成' : '普通草稿'}</strong>
+      </div>
+
+      <PublicationCopyCard
+        value={props.releaseCopy}
+        sourceName={props.releaseCopySourceName}
+        onChange={props.onReleaseCopyChange}
+      />
+
+      <div className="inspector-context-label">
         <span>当前对象</span>
         <strong>
           {context === 'image' ? '图片' : context === 'text' ? '文字选区' : '页面与主题'}
@@ -169,6 +186,71 @@ export function ContextInspector(props: Props) {
 
       <RecentActions actions={props.recentActions} />
     </aside>
+  )
+}
+
+function PublicationCopyCard({
+  value,
+  sourceName,
+  onChange,
+}: {
+  value: string
+  sourceName: string | null
+  onChange: (value: string) => void
+}) {
+  const [copied, setCopied] = useState(false)
+
+  async function copyReleaseCopy() {
+    if (!value.trim()) return
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      textarea.remove()
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1_600)
+  }
+
+  return (
+    <section className="publication-copy-card" aria-labelledby="publication-copy-title">
+      <div className="publication-copy-heading">
+        <span className="publication-copy-icon" aria-hidden="true">
+          <MessageSquareText />
+        </span>
+        <div>
+          <h2 id="publication-copy-title">发布文案</h2>
+          <p>独立于画布，与当前草稿一起保存。</p>
+        </div>
+        <button
+          type="button"
+          className="publication-copy-action"
+          onClick={() => void copyReleaseCopy()}
+          disabled={!value.trim()}
+          aria-label="复制发布文案"
+        >
+          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          {copied ? '已复制' : '复制'}
+        </button>
+      </div>
+      <textarea
+        className="publication-copy-textarea"
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        placeholder="导入专用结构文稿后，# 正文下的内容会放在这里。"
+        aria-label="发布文案"
+      />
+      <div className="publication-copy-meta">
+        <span>{sourceName ? `来自 ${sourceName}` : '当前草稿暂无独立发布文案'}</span>
+        <span>{value.length} 字</span>
+      </div>
+    </section>
   )
 }
 

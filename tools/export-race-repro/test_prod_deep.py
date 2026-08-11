@@ -8,6 +8,7 @@
 """
 import asyncio
 import io
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -16,7 +17,7 @@ from PIL import Image
 from playwright.async_api import async_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
-EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.1"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.7.0"
 USE_PROXY = "workers.dev" in URL  # 大陆通道直连
 FONT_FILE = "/System/Library/Fonts/Supplemental/Comic Sans MS.ttf"
 OUT = Path("/tmp/prod_deep_test")
@@ -67,7 +68,7 @@ async def pick_font(page, field_label: str, option_text: str):
 
 
 async def export_current(page, name: str) -> bytes:
-    """点导出 → 弹窗填名 → 收下载。单页返回 PNG bytes；zip 返回第一页"""
+    """点导出 → 显式选兼容 ZIP → 收下载，返回第一页 PNG bytes。"""
     export_button = page.get_by_role("button", name="导出 PNG")
     await export_button.wait_for()
     await page.wait_for_function(
@@ -76,17 +77,33 @@ async def export_current(page, name: str) -> bytes:
     )
     await export_button.click()
     dlg = page.get_by_role("dialog")
-    await dlg.get_by_placeholder("输入文件名").fill(name)
+    await dlg.get_by_label("文档主题", exact=True).fill(name)
+    await dlg.locator("button").filter(has_text=re.compile(r"兼容 ZIP")).first.click()
+    await dlg.get_by_label("ZIP 默认名称", exact=True).fill(f"{name}.zip")
+    page_count = await page.locator(".page").count()
     async with page.expect_download(timeout=120_000) as dl_info:
-        await dlg.get_by_role("button", name="导出", exact=True).click()
+        await dlg.get_by_role(
+            "button",
+            name=f"导出全部 {page_count} 张",
+            exact=True,
+        ).last.click()
     dl = await dl_info.value
     path = OUT / f"{name}{Path(dl.suggested_filename).suffix}"
     await dl.save_as(path)
-    await page.wait_for_timeout(300)
-    if path.suffix == ".zip":
-        with zipfile.ZipFile(path) as z:
-            return z.read(sorted(z.namelist())[0])
-    return path.read_bytes()
+    await dlg.wait_for(state="hidden")
+    assert path.suffix.lower() == ".zip", dl.suggested_filename
+    with zipfile.ZipFile(path) as archive:
+        members = sorted(
+            (
+                item for item in archive.namelist()
+                if item.lower().endswith(".png")
+            ),
+            key=lambda item: int(
+                re.match(r"^(\d+)_", Path(item).name).group(1)
+            ),
+        )
+        assert members, archive.namelist()
+        return archive.read(members[0])
 
 
 async def main():
@@ -96,9 +113,14 @@ async def main():
             headless=True,
             proxy={"server": "http://127.0.0.1:7897"} if USE_PROXY else None,
         )
-        page = await (await browser.new_context(
+        context = await browser.new_context(
             viewport={"width": 1440, "height": 900}, accept_downloads=True,
-        )).new_page()
+        )
+        await context.add_init_script(
+            "Object.defineProperty(window, 'showSaveFilePicker', "
+            "{ configurable: true, value: undefined })"
+        )
+        page = await context.new_page()
         await page.goto(URL, wait_until="domcontentloaded", timeout=120_000)
         await page.wait_for_selector(".page", timeout=60_000)
         await page.wait_for_timeout(3000)
@@ -114,7 +136,7 @@ async def main():
         if version != EXPECTED_VERSION:
             problems.append(f"线上版本 {version} ≠ {EXPECTED_VERSION}")
 
-        # ---- 内容换成单页拉丁 H1（Comic Sans 无中文字形，且单页导出直接出 PNG）----
+        # ---- 内容换成单页拉丁 H1（Comic Sans 无中文字形）----
         editor = page.locator(".tiptap-editor .ProseMirror, .ProseMirror").first
         await editor.click()
         await page.keyboard.press("Meta+a")

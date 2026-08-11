@@ -334,6 +334,7 @@
   letter-spacing: 0;
 }
 .inspector-card,
+.publication-copy-card,
 .recent-actions,
 .inspector-details,
 .inspector-empty-hint,
@@ -342,6 +343,108 @@
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 8px 28px rgba(16, 24, 40, 0.055);
+}
+
+.publication-copy-card {
+  padding: 16px;
+}
+.publication-copy-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 10px;
+}
+.publication-copy-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+.publication-copy-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: #f5f3ff;
+  color: #6941c6;
+}
+.publication-copy-icon svg,
+.publication-copy-action svg {
+  width: 16px;
+  height: 16px;
+}
+.publication-copy-heading h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 14px;
+  font-weight: 720;
+}
+.publication-copy-heading p {
+  margin: 3px 0 0;
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.publication-copy-action {
+  display: inline-flex;
+  height: 32px;
+  flex: none;
+  cursor: pointer;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d6bbfb;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 9px;
+  color: #6941c6;
+  font-size: 10px;
+  font-weight: 680;
+}
+.publication-copy-action:disabled {
+  cursor: not-allowed;
+  border-color: #e4e7ec;
+  color: #98a2b3;
+}
+.publication-copy-textarea {
+  width: 100%;
+  min-height: 92px;
+  max-height: 176px;
+  margin-top: 13px;
+  resize: vertical;
+  overflow: auto;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fcfcfd;
+  padding: 10px 11px;
+  color: #344054;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+.publication-copy-textarea:focus {
+  border-color: #b692f6;
+  box-shadow: 0 0 0 3px #f4ebff;
+}
+.publication-copy-meta {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: #98a2b3;
+  font-size: 9px;
+}
+.publication-copy-meta span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.publication-copy-meta span:last-child {
+  flex: none;
+  font-variant-numeric: tabular-nums;
 }
 
 .resource-issues {

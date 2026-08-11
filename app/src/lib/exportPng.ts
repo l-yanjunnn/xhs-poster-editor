@@ -189,7 +189,11 @@ async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 // 截图 + 检测 race + 最多 retry 2 次。
 // v2 修法基础上单次成功率 ~80%；3 次重试理论成功率 = 1 - 0.2^3 = 99.2%
-async function pageToPngBlobWithRetry(page: HTMLElement): Promise<Blob> {
+/**
+ * 把单个成品页渲染为 PNG Blob。
+ * 目录导出、页码自选和兼容 ZIP 共用这一条已验证的渲染链。
+ */
+export async function renderPagePngBlob(page: HTMLElement): Promise<Blob> {
   const maxAttempts = 3
   let lastCanvas: HTMLCanvasElement | null = null
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -236,7 +240,7 @@ export async function exportPages(
   ])
 
   if (pages.length === 1) {
-    const blob = await pageToPngBlobWithRetry(pages[0])
+    const blob = await renderPagePngBlob(pages[0])
     onProgress?.(1, 1)
     triggerDownload(blob, `${filename}.png`)
     return
@@ -246,7 +250,7 @@ export async function exportPages(
   const totalSteps = pages.length + 1
   const zip = new JSZip()
   for (let i = 0; i < pages.length; i++) {
-    const blob = await pageToPngBlobWithRetry(pages[i])
+    const blob = await renderPagePngBlob(pages[i])
     zip.file(`${filename}-${i + 1}.png`, blob)
     onProgress?.(i + 1, totalSteps)
   }

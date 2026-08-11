@@ -7,6 +7,26 @@ v8（离屏渲染 + onclone 注入全量 CSS）已根治。完整战史见 `HAND
 
 ## 主要脚本
 
+### `test_v170_import_export_ui.py` ⭐ v1.7 导入到完整 ZIP 的本地/生产 UI 门禁
+
+使用全新 Chromium context，只通过用户可见 UI 依次导入 18 页与 19 页示例，检查精确上限文案、完整页数和单草稿生成。随后显式选择兼容 ZIP，用真实浏览器 download 下载 19 页，断言唯一顶层目录、`01..19` PNG 无丢页/重复且均为 2160×3600，以及《导出清单.json》的 `sourcePages` 为 `1..19`。运行时会禁用 native save picker，并把 page error / console error 纳入失败条件。
+
+```bash
+# 本地：先启动 Vite
+cd app
+./node_modules/.bin/vite --host 127.0.0.1 --port 4174 --strictPort
+
+# 回到仓库根目录
+python3 tools/export-race-repro/test_v170_import_export_ui.py \
+  http://127.0.0.1:4174/ v1.7.0
+
+# 生产（如需代理）
+python3 tools/export-race-repro/test_v170_import_export_ui.py \
+  https://example.com/ v1.7.0 --proxy http://127.0.0.1:7897
+```
+
+`URL` / `EXPECTED_VERSION` / `PLAYWRIGHT_PROXY` 也可用同名环境变量传入；默认下载与 `result.json` 保存到 `/tmp/xhs-v170-import-export-ui/<UTC 时间>/`。
+
 ### `test_v140_local.py` ⭐ v1.4 桌面交互与可靠性闭环
 
 启动 4174 本地 Vite server 后，覆盖 1536 / 1440 / 1280 三栏布局、图片无移动不提交、缩放/对齐单次 undo-redo、第二页 `imageId` 映射、Esc 回滚、图片键盘可达性、资源同步后的 undo 边界、草稿切换历史隔离、荧光笔 50% / 0% / 100% 与固定基色、辅助层隔离，以及缺图导出预检的「重新检查 / 仍然导出」。脚本使用全新浏览器 context，布局截图写入 `/tmp/xhs-v140-rc/`。

@@ -100,6 +100,9 @@
 }
 .page--first .content > h1:first-of-type + p {
   color: var(--c-cover-subtitle, var(--c-text-secondary));
+  /* 封面副标题在文档模型中是 p，但不属于需要两端对齐的正文。 */
+  text-align: start;
+  text-align-last: auto;
 }
 
 /* ============ 主题：公考·山水卷 ============
@@ -408,8 +411,6 @@
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   color: var(--c-text-primary);
-  /* 强制两端对齐会在 nowrap/粗体边界换行时把中文字距拉爆。 */
-  text-align: start;
   /* 让空段落（Tiptap 按回车产生的 <p></p>）保留一行高度，否则 0 高度看不见 */
   min-height: calc(var(--fs-body) * var(--lh-body));
 }
@@ -483,6 +484,23 @@
 .content ul li,
 .content ol li {
   margin-bottom: 8px;
+}
+
+/* 中文正文使用语义化两端对齐；末行仍自然靠左，不强行拉伸。
+ * 限定到正文段落、引用和列表项，不让 H1/H2/H3 继承。 */
+.content > :where(p, blockquote),
+.content > :where(ul, ol) li {
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-character;
+  line-break: strict;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: none;
+}
+.content :where(h1, h2, h3) {
+  text-align: start;
+  text-align-last: auto;
 }
 
 .content u {

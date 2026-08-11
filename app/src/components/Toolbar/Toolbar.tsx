@@ -2,6 +2,7 @@ import {
   Crop,
   Download,
   FileText,
+  FileUp,
   Grid3X3,
   Magnet,
   Redo2,
@@ -24,6 +25,7 @@ interface Props {
   draftSaveStatus: DraftSaveStatus
   draftSaveError: string | null
   onOpenDraftLibrary: () => void
+  onOpenImport: () => void
   cropGuideOn: boolean
   onToggleCropGuide: () => void
   layoutGuidesOn: boolean
@@ -81,6 +83,17 @@ export function Toolbar(props: Props) {
         >
           <FileText aria-hidden="true" />
           <span>草稿</span>
+        </button>
+
+        <button
+          type="button"
+          className="topbar-secondary-action"
+          onClick={props.onOpenImport}
+          aria-label="导入文稿"
+          title="导入 Markdown 或纯文本文稿"
+        >
+          <FileUp aria-hidden="true" />
+          <span>导入文稿</span>
         </button>
 
         <TopbarSwitch

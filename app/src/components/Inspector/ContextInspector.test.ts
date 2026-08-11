@@ -28,6 +28,9 @@ function createProps(
   overrides: Partial<InspectorProps> = {},
 ): InspectorProps {
   return {
+    releaseCopy: '',
+    releaseCopySourceName: null,
+    onReleaseCopyChange: vi.fn(),
     imageState: {
       active: false,
       imageId: null,
@@ -88,6 +91,40 @@ function createProps(
   }
 }
 
+describe('ContextInspector publication copy', () => {
+  it('在任何对象上下文都保留独立发布文案卡片', async () => {
+    const onReleaseCopyChange = vi.fn()
+    const item = await mountInspector({
+      releaseCopy: '一段发布文案\n#申论',
+      releaseCopySourceName: '测试文稿.md',
+      onReleaseCopyChange,
+    })
+
+    const textarea = item.host.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="发布文案"]',
+    )
+    expect(textarea?.value).toBe('一段发布文案\n#申论')
+    expect(item.host.textContent).toContain('来自 测试文稿.md')
+
+    await changeInput(textarea!, '修改后的发布文案')
+    expect(onReleaseCopyChange).toHaveBeenCalledWith('修改后的发布文案')
+
+    await item.rerender({
+      imageState: {
+        active: true,
+        imageId: 'image-1',
+        width: '50%',
+        align: 'center',
+        src: 'blob:image',
+        assetId: 'asset-1',
+      },
+    })
+    expect(
+      item.host.querySelector('textarea[aria-label="发布文案"]'),
+    ).not.toBeNull()
+  })
+})
+
 async function mountInspector(
   overrides: Partial<InspectorProps> = {},
 ): Promise<MountedInspector> {
@@ -125,9 +162,16 @@ function colorInput(host: HTMLElement, label: string): HTMLInputElement {
   return input
 }
 
-async function changeInput(input: HTMLInputElement, value: string) {
+async function changeInput(
+  input: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+) {
+  const prototype =
+    input instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype
   const valueSetter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
+    prototype,
     'value',
   )?.set
   await act(async () => {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const canvasCss = readFileSync('src/styles/canvas.css', 'utf8')
+const editorCss = readFileSync('src/styles/editor.css', 'utf8')
 
 interface StyleRuleLike {
   selectorText: string
@@ -12,19 +13,27 @@ function normalizeSelector(selector: string): string {
   return selector.replace(/\s+/g, ' ').trim()
 }
 
-const normalizedCss = canvasCss
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/\s+/g, ' ')
-const rules: StyleRuleLike[] = Array.from(
-  normalizedCss.matchAll(/([^{}]+)\{([^{}]*)\}/g),
-  (match) => ({
-    selectorText: normalizeSelector(match[1]),
-    declarations: match[2],
-  }),
-)
+function parseStyleRules(css: string): StyleRuleLike[] {
+  const normalizedCss = css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+  return Array.from(
+    normalizedCss.matchAll(/([^{}]+)\{([^{}]*)\}/g),
+    (match) => ({
+      selectorText: normalizeSelector(match[1]),
+      declarations: match[2],
+    }),
+  )
+}
 
-function findRule(selector: string): StyleRuleLike {
-  const rule = rules.find(
+const rules = parseStyleRules(canvasCss)
+const editorRules = parseStyleRules(editorCss)
+
+function findRule(
+  selector: string,
+  sourceRules: StyleRuleLike[] = rules,
+): StyleRuleLike {
+  const rule = sourceRules.find(
     (candidate) => normalizeSelector(candidate.selectorText) === selector,
   )
   if (!rule) throw new Error(`缺少画布规则：${selector}`)
@@ -152,5 +161,35 @@ describe('字体光学对齐 CSS 契约', () => {
     expect(property(marker, 'transform')).toBe(
       'translateY(var(--optical-list-marker-shift-y, 0))',
     )
+  })
+})
+
+describe('中文正文两端对齐契约', () => {
+  it('只对段落、引用和列表项两端对齐，末行仍靠左', () => {
+    const body = findRule(
+      '.content > :where(p, blockquote), .content > :where(ul, ol) li',
+    )
+    expect(property(body, 'text-align')).toBe('justify')
+    expect(property(body, 'text-align-last')).toBe('left')
+    expect(property(body, 'text-justify')).toBe('inter-character')
+    expect(property(body, 'line-break')).toBe('strict')
+    expect(property(body, 'word-break')).toBe('normal')
+
+    const headings = findRule('.content :where(h1, h2, h3)')
+    expect(property(headings, 'text-align')).toBe('start')
+    expect(property(headings, 'text-align-last')).toBe('auto')
+
+    const coverSubtitle = findRule(
+      '.page--first .content > h1:first-of-type + p',
+    )
+    expect(property(coverSubtitle, 'text-align')).toBe('start')
+    expect(property(coverSubtitle, 'text-align-last')).toBe('auto')
+
+    const editorCoverSubtitle = findRule(
+      '.tiptap-editor .ProseMirror > h1:first-of-type + p',
+      editorRules,
+    )
+    expect(property(editorCoverSubtitle, 'text-align')).toBe('start')
+    expect(property(editorCoverSubtitle, 'text-align-last')).toBe('auto')
   })
 })

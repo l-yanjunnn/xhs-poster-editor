@@ -132,6 +132,23 @@ describe('documentStore', () => {
     expect(documents[0].updatedAt).toBe(300)
   })
 
+  it('发布文案与导入来源随草稿快照原子保存', async () => {
+    const document = {
+      ...makeDocument('imported', 350, '导入草稿'),
+      publication: {
+        releaseCopy: '发布文案\n#申论',
+        sourceName: '申论文稿.md',
+        importedAt: 1_786_464_000_000,
+      },
+    }
+
+    await putEditorDocument(document)
+
+    expect((await getEditorDocument(document.id))?.publication).toEqual(
+      document.publication,
+    )
+  })
+
   it('草稿列表按最近修改时间倒序排列', async () => {
     await putEditorDocument(makeDocument('older', 200), false)
     await putEditorDocument(makeDocument('newer', 400), false)
@@ -234,6 +251,20 @@ describe('documentStore', () => {
     await expect(
       putEditorDocument({ ...document, style } as unknown as EditorDocumentV2),
     ).rejects.toThrow('V2 封面样式字段不完整')
+  })
+
+  it('V2 parser 拒绝损坏的发布文案元数据', async () => {
+    const document = makeDocument('broken-publication', 670)
+    await expect(
+      putEditorDocument({
+        ...document,
+        publication: {
+          releaseCopy: '文案',
+          sourceName: null,
+          importedAt: 'not-a-time',
+        },
+      } as unknown as EditorDocumentV2),
+    ).rejects.toThrow('发布文案字段不完整')
   })
 
   it.each(['#6d136c', '#ABC', '6D136C', '#6D136C00', '#GGGGGG'])(

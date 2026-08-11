@@ -15,6 +15,7 @@ import {
   type ImageState,
   type TextSelectionState,
 } from '@/components/Editor/Editor'
+import { createEditorDocumentJSON } from '@/components/Editor/createEditorDocumentJSON'
 import { Preview } from '@/components/Preview/Preview'
 import {
   Toolbar,
@@ -23,7 +24,11 @@ import {
 import { AssetLibrary } from '@/components/AssetLibrary/AssetLibrary'
 import { FontLibrary } from '@/components/FontLibrary/FontLibrary'
 import { ThemeLibrary } from '@/components/ThemeLibrary/ThemeLibrary'
-import { ExportDialog } from '@/components/ExportDialog/ExportDialog'
+import {
+  ExportDialog,
+  type ExportRequest,
+} from '@/components/ExportDialog/ExportDialog'
+import { ImportDialog } from '@/components/ImportDialog/ImportDialog'
 import { DraftLibrary } from '@/components/DraftLibrary/DraftLibrary'
 import {
   ContextInspector,
@@ -68,7 +73,16 @@ import {
 } from '@/lib/resolveAsset'
 import { BODY_FONTS, DISPLAY_FONTS } from '@/lib/fontPresets'
 import { splitIntoPages } from '@/lib/splitPages'
-import { exportPages, suggestFilename } from '@/lib/exportPng'
+import { suggestFilename } from '@/lib/exportPng'
+import {
+  EXPORT_DELIVERY_MODE,
+  createFolderExportPlan,
+} from '@/lib/exportPlan'
+import {
+  executeDirectoryExport,
+  executeZipExport,
+  resumeDirectoryExport,
+} from '@/lib/exportDelivery'
 import {
   checkExportReadiness,
   ExportReadinessError,
@@ -94,6 +108,7 @@ import {
   setActiveDocumentId,
   writeEditorDocumentRecovery,
   type EditorDocumentStyleV2,
+  type EditorDocumentPublicationV1,
   type EditorDocumentV2,
 } from '@/lib/documentStore'
 import {
@@ -102,6 +117,7 @@ import {
   type PageBackgroundRole,
 } from '@/lib/pageBackgrounds'
 import { handleGlobalHistoryShortcut } from '@/lib/globalHistoryShortcut'
+import type { ImportAnalysis } from '@/lib/importDocument'
 import './styles/canvas.css'
 import './styles/workspace.css'
 
@@ -111,6 +127,11 @@ const WRITER_LOCK_RETRY_MS = 1_000
 const EMPTY_DOCUMENT_JSON = {
   type: 'doc',
   content: [{ type: 'paragraph' }],
+}
+const EMPTY_PUBLICATION: EditorDocumentPublicationV1 = {
+  releaseCopy: '',
+  sourceName: null,
+  importedAt: null,
 }
 const BUILTIN_FONT_STACKS = new Set(
   [...DISPLAY_FONTS, ...BODY_FONTS].map((font) => font.value),
@@ -148,6 +169,17 @@ function primaryFontFamily(stack: string): string {
     .split(',')[0]
     .trim()
     .replace(/^["']|["']$/g, '')
+}
+
+function importedDraftTitle(analysis: ImportAnalysis): string {
+  const sourceTitle = analysis.sourceName
+    .replace(/\.(?:md|txt)$/i, '')
+    .trim()
+  const preferred =
+    analysis.sourceName === '粘贴的文稿'
+      ? analysis.cover.title
+      : sourceTitle
+  return (preferred || analysis.cover.title || '导入文稿').slice(0, 80)
 }
 
 function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
@@ -233,6 +265,10 @@ function App() {
 
   const [content, setContent] = useState('')
   const editorRef = useRef<EditorHandle>(null)
+  const [publication, setPublication] =
+    useState<EditorDocumentPublicationV1>(EMPTY_PUBLICATION)
+  const publicationRef = useRef(publication)
+  publicationRef.current = publication
 
   // 草稿与主题分库：草稿保存可继续编辑的完整文档，主题仍只是可复用样式。
   const [editorReady, setEditorReady] = useState(false)
@@ -269,6 +305,7 @@ function App() {
   const [fontLibOpen, setFontLibOpen] = useState(false)
   const [themeLibOpen, setThemeLibOpen] = useState(false)
   const [draftLibOpen, setDraftLibOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   // 收集多页 .page DOM 节点供导出截图使用
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -407,6 +444,7 @@ function App() {
         updatedAt: Date.now(),
         contentJSON,
         style: style ?? documentStyleRef.current,
+        publication: publicationRef.current,
       }
     },
     [],
@@ -599,6 +637,7 @@ function App() {
     })
     setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value.src : '')
     setCurrentThemeId(null)
+    setPublication(document.publication ?? EMPTY_PUBLICATION)
     editorRef.current?.setContent(
       contentResult.status === 'fulfilled'
         ? contentResult.value.document
@@ -638,7 +677,12 @@ function App() {
 
   const interactionBlocked = !draftReady || writerLeaseState !== 'owned'
   const dialogOpen =
-    assetLibOpen || fontLibOpen || themeLibOpen || draftLibOpen || exportOpen
+    assetLibOpen ||
+    fontLibOpen ||
+    themeLibOpen ||
+    draftLibOpen ||
+    importOpen ||
+    exportOpen
   const historyShortcutSafetyRef = useRef({
     blocked: interactionBlocked,
     dialogOpen,
@@ -903,6 +947,7 @@ function App() {
     documentStyle,
     draftReady,
     persistDocument,
+    publication,
     writerLeaseState,
   ])
 
@@ -1490,6 +1535,11 @@ function App() {
     }
   }
 
+  function handleReleaseCopyChange(releaseCopy: string) {
+    dirtyDocumentRef.current = true
+    setPublication((current) => ({ ...current, releaseCopy }))
+  }
+
   function clearAutosaveTimer() {
     if (autosaveTimerRef.current !== null) {
       window.clearTimeout(autosaveTimerRef.current)
@@ -1512,6 +1562,77 @@ function App() {
     dirtyDocumentRef.current = false
     writeEditorDocumentRecovery(document)
     return persistDocument(document, revision)
+  }
+
+  async function handleGenerateImportedDraft(
+    analysis: ImportAnalysis,
+  ): Promise<void> {
+    if (!draftReady || writerLeaseState !== 'owned') {
+      throw new Error('草稿仍在恢复，请稍候再生成。')
+    }
+    if (!analysis.decisionResolved) {
+      throw new Error('请先确认文稿中 --- 的全局处理方式。')
+    }
+
+    const previousDraftId = activeDraftRef.current?.id ?? null
+    const contentJSON = createEditorDocumentJSON(analysis.contentHtml)
+    if (!(await flushActiveDraft())) {
+      throw new Error(draftStorageError || '当前草稿保存失败，已取消导入。')
+    }
+
+    clearAutosaveTimer()
+    editRevisionRef.current += 1
+    pendingSnapshotRef.current = null
+    dirtyDocumentRef.current = false
+    hydratingDocumentRef.current = true
+    setDraftSaveStatus('saving')
+    setDraftStorageError(null)
+
+    const now = Date.now()
+    const identity: DraftIdentity = {
+      id: newEditorDocumentId(),
+      title: importedDraftTitle(analysis),
+      createdAt: now,
+    }
+    const importedDocument: EditorDocumentV2 = {
+      schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
+      ...identity,
+      recoveryId: newEditorDocumentRecoveryId(),
+      revision: 0,
+      updatedAt: now,
+      contentJSON,
+      style: documentStyleRef.current,
+      publication: {
+        releaseCopy: analysis.releaseCopy,
+        sourceName: analysis.sourceName,
+        importedAt: now,
+      },
+    }
+
+    try {
+      // 新草稿先原子落盘再切换编辑器；任何失败都不会改写旧草稿。
+      await putEditorDocument(importedDocument)
+      await hydrateDocument(importedDocument)
+      documentRevisionRef.current = 0
+      selectActiveDraft(identity)
+      setDraftDocuments((previous) =>
+        [
+          importedDocument,
+          ...previous.filter((item) => item.id !== importedDocument.id),
+        ].sort((left, right) => right.updatedAt - left.updatedAt),
+      )
+      setDraftSaveStatus('saved')
+      recordRecentAction(`已导入 ${analysis.pageCount} 页到新草稿`)
+    } catch (error) {
+      if (previousDraftId) {
+        await setActiveDocumentId(previousDraftId).catch(() => undefined)
+      }
+      setDraftStorageError(describeDocumentStoreError(error))
+      setDraftSaveStatus('error')
+      throw error
+    } finally {
+      hydratingDocumentRef.current = false
+    }
   }
 
   async function handleSaveAsDraft(title: string): Promise<boolean> {
@@ -1705,6 +1826,7 @@ function App() {
         fontLibOpen ||
         themeLibOpen ||
         draftLibOpen ||
+        importOpen ||
         exportOpen
       ) {
         return
@@ -1721,13 +1843,14 @@ function App() {
     exportOpen,
     fontLibOpen,
     imageState.active,
+    importOpen,
     themeLibOpen,
   ])
 
   const pages = useMemo(() => splitIntoPages(content), [content])
 
   async function handleExport(
-    filename: string,
+    request: ExportRequest,
     onProgress: (current: number, total: number) => void,
     options?: { skipReadiness?: boolean },
   ) {
@@ -1738,14 +1861,26 @@ function App() {
           : '主题资源仍在载入，请稍候再导出',
       )
     }
-    const els = pageRefs.current
+    const allPageElements = pageRefs.current
       .slice(0, pages.length)
       .filter(
         (el): el is HTMLDivElement => el !== null && el.isConnected,
       )
-    if (els.length !== pages.length) {
+    if (allPageElements.length !== pages.length) {
       throw new Error('画布仍在更新，请稍候再试')
     }
+    const exportedAt = new Date()
+    const plan = request.resumeToken?.plan ?? createFolderExportPlan({
+      sourceName: request.filename,
+      pageCount: pages.length,
+      selectedPages: request.selectedPages,
+      exportedAt,
+      collisionIndex: request.collisionIndex,
+      deliveryMode: request.deliveryMode,
+    })
+    const selectedElements = plan.pages.map(
+      (pageNumber) => allPageElements[pageNumber - 1],
+    )
     if (!options?.skipReadiness) {
       const selectedFontStacks = [fontH1, fontH2, fontH3, fontBody]
       const customFontFamilies = new Set(
@@ -1786,12 +1921,15 @@ function App() {
           }
         }
       }
-      const domIssues = await checkExportReadiness(els)
+      const domIssues = await checkExportReadiness(selectedElements)
       const knownIssues = resourceIssues
         .filter((issue) => {
           if (issue.scope === 'library') return false
           if (issue.id.startsWith('logo:') && logoStrategy === 'none') return false
-          if (issue.backgroundRole === 'inner' && pages.length <= 1) return false
+          if (
+            issue.backgroundRole === 'inner' &&
+            !plan.pages.some((pageNumber) => pageNumber > 1)
+          ) return false
           if (issue.scope === 'document') return true
           return customFontFamilies.has(issue.id.slice('font:'.length))
         })
@@ -1818,7 +1956,47 @@ function App() {
       const issues = Array.from(issueMap.values())
       if (issues.length > 0) throw new ExportReadinessError(issues)
     }
-    await exportPages(els, filename, onProgress)
+    if (request.resumeToken) {
+      await resumeDirectoryExport(
+        request.resumeToken,
+        allPageElements,
+        onProgress,
+      )
+      recordRecentAction(`已继续完成 ${plan.pages.length} 张目录导出`)
+      return
+    }
+
+    if (request.deliveryMode === EXPORT_DELIVERY_MODE.DIRECTORY) {
+      if (!request.directoryParent) {
+        throw new Error('请先选择导出文件夹。')
+      }
+      const completedPlan = await executeDirectoryExport({
+        parentHandle: request.directoryParent,
+        createPlanOptions: {
+          sourceName: request.filename,
+          pageCount: pages.length,
+          selectedPages: request.selectedPages,
+          exportedAt,
+          deliveryMode: EXPORT_DELIVERY_MODE.DIRECTORY,
+        },
+        createPlan: createFolderExportPlan,
+        pageElements: allPageElements,
+        onProgress,
+        startCollisionIndex: request.collisionIndex,
+      })
+      recordRecentAction(`已导出 ${completedPlan.pages.length} 张到独立文件夹`)
+      return
+    }
+
+    await executeZipExport({
+      plan,
+      pageElements: allPageElements,
+      zipFileName: request.zipFileName,
+      collisionIndex: request.collisionIndex,
+      saveFileHandle: request.saveFileHandle,
+      onProgress,
+    })
+    recordRecentAction(`已导出 ${plan.pages.length} 张到单个兼容 ZIP`)
   }
 
   function shouldShowLogo(pageIndex: number, total: number): boolean {
@@ -1882,6 +2060,7 @@ function App() {
           draftSaveStatus={draftSaveStatus}
           draftSaveError={draftStorageError}
           onOpenDraftLibrary={() => setDraftLibOpen(true)}
+          onOpenImport={() => setImportOpen(true)}
           cropGuideOn={cropGuideOn}
           onToggleCropGuide={() => setCropGuideOn((value) => !value)}
           layoutGuidesOn={layoutGuidesOn}
@@ -1938,6 +2117,11 @@ function App() {
           onSaveAs={handleSaveAsDraft}
           onOpenDocument={handleOpenDraft}
           onDeleteDocument={handleDeleteDraft}
+        />
+        <ImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onGenerate={handleGenerateImportedDraft}
         />
         <ExportDialog
           open={exportOpen}
@@ -2001,6 +2185,9 @@ function App() {
 
           <section className="workspace-inspector-panel">
             <ContextInspector
+              releaseCopy={publication.releaseCopy}
+              releaseCopySourceName={publication.sourceName}
+              onReleaseCopyChange={handleReleaseCopyChange}
               imageState={imageState}
               textSelectionState={textSelectionState}
               recentActions={recentActions}

@@ -40,6 +40,18 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   coverSubtitleColor: string
 }
 
+/**
+ * 与画布正文独立保存的发布信息。
+ *
+ * 它是 V2 的向后兼容可选字段：旧草稿没有该字段时仍可正常读取，
+ * 导入草稿则会把发布文案与正文在同一次 IndexedDB 快照中原子落盘。
+ */
+export interface EditorDocumentPublicationV1 {
+  releaseCopy: string
+  sourceName: string | null
+  importedAt: number | null
+}
+
 export interface EditorDocumentV1 {
   schemaVersion: typeof EDITOR_DOCUMENT_SCHEMA_VERSION_V1
   id: string
@@ -64,6 +76,7 @@ export interface EditorDocumentV2 {
   updatedAt: number
   contentJSON: object
   style: EditorDocumentStyleV2
+  publication?: EditorDocumentPublicationV1
 }
 
 const DB_NAME = 'xhs-poster-documents'
@@ -307,11 +320,37 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
   ) {
     throw new Error('草稿数据损坏：封面颜色必须是规范六位 HEX')
   }
+  const publication = parseDocumentPublication(document)
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
     style: style as EditorDocumentStyleV2,
+    ...(publication ? { publication } : {}),
   }
+}
+
+function parseDocumentPublication(
+  document: StoredDocumentEnvelope,
+): EditorDocumentPublicationV1 | undefined {
+  const value = (document as StoredDocumentEnvelope & {
+    publication?: unknown
+  }).publication
+  if (value === undefined) return undefined
+  if (!value || typeof value !== 'object') {
+    throw new Error('草稿数据损坏：发布文案字段无效')
+  }
+  const publication = value as Partial<EditorDocumentPublicationV1>
+  if (
+    typeof publication.releaseCopy !== 'string' ||
+    (publication.sourceName !== null &&
+      typeof publication.sourceName !== 'string') ||
+    (publication.importedAt !== null &&
+      (typeof publication.importedAt !== 'number' ||
+        !Number.isFinite(publication.importedAt)))
+  ) {
+    throw new Error('草稿数据损坏：发布文案字段不完整')
+  }
+  return publication as EditorDocumentPublicationV1
 }
 
 function migrateStoredDocumentV1(document: EditorDocumentV1): EditorDocumentV2 {

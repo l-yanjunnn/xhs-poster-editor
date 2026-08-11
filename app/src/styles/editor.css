@@ -301,3 +301,25 @@
   padding-left: 24px;
   margin: 8px 0;
 }
+
+/* 左侧所见即所得与 1080×1800 成品画布保持同一正文对齐语义。 */
+.tiptap-editor :where(p, blockquote),
+.tiptap-editor :where(ul, ol) li {
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-character;
+  line-break: strict;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: none;
+}
+.tiptap-editor :where(h1, h2, h3) {
+  text-align: start;
+  text-align-last: auto;
+}
+
+/* 左侧编辑区与成品画布共用“首个 H1 紧邻 p = 封面副标题”语义。 */
+.tiptap-editor .ProseMirror > h1:first-of-type + p {
+  text-align: start;
+  text-align-last: auto;
+}
