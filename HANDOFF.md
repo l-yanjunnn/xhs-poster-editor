@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-11（v1.5.0「公考双底图模板版」已完成发布闭环；v1.5.1 WP1–WP4 已完成本地验证并通过用户目检，用户已授权进入上线闭环。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-11（v1.5.1「高频编辑修复版」已完成 Cloudflare + OSS/CDN 双轨上线、生产回归、精确 tag 与不可覆盖归档；专业公告待完成最后发送与回读。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -10,16 +10,17 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.5.0**。发布提交 `227b0da`，tag `v1.5.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-D0LqeUgP.js` + `assets/index-BQdpJR0I.css`，页面版本号与资源 SHA-256 均已核验一致 |
-| 本地归档 | 当前完整构建在 `app/dist/`；v1.5.0 不可覆盖核心快照在 `archive/dist-v1.5.0/`（9.5M，排除字体 3337 个，清单见 `FONTS-MANIFEST.txt`）；`archive/dist-v1.4.0/` / `dist-v1.4.1/` 继续保留，完整复原走对应 tag + `bash ci.sh` |
-| 状态 | **v1.5.0 双轨稳定在线**。已发布顶层安全分页、固定两行工具栏、V2 双底图主题/草稿、「公考·山水卷」、封面主/副标题 HEX 控件，以及基于真实字形的 H2 竖线/有序列表序号中线校准；V1 旧草稿和旧主题保持兼容 |
-| 当前迭代 | **v1.5.1 WP1–WP4 已完成本地实现、自动验证与用户目检，发布闭环进行中**：已处理全局 Command/Ctrl+Z/redo、H1–H3 整段语义与跨段选区端点、隐藏 H4–H6 快捷键入口和回归测试。复杂网格已由用户否决；用户已确认右侧 Demo 与最终成品，公考封面左右保留 `x=120/960`，上下已调整为 `y=300/1500`，内页和旧主题不动。字体本地化/减重和结构化封面属于 v1.6 候选，不静默塞进补丁 |
+| 线上版本 | **v1.5.1**。发布提交/tag 为 `dd137f1` / `v1.5.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-BTEjTexi.js` + `assets/index-Cgni992D.css`，两入口与本地/归档资源 SHA-256 完全一致；`v1.5.0` tag 继续固定在 `227b0da` |
+| 本地归档 | 当前完整构建在 `app/dist/`；v1.5.1 不可覆盖核心快照在 `archive/dist-v1.5.1/`（9.5M，排除字体 3337 个，清单见 `FONTS-MANIFEST.txt`）；v1.5.0 / v1.4.1 / v1.4.0 归档继续保留，完整复原走对应 tag + `bash ci.sh` |
+| 状态 | **v1.5.1 双轨稳定在线**。全局 Command/Ctrl+Z 与安全 redo、H1–H3 整段语义和边界修复、隐藏 H4–H6 入口、公考 Cover 独立建议内容区均已发布；公考 Inner、旧主题、旧草稿和导出保持兼容 |
+| 当前迭代 | **v1.5.1 WP1–WP4 的实现、用户目检、双轨发布、生产回归、tag 与归档均已完成；仅剩专业公告发送/回读**。复杂网格仍明确否决；公考 Cover 为 `x=120/960、y=300/1500`，Inner 独立保持 `x=96/984、y=180/1500`，没有统一安全区。字体本地化/减重和结构化封面属于 v1.6 候选，不静默塞进补丁 |
+| v1.5.1 发布闭环 | **技术闭环已完成**：`main` 与精确 `v1.5.1` tag 已推送，Cloudflare + OSS/CDN 双轨加载同一构建；两入口的 1/2/5 页、公考 Cover/Inner、标题字形、旧三主题、用户字体、2160×3600 导出和不依赖 dev hook 的 WP1–WP4 生产 UI 冒烟全绿；归档已生成。专业公告待按旧企业机器人身份发送至刘彦君 1v1 并回读 |
 | v1.5.0 发布闭环 | **2026-08-11 全部完成**：15:48 CST 完成 `main` / 精确 tag 推送、Cloudflare + OSS/CDN 双轨上线、两入口 1/2/5 页公考矩阵及旧三主题/用户字体深回归；16:10 CST 使用飞书旧企业租户的既有机器人将 `docs/RELEASE-v1.5.0.md` 专业公告发送至刘彦君 1v1 私聊并回读确认；Markdown 导入/自动编排继续顺延 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | v1.5.1 本地候选：Vitest **34 文件 / 253 测试**、tsc -b、ESLint、Vite build、diff-check 全绿；`test_v151_local.py` 覆盖真实 Chromium 焦点/IME/弹窗/只读/手势与标题选区矩阵，`test_v150_local.py` 覆盖旧基线、Cover/Inner 坐标、33%/40%/50% 缩放和参考层导出像素同一性，全部通过；本地生产构建 `test_prod_deep.py` 三旧主题/用户字体全绿，多视口与 safe-area 截图在 `docs/design/v1.5.1/`。v1.5.0 本地：Vitest **32 文件 / 217 测试**、tsc -b、ESLint、Vite build、`bash ci.sh`、diff-check、`test_v150_local.py` 全绿；真实 Chromium 多字体/多字号/混排中线误差 0–1.5 个导出原生像素。v1.5.0 生产：Cloudflare 与 OSS/CDN 分别运行 `test_v150_prod.py`，1/2/5 页全通过，H2 竖线误差 0.5px、列表序号误差 0px；两入口顺序运行 `test_prod_deep.py`，雅致/极简白/深夜黑与用户字体均通过，均加载 `index-D0LqeUgP.js` |
+| 测试基线 | v1.5.1 本地：Vitest **34 文件 / 253 测试**、tsc -b、ESLint、Vite build、diff-check、`test_v151_local.py` 与 `test_v150_local.py` 全绿；覆盖焦点/IME/弹窗/只读/手势、标题选区、旧草稿/分页/导出、Cover/Inner 坐标、33%/40%/50% 缩放和参考层导出像素同一性。v1.5.1 生产：两入口分别运行 `test_v150_prod.py`、`test_prod_deep.py` 与 `test_v151_prod.py`，1/2/5 页、公考双底图、H2/列表中线、旧三主题、用户字体、顶栏/实际画布失焦历史、普通 input、H1–H3 边界和 Cover/Inner 五线全部通过；H2 误差 0.5px、列表误差 0px；两入口均为 `index-BTEjTexi.js` / `index-Cgni992D.css` |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
@@ -516,18 +517,18 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 6. **WP5·联合回归 ✅**：32 文件 / 217 单测、tsc、ESLint、build、diff-check、`test_v150_local.py` 和真实 Chromium 多字体/多字号像素校验全绿；独立审计无 P0/P1/P2 或阻断项
 7. **发布闭环 ✅**：用户于 2026-08-11 明确授权「可以发布」；`227b0da` 将版本升至 v1.5.0 并补齐生产回归脚本。Cloudflare + OSS/CDN 双轨部署同一 `index-D0LqeUgP.js` / `index-BQdpJR0I.css`，tag `v1.5.0` 已推送；两入口的 1/2/5 页背景、主/副标题色、列表分页、字形中线、旧三主题与用户字体回归全绿，`archive/dist-v1.5.0/` 已按不覆盖原则归档；16:10 CST 已按 §2 第 8 步核对旧企业租户/机器人/接收人并发送专业公告，私聊回读成功。**v1.5.0 当前无未完成步骤**
 
-### 后续版本路线（v1.5.0 已上线；v1.5.1 已开始本地修复）
+### 后续版本路线（v1.5.0 与 v1.5.1 均已上线）
 
 | 范围 | 当前状态 | 进度 | 下一门禁 |
 |---|---|---:|---|
 | v1.5.0 公考双底图模板版 | 已全部闭环 | **100%** | 只响应真实线上反馈；应用代码问题走新补丁版本，不移动 `v1.5.0` tag |
-| v1.5.1 高频编辑修复 | WP1–WP4 本地验证与用户目检已完成 | **95%** | 用户已授权发布；完成双轨部署、生产回归、归档与公告闭环 |
+| v1.5.1 高频编辑修复 | 技术发布闭环已完成 | **98%** | 发送并回读专业公告后标记 100% |
 | v1.6.0 视觉资产质量版 | 候选，尚未立项 | **0%** | 先完成 §5 CDN 字体生产预览/导出 A/B、字体请求/体积/性能盘点和字重兼容方案，再由用户确认范围与验收标准 |
 | v1.7.0 及以后 | 路线候选 | **0%** | 不与 v1.6 混做；分别等待明确场景和用户授权 |
 
 1. **v1.4.1 桌面交互与可靠性版（已上线）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则；补丁版同步默认 5 页教程
 2. **v1.5.0 公考双底图模板版（2026-08-11 已完成并双轨上线）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，标题竖线/列表序号按真实字形中线对齐，旧草稿/主题兼容、资源恢复与高清导出闭环
-3. **v1.5.1 高频编辑修复（2026-08-11 已通过用户目检并获准发布）**：全局但焦点安全的 Command/Ctrl+Z、Shift+Command/Ctrl+Z / Ctrl+Y；H1–H3 整段语义提示、跨段选区端点归一化、禁用产品未承诺的 H4–H6 快捷入口；用户确认右侧 Demo 后，公考 Cover 建议内容区已改为 `x=120/960、y=300/1500`，内页与旧主题不动，复杂网格仍明确否决。自动测试、视觉自查和用户目检均已完成，当前进入双轨发布闭环
+3. **v1.5.1 高频编辑修复（2026-08-11 已双轨上线）**：全局但焦点安全的 Command/Ctrl+Z、Shift+Command/Ctrl+Z / Ctrl+Y；H1–H3 整段语义提示、跨段选区端点归一化、禁用产品未承诺的 H4–H6 快捷入口；用户确认右侧 Demo 后，公考 Cover 建议内容区已改为 `x=120/960、y=300/1500`，内页与旧主题不动，复杂网格仍明确否决。自动测试、视觉自查、用户目检、双轨生产回归、精确 tag 与不可覆盖归档均已完成
 4. **v1.6.0 视觉资产与结构化封面版（候选，先诊断再立项）**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、预览/导出一致性、加载性能和结构化封面槽位。封面与正文继续同屏连续预览；先做主标题/副标题 + 三套高质量版式 + 有限位置调整，暂不做任意自由文本框；不引入面向用户的复杂网格系统
 5. **v1.7.0 文档自动编排版（已顺延）**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
 6. **v1.8.0 交付与诊断版（按需要）**：PWA 安装、部署/资源诊断、稳定运行后简化 `hasRaceArtifact/retry`；Tauri macOS `.app` 只在确有离线桌面分发需求时再评估，不与 PWA 同时默认开工
@@ -556,7 +557,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 1. **封面与正文不得互相隔离**：继续使用同一编辑器、同一连续成品画布，用户始终能比较首图和内页的一致性。
 2. **暂不做自由文本框**：后续使用结构化主标题/副标题槽位，配左对齐叠排、居中海报、小字在上大字在下三套高质量版式，并只开放有限位置调整。
-3. **复杂网格已否决，参考线保持简洁**：完整收敛结论见 `docs/GRID-SYSTEM-DIAGNOSIS-2026-08-11.md`。只保留左/中/右/上/下五条线；封面左右继续 `x=120/960`，内页不动。用户已目检确认右侧 Demo：上下为 `y=300/1500`，等于在首图 3:4 可见区 `y=180…1620` 内上下各留 120px；已进入 v1.5.1 本地实现。不要再实施 6 栏、模块或可见基线网格。
+3. **复杂网格已否决，参考线保持简洁**：完整收敛结论见 `docs/GRID-SYSTEM-DIAGNOSIS-2026-08-11.md`。只保留左/中/右/上/下五条线；封面左右继续 `x=120/960`，内页不动。用户已目检确认右侧 Demo 与最终成品：上下为 `y=300/1500`，等于在首图 3:4 可见区 `y=180…1620` 内上下各留 120px；现已随 v1.5.1 上线。不要再实施 6 栏、模块或可见基线网格。
 4. **字体名称已解释清楚**：UI 里的“思源黑体/思源宋体”就是 CSS 中的 `Noto Sans SC / Noto Serif SC`，不是消失了；两者是中日韩字体，不是只服务英文。`serif / sans-serif` 是通用回退类别，`Inter` 目前只作为西文字体/回退，并非独立可选项。main.tsx 现导入 Noto Sans 9 档 + Noto Serif 8 档，而 UI 标题只有二态字重，冗余清理与 CDN 本地化归 v1.6，不混进补丁。
 
 ### v1.5.1 本地工作包
@@ -573,9 +574,10 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. **WP3 · 标题范围 ✅**：StarterKit heading schema 只接受 H1–H3，明确吸收 Command/Ctrl+Option/Alt+4…6 而不创建节点；旧 HTML/JSON 中的 H4–H6 窄化迁移为 H3，避免不可识别节点。
 4. **WP4 · 封面建议内容区 ✅**：仅把公考 Cover 改为 `x=120/960、y=300/1500`，Inner 保持 `x=96/984、y=180/1500`，旧主题不动；保留五条简洁线，中线更淡且使用虚线，标签/提示均位于仅预览层。
 5. **验证证据**：Vitest 34 文件 / 253 测试、`tsc -b`、ESLint、Vite build、diff-check 全绿；`test_v151_local.py` 的真实 Chromium 焦点/选区矩阵与 `test_v150_local.py` 深回归全绿，参考层开关前后导出像素 SHA-256 一致；本地生产构建 `test_prod_deep.py` 三旧主题/用户字体全绿；1280×800、1440×900、1536×1024、标题菜单展开态和 safe-area Cover/Inner 的生产构建截图已自查，保存在 `docs/design/v1.5.1/`。
-6. **边界与门禁**：仅实施用户确认的 WP1–WP4；复杂网格、内页/旧主题安全区、字体本地化/减重、字重档位、结构化封面和 Markdown 均未实施；`app/package.json` 已升为 `1.5.1`。用户已完成目检并授权上线，发布、生产回归、归档与公告闭环正在执行。
+6. **边界与门禁**：仅实施用户确认的 WP1–WP4；复杂网格、内页/旧主题安全区、字体本地化/减重、字重档位、结构化封面和 Markdown 均未实施；`app/package.json` 为 `1.5.1`。用户目检、双轨发布、生产回归、精确 tag 与归档已经完成。
+7. **发布证据**：发布提交/tag 为 `dd137f1` / `v1.5.1`；两入口与归档的 JS SHA-256 为 `97e669cc…e105a7`，CSS 为 `7d57c152…9efecb7c`。`archive/dist-v1.5.1/` 为 9.5M，排除字体 3337 个；`v1.5.0` tag 未移动。当前只剩专业公告发送和回读。
 
-### 快捷键文档标记（v1.5.1 目检通过后写入 USAGE/飞书使用说明）
+### 快捷键文档（已写入 USAGE/发布说明）
 
 - 全局：撤销 `Command/Ctrl+Z`；重做 `Shift+Command/Ctrl+Z`，Windows 兼容 `Ctrl+Y`；`Esc` 取消画布手势；拖图时 `Option/Alt` 临时关闭磁吸。
 - 编辑器内：粗体 `Command/Ctrl+B`、斜体 `Command/Ctrl+I`、下划线 `Command/Ctrl+U`、硬换行 `Shift+Enter`、段落/标题 `Command/Ctrl+Option/Alt+0…3`、有序/无序列表 `Command/Ctrl+Shift+7/8`、列表层级 `Tab / Shift+Tab`。
@@ -584,7 +586,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 ### 新任务开场提示
 
 ```
-继续小红书排版编辑器 v1.5.1。HANDOFF §10 的 WP1–WP4 已完成本地实现、自动/浏览器回归和用户目检，用户已授权上线闭环。请先读：
+继续小红书排版编辑器 v1.5.1。HANDOFF §10 的 WP1–WP4 已完成实现、用户目检、双轨上线、生产回归、精确 tag 与不可覆盖归档；当前仅剩专业公告发送/回读。请先读：
 
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/AGENTS.md（若存在）
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/CLAUDE.md（若存在）
@@ -592,5 +594,5 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/README.md
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/GRID-SYSTEM-DIAGNOSIS-2026-08-11.md
 
-v1.5.0 已完整发布，不重做、不移动 v1.5.0 tag。先核对当前 git 状态与 `docs/design/v1.5.1/` 证据，再按 §2 完成 v1.5.1 双轨发布、生产回归、精确 tag、不可覆盖归档和公告闭环。
+v1.5.0 与 v1.5.1 的 tag 均已固定，不重做、不移动。先核对当前 git 状态、`docs/design/v1.5.1/` 与生产回归证据；完成公告后更新 §0 并结束本版本，不追加 v1.6 候选范围。
 ```
