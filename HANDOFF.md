@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-11（v1.4.1 线上状态不变；v1.5.0「公考双底图模板版」已补齐封面主/副标题语义色、正文工具全部常驻与列表内可靠分页规格，尚未改码/发版。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-11（v1.4.1 线上状态不变；v1.5.0「公考双底图模板版」已在本地完成实现、联合回归和用户视觉验收，当前为待发布候选版；尚未 bump/推送/部署/打 tag。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -12,13 +12,13 @@
 |---|---|
 | 线上版本 | **v1.4.1**。正式代码提交 `d89b927`，tag `v1.4.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-CJUSefBL.js`，页面版本号均已核验。`v1.4.1` 仅同步默认 5 页教程到新三栏界面，V1.4 功能主体提交为 `61b6a9b` / tag `v1.4.0` |
 | 本地归档 | 当前完整构建在 `app/dist/`；不可覆盖的应用核心快照在 `archive/dist-v1.4.1/`，`archive/dist-v1.4.0/` 保留首发快照；字体清单见各归档的 `FONTS-MANIFEST.txt`，完整复原走对应 tag + `bash ci.sh` |
-| 状态 | **v1.4.1 双轨稳定在线**。三栏桌面工作台、中央画布图片直接操作、对齐/缩放磁吸、排版参考线、正文荧光笔、资源恢复与导出就绪检查均已发布；默认教程已同步新操作路径；继续保持手动分页 |
-| 下一迭代 | **v1.5.0 公考双底图模板版已立项，待新窗口实现**：第 1 页 Cover，第 2 页起 Inner；封面主标题 `#6D136C`、副标题 `#5A465F` 并提供 HEX 修改入口；正文工具栏取消「更多」；修复无序/有序列表内插入分页后分页线缩进且不切页的结构缺陷。Markdown 导入/自动编排明确顺延。当前只有规格与版本化设计输入，线上仍是 v1.4.1 |
+| 状态 | **v1.4.1 双轨稳定在线；v1.5.0 本地候选版已完成并视觉通过**。本地 `main` 当前以 `86a5949` 收口，已包含顶层安全分页、固定两行工具栏、V2 双底图主题/草稿、「公考·山水卷」与基于真实字形的标题/有序列表中线校准；未推送、未部署，不得将本地状态写成线上已发布 |
+| 待发布 | **v1.5.0 仅剩发版闭环**：代码、自动化回归、真实 Chromium 多字体/多字号导出和最终 v3 视觉证据均已验收；用户已确认视觉无问题，但尚未明确下达「可以发布」的外部发布授权。授权后再 bump `app/package.json` 至 `1.5.0`、双轨部署、生产回归、tag、归档和公告；Markdown 导入/自动编排继续顺延 |
 | 技术栈 | Vite + React 19 + TS + Tailwind v4 + shadcn/ui + Tiptap 3 |
 | 部署 | **双轨**。轨一：Cloudflare Workers，`git push origin main` 自动 build+deploy（1–3 分钟），不要碰后台；轨二：阿里云 OSS+CDN 大陆通道 `https://xhsposter.tshzchen.cn`，`bash tools/deploy-oss.sh`。**双轨发版纪律：每版两轨都必须推**（沃林发圈工具欠费停服事故教训） |
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
-| 测试基线 | v1.4.1：vitest 81/81、tsc -b、ESLint、build、diff-check、`test_v140_local.py` 全绿（3 档宽度、跨页图片映射、图片手势/撤销、荧光笔、键盘、草稿边界、缺图导出）；2026-08-10 23:52 CST 双生产入口 `test_prod_deep.py` 均通过（三主题单页、2160×3600、自定义字体且加载同一 JS），两边新版 5 页教程各导出 5/5，全部为 2160×3600；V1.4 首发另完成 Cloudflare 连续 5 轮 × 5 页共 25/25 压测 |
+| 测试基线 | 线上 v1.4.1：vitest 81/81、tsc -b、ESLint、build、diff-check、`test_v140_local.py` 全绿；2026-08-10 23:52 CST 双生产入口 `test_prod_deep.py` 均通过，两边新版 5 页教程各导出 5/5，全部为 2160×3600。本地 v1.5.0 候选版：Vitest **32 文件 / 217 测试**、tsc -b、ESLint、Vite build、diff-check 全绿；`test_v150_local.py` 完整通过，覆盖分页、草稿、双底图、图片交互、导出预检和 2 页公考 ZIP；真实 Chromium 完成 Noto/LXGW/苹方/长仿宋/龙藏体等多字体、32–48px、单/双行与中英数混排的预览/导出中线校准，误差 0–1.5 个导出原生像素 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
@@ -57,7 +57,7 @@
    ```bash
    cd app
    ./node_modules/.bin/tsc -b        # 类型检查
-   ./node_modules/.bin/vitest run    # 单测（当前 81 个，<1s）
+   ./node_modules/.bin/vitest run    # 单测（当前本地候选版 217 个）
    ./node_modules/.bin/vite build    # 构建
    ```
 4. **UI 改动**：`vite preview` + Playwright 截图自查 → 用户目检确认后再部署
@@ -147,6 +147,8 @@ xhs-poster-小红书排版/
         ├── lib/                 ← 纯逻辑层（有单测的都在这）
         │   ├── themes.ts themeStore.ts    ← 主题模型 + IndexedDB
         │   ├── assetStore.ts fontStore.ts fontRegistry.ts fontPresets.ts
+        │   ├── typographyMetrics.ts opticalTypography.ts opticalListMarkers.ts
+        │   │                       ← v1.5 真实字形测量、标题竖线/列表序号光学中线校准
         │   ├── splitPages.ts fontSize.ts density.ts canvas.ts builtinAssets.ts
         │   ├── imageModel.ts textHighlight.ts exportReadiness.ts resolveAsset.ts
         │   └── exportPng.ts     ← ⚠️ 改前必读 §5
@@ -166,16 +168,17 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ---
 
-## 5. Export PNG：v8 架构 + 战史（改导出前必读）
+## 5. Export PNG：v8 基座 + v1.5 字形校准层 + 战史（改导出前必读）
 
-### v8 现行架构（exportPng.ts）
+### 当前仓库架构（exportPng.ts）
 
-两层修法叠加，缺一不可：
+两层 v8 导出基座之上，v1.5 本地候选版又增加了真实字形校准层：
 
 1. **离屏渲染**（v7 引入）：deep clone `.page` 到 body 直接子节点的 fixed 屏外 stage（无 transform 祖先），bbox 由画布常量固定为 1080×1800。预览的 `transform: scale(0.4)` 与导出彻底解耦，源 DOM 零修改
 2. **onclone 注入全量 CSS**（v8 引入）：html2canvas-pro 把 cloned DOM 放进 about:blank iframe 截图，prod 上 iframe 跨域加载 `<link>` stylesheet 会被 CORS 拦掉 → cloned doc 裸渲染。修法：`collectAllCss()` 把 `document.styleSheets` 全部 cssRules 转 text 注入 cloned doc `<head>`，同时拷贝 `:root` 的 inline CSS vars。对未来新主题/新素材天然鲁棒（全量复制，不依赖具体类名）
+3. **真实字形中线校准**（v1.5 本地候选）：`typographyMetrics.ts` 通过 canvas 的 `actualBoundingBoxAscent/Descent` 按实际字体、字号、字重和每个 grapheme 测量可见字形；`opticalTypography.ts` 只对渲染面校准 H2 前竖线与标题、列表首个可见行的序号与文字中线。预览在字体 revision 变化后异步重算；导出先校准屏外 stage，再在 `onclone` 中以第二个 reference element 复算 iframe 的真实字体，并始终保持源 React DOM 零修改
 
-辅助机制：img 解码等待（5s 兜底）、`document.fonts.ready`、`hasRaceArtifact` 检测 + retry ×2（v5 遗留，v8 下基本不触发，留作兜底）、下载 60s 后才 revoke blob URL。
+辅助机制：img 解码等待（5s 兜底）、`document.fonts.ready`、字体注册表 revision/缓存失效、异步校准 abort guard、`hasRaceArtifact` 检测 + retry ×2（v5 遗留，v8 下基本不触发，留作兜底）、下载 60s 后才 revoke blob URL。
 
 ### 战史一览（v1~v8，细节看对应 commit 的 HANDOFF）
 
@@ -326,7 +329,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. **完整可点击回跳的修改时间线暂不做**：Tiptap 没有现成动作标签与任意回跳能力，为它另造持久快照系统会把图片交互版本拖成历史系统重构；v1.4 先用轻量最近操作 + 原生撤销重做验证价值
 4. **独立自诊断页暂不做**：本版先完成资源就绪检查、局部降级和原地重试；只有真实故障数据证明需要时，再建设完整自诊断页
 
-### v1.5.0「公考双底图模板版」（2026-08-11 用户确认优先级；下一窗口执行）
+### v1.5.0「公考双底图模板版」（2026-08-11 本地完成且视觉通过；待发布）
 
 #### 需求与产品定义
 
@@ -335,7 +338,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 3. 本轮的「模板」只是**有封面/内页角色的视觉主题**：套用到当前草稿，不替换正文、不新建草稿、不引入独立模板库。这是对当前 Theme 链路的最小、可兼容扩展
 4. 页面角色只由当前页序决定：1 页时只用 Cover；2/5/任意多页时为 `[Cover, Inner, Inner…]`；增删分页后实时重算，不存「第 3 页用什么」这类易失效状态
 
-#### 版本化设计输入（下一窗口的唯一素材源）
+#### 版本化设计输入（已实装，仍是唯一素材源）
 
 | 角色 | 项目内设计原图 | 尺寸 / Alpha | SHA-256 |
 |---|---|---|---|
@@ -343,7 +346,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 | Inner（第 2 页起） | [`docs/design/v1.5.0/public-exam-inner-v1.png`](docs/design/v1.5.0/public-exam-inner-v1.png) | 1080×1800 / 无 | `613d1b4c56da3ac2a38161cc8f7751f0fc38decf806e96130020754c44707401` |
 
 - 两份项目内文件是用户 Downloads 原件的无损副本，尺寸、Alpha 和 hash 已核对；后续不再依赖 Downloads 路径
-- 实装时复制进 `app/public/builtin-assets/`，建议使用新文件名 `bg-public-exam-landscape-cover-v1.png` / `bg-public-exam-landscape-inner-v1.png`，以及稳定 ID `builtin-bg-public-exam-landscape-cover-v1` / `builtin-bg-public-exam-landscape-inner-v1`
+- 已无损复制进 `app/public/builtin-assets/`，文件名为 `bg-public-exam-landscape-cover-v1.png` / `bg-public-exam-landscape-inner-v1.png`，稳定 ID 为 `builtin-bg-public-exam-landscape-cover-v1` / `builtin-bg-public-exam-landscape-inner-v1`
 - 这两张是不可拆对的模板资产；日后修图必须新增 `v2` 文件名和 assetId，禁止覆盖同名文件，避免 Cloudflare/CDN 缓存混版
 - 原图已是精确 9:15，页面内按原位全画布显示；不做 CSS 位移、缩放或二次裁切
 
@@ -352,6 +355,7 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - [`public-exam-title-colors-reference-v1.png`](docs/design/v1.5.0/public-exam-title-colors-reference-v1.png)：用户给定主/副标题精确色值的快照，2086×2168，SHA-256 `56d2d09189c778c9f190200703d8c345d46684dd73f34b0960a622ce3be5f986`
 - [`editor-toolbar-more-current-v1.png`](docs/design/v1.5.0/editor-toolbar-more-current-v1.png)：v1.4.1 左侧正文工具被固定收进「更多」的问题快照，3456×2168，SHA-256 `30c22a68a6b0dced665a3f05743bc7b9817556eae8e435e46428cf2a967a8b56`
 - [`list-page-break-nested-current-v1.png`](docs/design/v1.5.0/list-page-break-nested-current-v1.png)：v1.4.1 在无序列表内插入分页时，分页线跟随列表缩进且右侧仍不切页的问题快照，3334×1832（带 Alpha），SHA-256 `421105d75de068d7b54409c42fc1aae718a9236c35ef378b1f7fb18c5469ec2d`
+- `typography-optical-public-exam-preview-v1/v2/v3.png` 与 `typography-optical-public-exam-export-v1/v2/v3.png`：「提出对策题」标题竖线和有序列表序号的真实字形中线校准迭代证据；v3 为最终用户目检版，v1/v2 保留为不可覆盖的迭代记录
 
 #### 视觉基线（首次实装参数，以用户截图验收为准）
 
@@ -500,19 +504,20 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 - 合并为一个用户版本，只需一次 V1→V2 迁移、一轮完整导出验收、一次双轨部署和一份专业公告；内部用独立工作包/提交又能让问题可定位、可回退
 - 只有当公考模板明显延期，或线上分页缺陷需要立即止血时，才把「列表安全分页」先独立发为 **v1.4.2**，再发 v1.5.0；不得把多个不同构建都叫 v1.5.0
 
-#### 下一窗口的执行顺序与发布门禁
+#### 实施完成记录与发布门禁
 
-1. **WP1·分页可靠性（基础门禁）**：先固化列表内插入的失败用例，再实现顶层安全分页命令和旧嵌套分页归一化，独立提交；不开工 Markdown
-2. **WP2·工具可见性**：将 Editor toolbar 改为固定两行，删除 More/DropdownMenu 与裁切 CSS，「分页」接 WP1 的安全命令，独立提交；完成第一次用户目检（工具栏 + 列表分页）
-3. **WP3·数据/资源基础**：做底图 helper、HEX normalize/validation、V1→V2 草稿兼容、Theme normalize、App 双资源/颜色 state 与资源原子解析，独立提交
-4. **WP4·公考视觉闭环**：接页序路由、内置资产、「公考·山水卷」、专属 CSS、右侧两个 HEX 控件、资源降级和导出预检，独立提交；完成第二次用户目检（公考模板视觉）
-5. **WP5·联合回归**：跑本地三连 + 新旧 E2E + 1280/1440/1536 Playwright 截图，特别验证「列表分页 → 页数增加 → `[Cover, Inner…]` 路由 → PNG/ZIP 页数」全链路；然后交最终导出验收
-6. **发布门禁**：上述本地验收期间均不 bump/不推送/不部署；用户最终明确说「视觉通过，可以发布」后，才按 v1.5.0 完整双轨发版，并在 Cloudflare + OSS/CDN 两入口各做 1/2/5 页背景 + 主/副标题颜色 + 列表分页像素/页数回归，再归档、更新 HANDOFF/USAGE/项目日志、准备专业公告草稿
+1. **WP1·分页可靠性 ✅**：`b4e9088` 实现顶层安全分页，`fbb9c03` 补强粘贴/恢复等内容边界的根层不变量；无序/有序/嵌套列表分页已回归
+2. **WP2·工具可见性 ✅**：`faf109a` 将正文工具栏改为固定两行常驻，删除「更多」主路径，并通过第一轮用户目检
+3. **WP3·数据/资源基础 ✅**：`b15fecf` 完成 V1→V2 草稿兼容、Theme normalize、Cover/Inner 双资源、封面语义色与原子解析
+4. **WP4·公考视觉闭环 ✅**：`589694f` 接入页序路由、内置资产、「公考·山水卷」、专属 CSS、两个 HEX 控件、资源降级和导出预检
+5. **WP4.1·真实字形光学对齐 ✅**：`86a5949` 完成 H2 标题与竖线、有序列表序号与首行文字的中线校准；覆盖预览、ThemePreview、html2canvas 导出、字体冷加载/切换、混合字体和可访问列表语义。最终 v3 预览/导出已获用户视觉确认
+6. **WP5·联合回归 ✅**：32 文件 / 217 单测、tsc、ESLint、build、diff-check、`test_v150_local.py` 和真实 Chromium 多字体/多字号像素校验全绿；独立审计无 P0/P1/P2 或阻断项
+7. **发布门禁 ⏳**：本地实现和视觉验收已完成，但 `app/package.json` 仍为 `1.4.1`，本地提交未推送。只有用户进一步明确授权「可以发布」后，才 bump 至 v1.5.0，执行 Cloudflare + OSS/CDN 双轨部署、tag，并在两入口各做 1/2/5 页背景 + 主/副标题颜色 + 列表分页 + 字形中线回归，再归档、更新 USAGE/项目日志和准备专业公告草稿
 
 ### 后续版本路线（v1.5.0 已确认；其后仍是候选，开工前再确认）
 
 1. **v1.4.1 桌面交互与可靠性版（已上线）**：图片直接操作、等比缩放、左中右对齐、磁吸、排版参考线、正文荧光笔、桌面编辑器外壳、轻量最近操作、草稿与导出可靠性，以及上述沃林 UX 原则；补丁版同步默认 5 页教程
-2. **v1.5.0 公考双底图模板版（已立项，下一窗口实现）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，旧草稿/主题兼容、资源恢复与高清导出闭环
+2. **v1.5.0 公考双底图模板版（本地候选版已完成并视觉通过，待发布）**：第 1 页 Cover、第 2 页起 Inner，公考专属安全盒/页码，封面主标题 `#6D136C` + 副标题 `#5A465F` 及可修改 HEX 控件，正文工具全部常驻，列表内分页保持顶层且真正切页，标题竖线/列表序号按真实字形中线对齐，旧草稿/主题兼容、资源恢复与高清导出闭环
 3. **v1.6.0 视觉资产质量版**：标题字重档位、ZCOOL / Ma Shan Zheng / Long Cang 等字体本地化、字体冗余清理、字体与图片在预览/导出中的一致性、加载性能优化
 4. **v1.7.0 文档自动编排版（已顺延）**：Markdown 导入、结构解析、图片资源映射、自动编排、自动分页；继续保留手动分页与人工校正，不能把自动结果变成不可修改的黑盒
 5. **v1.8.0 交付与诊断版（按需要）**：PWA 安装、部署/资源诊断、稳定运行后简化 `hasRaceArtifact/retry`；Tauri macOS `.app` 只在确有离线桌面分发需求时再评估，不与 PWA 同时默认开工
@@ -537,14 +542,14 @@ pnpm dlx shadcn@latest add <comp>     # 加 shadcn 组件
 
 ## 10. 新会话开场建议
 
-v1.5.0 专用开场：
+v1.5.0 发布候选版接手开场：
 
 ```
 我在继续做小红书排版编辑器项目。请先完整读取：
 
 /Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/HANDOFF.md
 
-本窗口执行 §8 的 v1.5.0「公考双底图模板版」。先告诉我你理解的现状、实现边界和开工顺序，再开始。本轮同时包含：封面主/副标题语义色及 HEX 修改控件；取消「更多」、左侧正文工具全部常驻的固定两行工具栏；以及修复无序/有序/嵌套列表内插入分页时分页线缩进且不切页的结构缺陷。按 WP1→WP5 分区实现验收，最后只发一个 v1.5.0。不做 Markdown 导入/自动编排；本地截图自查后先交我目检，我明确说「视觉通过，可以发布」之前不部署。
+§8 的 v1.5.0「公考双底图模板版」已在本地 main 完成，最后实现提交为 `86a5949`，用户已确认视觉无问题。线上仍是 v1.4.1，`app/package.json` 也仍为 1.4.1；本地提交未推送、未部署、未 tag、未归档。先读 §0/§2/§5/§8 并核对 git 状态。只有我在当前任务明确说「可以发布」后，才按双轨闭环执行 v1.5.0 发版；否则只做本地可逆检查，不触发外部写入。
 ```
 
 通用开场：
