@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useInsertionEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -100,6 +101,7 @@ import {
   type PageBackgroundIssue,
   type PageBackgroundRole,
 } from '@/lib/pageBackgrounds'
+import { handleGlobalHistoryShortcut } from '@/lib/globalHistoryShortcut'
 import './styles/canvas.css'
 import './styles/workspace.css'
 
@@ -633,6 +635,45 @@ function App() {
       dirtyDocumentRef.current = true
     }
   }, [draftReady, writerLeaseState])
+
+  const interactionBlocked = !draftReady || writerLeaseState !== 'owned'
+  const dialogOpen =
+    assetLibOpen || fontLibOpen || themeLibOpen || draftLibOpen || exportOpen
+  const historyShortcutSafetyRef = useRef({
+    blocked: interactionBlocked,
+    dialogOpen,
+    gestureActive: canvasGestureActive,
+  })
+
+  useLayoutEffect(() => {
+    historyShortcutSafetyRef.current = {
+      blocked: interactionBlocked,
+      dialogOpen,
+      gestureActive: canvasGestureActive,
+    }
+  }, [canvasGestureActive, dialogOpen, interactionBlocked])
+
+  const handleCanvasGestureStateChange = useCallback((active: boolean) => {
+    // pointerdown 同步更新，不给随后的快捷键留出旧闭包窗口。
+    historyShortcutSafetyRef.current.gestureActive = active
+    setCanvasGestureActive(active)
+  }, [])
+
+  // 只在 Tiptap 失焦后补齐历史快捷键；输入控件、弹层、只读和手势期间全部让行。
+  useEffect(() => {
+    function handleHistoryShortcut(event: KeyboardEvent) {
+      const safety = historyShortcutSafetyRef.current
+      handleGlobalHistoryShortcut(event, {
+        blocked: safety.blocked,
+        dialogOpen: safety.dialogOpen,
+        gestureActive: safety.gestureActive,
+        undo: () => editorRef.current?.undo() ?? false,
+        redo: () => editorRef.current?.redo() ?? false,
+      })
+    }
+    window.addEventListener('keydown', handleHistoryShortcut)
+    return () => window.removeEventListener('keydown', handleHistoryShortcut)
+  }, [])
 
   // 同一浏览器来源只允许一个可写标签页。Web Locks 由浏览器原子仲裁，
   // 页面关闭/崩溃时会自动释放，不存在 localStorage read→set 的双赢窗口。
@@ -1793,7 +1834,6 @@ function App() {
     }
   }
 
-  const interactionBlocked = !draftReady || writerLeaseState !== 'owned'
   const blockingTitle =
     writerLeaseState === 'unsupported'
       ? '当前浏览器无法安全保存'
@@ -1952,7 +1992,7 @@ function App() {
                   layoutRevision={previewLayoutRevision}
                   onSelectImage={handleSelectCanvasImage}
                   onClearSelection={() => editorRef.current?.clearSelection()}
-                  onGestureStateChange={setCanvasGestureActive}
+                  onGestureStateChange={handleCanvasGestureStateChange}
                   onCommitImage={handleCommitCanvasImage}
                 />
               ))}

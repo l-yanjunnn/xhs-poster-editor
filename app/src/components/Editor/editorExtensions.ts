@@ -7,6 +7,7 @@ import { PosterImage } from './ImageExtension'
 import { NoWrapPhrase } from './NoWrapPhrase'
 import { TextHighlight } from './TextHighlight'
 import { handlePageBreakPaste } from './pageBreakCommand'
+import { applyBlockType, toggleBlockType } from './blockTypeCommand'
 
 // 分页节点不属于 block group，因此 listItem/blockquote 的内容表达式无法再
 // 接纳它；只有根文档显式允许 pageBreak，结构不变量由 schema 兜底。
@@ -88,17 +89,46 @@ const PageBreakInvariants = Extension.create({
   },
 })
 
+// Heading 自带的 Mod-Alt-1…3 和 Paragraph 的 Mod-Alt-0 会直接使用
+// 原始选区。高优先级覆盖同名键，让快捷键与下拉框共用边界规则。
+const BlockTypeShortcuts = Extension.create({
+  name: 'blockTypeShortcuts',
+  priority: 1_000,
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Alt-0': () => {
+        applyBlockType(this.editor, 'paragraph')
+        return true
+      },
+      'Mod-Alt-1': () => {
+        toggleBlockType(this.editor, 'h1')
+        return true
+      },
+      'Mod-Alt-2': () => {
+        toggleBlockType(this.editor, 'h2')
+        return true
+      },
+      'Mod-Alt-3': () => {
+        toggleBlockType(this.editor, 'h3')
+        return true
+      },
+    }
+  },
+})
+
 /** 编辑器与测试共用同一套生产 schema，避免 StarterKit 测试漏掉分页约束。 */
 export function createEditorExtensions() {
   return [
     StarterKit.configure({
       document: false,
       horizontalRule: false,
+      heading: { levels: [1, 2, 3] },
     }),
     PosterDocument,
     RootPageBreak,
     Divider,
     PageBreakInvariants,
+    BlockTypeShortcuts,
     NoWrapPhrase,
     TextHighlight,
     PosterImage.configure({ inline: false, allowBase64: true }),

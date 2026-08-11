@@ -41,7 +41,10 @@ function cssNumber(element: HTMLElement, name: string): number {
   )
 }
 
-function installRectMock(options: { lastBottom?: number } = {}) {
+function installRectMock(
+  options: { lastBottom?: number; scale?: number } = {},
+) {
+  const scale = options.scale ?? PREVIEW_SCALE
   return vi
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockImplementation(function getMockRect(this: HTMLElement) {
@@ -53,8 +56,8 @@ function installRectMock(options: { lastBottom?: number } = {}) {
         return domRect(
           0,
           0,
-          CANVAS_WIDTH * PREVIEW_SCALE,
-          CANVAS_HEIGHT * PREVIEW_SCALE,
+          CANVAS_WIDTH * scale,
+          CANVAS_HEIGHT * scale,
         )
       }
 
@@ -76,19 +79,19 @@ function installRectMock(options: { lastBottom?: number } = {}) {
         )
         const translatedLeft = left + (transform ? Number(transform[1]) : 0)
         return domRect(
-          translatedLeft * PREVIEW_SCALE,
-          paddingTop * PREVIEW_SCALE,
-          width * PREVIEW_SCALE,
-          (width / 2) * PREVIEW_SCALE,
+          translatedLeft * scale,
+          paddingTop * scale,
+          width * scale,
+          (width / 2) * scale,
         )
       }
 
       const lastBottom = options.lastBottom ?? paddingTop + 40
       return domRect(
-        paddingX * PREVIEW_SCALE,
-        (lastBottom - 40) * PREVIEW_SCALE,
-        contentWidth * PREVIEW_SCALE,
-        40 * PREVIEW_SCALE,
+        paddingX * scale,
+        (lastBottom - 40) * scale,
+        contentWidth * scale,
+        40 * scale,
       )
     })
 }
@@ -165,7 +168,7 @@ describe('Preview page-role geometry', () => {
   it.each([
     {
       name: '公考封面',
-      padding: { x: 120, top: 340, bottom: 620 },
+      padding: { x: 120, top: 300, bottom: 300 },
       pageIndex: 0,
     },
     {
@@ -206,28 +209,69 @@ describe('Preview page-role geometry', () => {
     expect(
       interactionLayer?.style.getPropertyValue('--page-padding-x'),
     ).toBe(`${padding.x}px`)
+    expect(host.querySelectorAll('.layout-guide')).toHaveLength(5)
+    expect(host.querySelector('.layout-guide-label')?.textContent).toBe(
+      '建议内容区',
+    )
+    expect(host.querySelector('.layout-guide-hint')?.textContent).toBe(
+      '重要文字尽量放在线内；背景图片可以铺满整页。参考线不会导出。',
+    )
   })
 
-  it('Cover 溢出检查使用 1180px 安全底线，不沿用旧主题 1640px', async () => {
-    installRectMock({ lastBottom: 1200 })
+  it.each([
+    { lastBottom: 1499, overflowing: false },
+    { lastBottom: 1500, overflowing: false },
+    { lastBottom: 1502, overflowing: true },
+  ])(
+    'Cover 1500px 安全底线：lastBottom=$lastBottom',
+    async ({ lastBottom, overflowing }) => {
+      installRectMock({ lastBottom, scale: 1 })
+      const { host } = await mountPreview(
+        { x: 120, top: 300, bottom: 300 },
+        {
+          themeClass: 'theme-public-exam-landscape',
+          html: '<p>封面底部内容</p>',
+          previewScale: 1,
+        },
+      )
+
+      expect(Boolean(host.querySelector('.canvas-overflow-warning'))).toBe(
+        overflowing,
+      )
+    },
+  )
+
+  it('公考 Cover 使用 1500px 底线，旧主题仍使用 1640px', async () => {
+    installRectMock({ lastBottom: 1550, scale: 1 })
     const { host } = await mountPreview(
-      { x: 120, top: 340, bottom: 620 },
+      { x: 120, top: 300, bottom: 300 },
       {
         themeClass: 'theme-public-exam-landscape',
         html: '<p>超出封面安全区的正文</p>',
+        previewScale: 1,
       },
     )
 
     expect(host.querySelector('.canvas-overflow-warning')?.textContent).toContain(
       '超出安全区',
     )
+
+    const legacy = await mountPreview(
+      { x: 80, top: 320, bottom: 160 },
+      {
+        themeClass: '',
+        html: '<p>旧主题封面内容</p>',
+        previewScale: 1,
+      },
+    )
+    expect(legacy.host.querySelector('.canvas-overflow-warning')).toBeNull()
   })
 
   it('公考 Cover 缩放用 840px 内容宽度，pointermove 不重复读布局且只提交一次', async () => {
     const rectSpy = installRectMock()
     const onCommitImage = vi.fn(() => true)
     const { host } = await mountPreview(
-      { x: 120, top: 340, bottom: 620 },
+      { x: 120, top: 300, bottom: 300 },
       {
         themeClass: 'theme-public-exam-landscape',
         html: '<img data-image-id="cover-image" data-align="left" style="width: 50%">',

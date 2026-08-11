@@ -54,8 +54,17 @@ describe('theme-public-exam-landscape canvas CSS', () => {
       '.theme-public-exam-landscape.page--first',
     )
     expect(property(cover, '--page-padding-x')).toBe('120px')
-    expect(property(cover, '--page-padding-top')).toBe('340px')
-    expect(property(cover, '--page-padding-bottom')).toBe('620px')
+    expect(property(cover, '--page-padding-top')).toBe('300px')
+    expect(property(cover, '--page-padding-bottom')).toBe('300px')
+  })
+
+  it('保留五条简洁参考线，中线更淡且使用虚线', () => {
+    const center = findRule('.layout-guide--center')
+    expect(property(center, 'width')).toBe('0')
+    expect(property(center, 'border-left')).toBe(
+      '2px dashed rgba(37, 99, 235, 0.24)',
+    )
+    expect(property(center, 'background')).toBe('transparent')
   })
 
   it('所有主题的封面可编辑色只命中首个 H1 和紧邻段落', () => {

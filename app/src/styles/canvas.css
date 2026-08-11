@@ -124,8 +124,8 @@
 
 .theme-public-exam-landscape.page--first {
   --page-padding-x: 120px;
-  --page-padding-top: 340px;
-  --page-padding-bottom: 620px;
+  --page-padding-top: 300px;
+  --page-padding-bottom: 300px;
 }
 
 /* 底图纸纹与山水已完成明度标定，不再叠加用户上一主题的遮罩。 */
@@ -553,6 +553,9 @@
 }
 .layout-guide--center {
   left: 50%;
+  width: 0;
+  border-left: 2px dashed rgba(37, 99, 235, 0.24);
+  background: transparent;
 }
 .layout-guide--right {
   right: var(--page-padding-x);
@@ -568,7 +571,7 @@
 }
 .layout-guide-label {
   position: absolute;
-  top: 24px;
+  top: calc(var(--page-padding-top) - 54px);
   left: var(--page-padding-x);
   z-index: 22;
   border: 2px solid rgba(37, 99, 235, 0.5);
@@ -580,6 +583,21 @@
   font-size: 22px;
   font-weight: 650;
   line-height: 1;
+}
+.layout-guide-hint {
+  position: absolute;
+  top: calc(var(--page-padding-top) - 48px);
+  right: var(--page-padding-x);
+  left: calc(var(--page-padding-x) + 172px);
+  z-index: 22;
+  color: rgba(29, 78, 216, 0.82);
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.96),
+    0 0 8px rgba(255, 255, 255, 0.92);
 }
 
 .snap-guide {

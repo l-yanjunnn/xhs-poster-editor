@@ -1,4 +1,4 @@
-"""v1.5.0 生产回归：公考双底图、列表分页、高清导出与字形中线。
+"""v1.5.x 生产回归：公考双底图、列表分页、高清导出与字形中线。
 
 这个脚本只使用用户可见 UI 和生产 DOM，不依赖 dev-only 的
 ``window.__editor`` / ``window.__test`` 钩子。每个用例使用全新 Chromium
@@ -30,7 +30,7 @@ URL = (
     if len(sys.argv) > 1
     else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
 )
-EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.0"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.1"
 USE_PROXY = "workers.dev" in URL
 CANVAS_SIZE = (2160, 3600)
 PAGE_WIDTH = 1080

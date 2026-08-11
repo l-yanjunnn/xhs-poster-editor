@@ -25,6 +25,58 @@ function getFirstImageAttrs(handle: EditorHandle | null) {
 }
 
 describe('v1.4 editor extensions', () => {
+  it('exposes only H1–H3 commands and keyboard shortcuts', () => {
+    const editor = makeEditor('<p>段落</p>')
+
+    expect(
+      editor.extensionManager.extensions.find((item) => item.name === 'heading')
+        ?.options.levels,
+    ).toEqual([1, 2, 3])
+    for (const level of [4, 5, 6] as const) {
+      expect(editor.commands.setHeading({ level })).toBe(false)
+      editor.commands.keyboardShortcut(`Mod-Alt-${level}`)
+      expect(editor.getJSON().content?.[0]?.type).toBe('paragraph')
+    }
+
+    expect(editor.commands.keyboardShortcut('Mod-Alt-3')).toBe(true)
+    expect(editor.getJSON().content?.[0]).toMatchObject({
+      type: 'heading',
+      attrs: { level: 3 },
+    })
+    editor.destroy()
+  })
+
+  it('downgrades legacy H4–H6 content to the nearest supported heading', () => {
+    const html = makeEditor(
+      normalizeIncomingContent('<h4>四级</h4><h5>五级</h5><h6>六级</h6>'),
+    )
+    expect(html.getJSON().content).toEqual([
+      expect.objectContaining({ type: 'heading', attrs: { level: 3 } }),
+      expect.objectContaining({ type: 'heading', attrs: { level: 3 } }),
+      expect.objectContaining({ type: 'heading', attrs: { level: 3 } }),
+    ])
+
+    const json = makeEditor(
+      normalizeIncomingContent({
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 6 },
+            content: [{ type: 'text', text: '历史标题' }],
+          },
+        ],
+      }),
+    )
+    expect(json.getJSON().content?.[0]).toMatchObject({
+      type: 'heading',
+      attrs: { level: 3 },
+    })
+    expect(json.getText()).toBe('历史标题')
+    html.destroy()
+    json.destroy()
+  })
+
   it('round-trips one root img with semantic attrs and no pixel height', () => {
     const editor = makeEditor({
       type: 'doc',

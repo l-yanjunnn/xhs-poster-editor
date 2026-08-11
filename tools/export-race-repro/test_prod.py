@@ -20,7 +20,7 @@ URL = (
     else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
 )
 ROUNDS = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-EXPECTED_VERSION = sys.argv[3] if len(sys.argv) > 3 else "v1.5.0"
+EXPECTED_VERSION = sys.argv[3] if len(sys.argv) > 3 else "v1.5.1"
 USE_PROXY = "workers.dev" in URL
 
 

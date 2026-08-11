@@ -36,6 +36,10 @@ import {
 import { createEditorExtensions } from './editorExtensions'
 import { insertRootPageBreak } from './pageBreakCommand'
 import {
+  applyBlockType,
+  type EditorBlockType,
+} from './blockTypeCommand'
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -531,7 +535,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       <div className="editor-panel-heading">
         <div>
           <strong>正文编辑</strong>
-          <span>录入文字与文档结构</span>
+          <span>标题作用于整段；Enter 分段，Shift+Enter 只换行</span>
         </div>
       </div>
       <EditorToolbar
@@ -651,12 +655,7 @@ function EditorToolbar({
           : 'paragraph'
 
   function setBlockType(value: string) {
-    const chain = activeEditor.chain().focus()
-    if (value === 'h1') chain.setHeading({ level: 1 }).run()
-    else if (value === 'h2') chain.setHeading({ level: 2 }).run()
-    else if (value === 'h3') chain.setHeading({ level: 3 }).run()
-    else if (value === 'code') chain.setCodeBlock().run()
-    else chain.setParagraph().run()
+    applyBlockType(activeEditor, value as EditorBlockType)
   }
 
   function toggleNoWrapPhrase() {

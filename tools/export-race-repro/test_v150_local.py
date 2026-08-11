@@ -19,7 +19,7 @@ from playwright.async_api import Locator, Page, async_playwright
 
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:4174/"
-EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.0"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.1"
 OUT = Path("/tmp/xhs-v150-rc")
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -898,6 +898,164 @@ async def assert_page_break_invariants(page: Page) -> None:
     )
 
 
+async def exported_page_pixel_digest(page: Page, page_index: int = 0) -> dict:
+    return await page.evaluate(
+        """
+        async (pageIndex) => {
+          const source = document.querySelectorAll('.page')[pageIndex]
+          const canvas = await window.__test.pageToPngCanvas(source)
+          const context = canvas.getContext('2d', { willReadFrequently: true })
+          const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+          const digest = await crypto.subtle.digest('SHA-256', pixels.buffer)
+          return {
+            width: canvas.width,
+            height: canvas.height,
+            sha256: [...new Uint8Array(digest)]
+              .map((value) => value.toString(16).padStart(2, '0'))
+              .join(''),
+          }
+        }
+        """,
+        page_index,
+    )
+
+
+async def assert_public_exam_safe_area(page: Page) -> None:
+    log("验证封面建议内容区、缩放坐标与参考层导出不变")
+    crop_switch = page.get_by_role("switch", name="裁切参考", exact=True)
+    layout_switch = page.get_by_role("switch", name="排版参考", exact=True)
+    assert await crop_switch.get_attribute("aria-checked") == "false"
+    assert await layout_switch.get_attribute("aria-checked") == "false"
+
+    before = {
+        "document": await page.evaluate("window.__editor.getJSON()"),
+        "pages": await page.locator(".page").count(),
+    }
+    baseline_digest = await exported_page_pixel_digest(page)
+    assert baseline_digest["width"] == 2160, baseline_digest
+    assert baseline_digest["height"] == 3600, baseline_digest
+
+    await layout_switch.click()
+    await next_layout(page)
+    assert await layout_switch.get_attribute("aria-checked") == "true"
+    assert await crop_switch.get_attribute("aria-checked") == "false"
+
+    guide_matrix = await page.evaluate(
+        """
+        () => [...document.querySelectorAll('.page-preview-group')]
+          .slice(0, 2)
+          .map((group) => {
+            const value = (selector, property) =>
+              Number.parseFloat(group.querySelector(selector).style[property])
+            const center = group.querySelector('.layout-guide--center')
+            return {
+              count: group.querySelectorAll('.layout-guide').length,
+              left: value('.layout-guide--left', 'left'),
+              center: value('.layout-guide--center', 'left'),
+              right: value('.layout-guide--right', 'right'),
+              top: value('.layout-guide--top', 'top'),
+              bottom: value('.layout-guide--bottom', 'bottom'),
+              label: group.querySelector('.layout-guide-label').textContent.trim(),
+              hint: group.querySelector('.layout-guide-hint').textContent.trim(),
+              centerStyle: getComputedStyle(center).borderLeftStyle,
+            }
+          })
+        """
+    )
+    expected_hint = (
+        "重要文字尽量放在线内；背景图片可以铺满整页。参考线不会导出。"
+    )
+    assert guide_matrix == [
+        {
+            "count": 5,
+            "left": 120,
+            "center": 540,
+            "right": 120,
+            "top": 300,
+            "bottom": 300,
+            "label": "建议内容区",
+            "hint": expected_hint,
+            "centerStyle": "dashed",
+        },
+        {
+            "count": 5,
+            "left": 96,
+            "center": 540,
+            "right": 96,
+            "top": 180,
+            "bottom": 300,
+            "label": "建议内容区",
+            "hint": expected_hint,
+            "centerStyle": "dashed",
+        },
+    ], guide_matrix
+
+    scale_matrix = await page.evaluate(
+        """
+        async (scales) => {
+          const group = document.querySelector('.page-preview-group')
+          const wrapper = group.querySelector('.page-wrapper')
+          const stage = group.querySelector('.page-stage')
+          const originalStyle = wrapper.getAttribute('style')
+          const nextLayout = () => new Promise((resolve) => requestAnimationFrame(
+            () => requestAnimationFrame(resolve),
+          ))
+          const results = []
+          for (const scale of scales) {
+            wrapper.style.setProperty('--preview-scale', String(scale))
+            wrapper.style.width = `${1080 * scale}px`
+            wrapper.style.height = `${1800 * scale}px`
+            await nextLayout()
+            const stageRect = stage.getBoundingClientRect()
+            const actualScale = stageRect.width / 1080
+            const rect = (selector) => group.querySelector(selector).getBoundingClientRect()
+            const left = rect('.layout-guide--left')
+            const center = rect('.layout-guide--center')
+            const right = rect('.layout-guide--right')
+            const top = rect('.layout-guide--top')
+            const bottom = rect('.layout-guide--bottom')
+            const values = {
+              left: (left.left - stageRect.left) / actualScale,
+              center: (center.left - stageRect.left) / actualScale,
+              right: (stageRect.right - right.right) / actualScale,
+              top: (top.top - stageRect.top) / actualScale,
+              bottom: (stageRect.bottom - bottom.bottom) / actualScale,
+            }
+            const expected = { left: 120, center: 540, right: 120, top: 300, bottom: 300 }
+            results.push({
+              scale,
+              maxError: Math.max(...Object.keys(expected).map(
+                (key) => Math.abs(values[key] - expected[key]),
+              )),
+            })
+          }
+          if (originalStyle === null) wrapper.removeAttribute('style')
+          else wrapper.setAttribute('style', originalStyle)
+          await nextLayout()
+          return results
+        }
+        """,
+        [0.33, 0.4, 0.5],
+    )
+    assert all(item["maxError"] <= 1 for item in scale_matrix), scale_matrix
+
+    layout_digest = await exported_page_pixel_digest(page)
+    await crop_switch.click()
+    await next_layout(page)
+    assert await crop_switch.get_attribute("aria-checked") == "true"
+    assert await layout_switch.get_attribute("aria-checked") == "true"
+    combined_digest = await exported_page_pixel_digest(page)
+    assert layout_digest == baseline_digest, (baseline_digest, layout_digest)
+    assert combined_digest == baseline_digest, (baseline_digest, combined_digest)
+
+    await crop_switch.click()
+    await next_layout(page)
+    assert await crop_switch.get_attribute("aria-checked") == "false"
+    assert await layout_switch.get_attribute("aria-checked") == "true"
+    assert await page.evaluate("window.__editor.getJSON()") == before["document"]
+    assert await page.locator(".page").count() == before["pages"]
+
+
 async def assert_public_exam_theme(page: Page) -> None:
     log("验证公考双底图、语义色、三档预览与两页 ZIP 导出")
     document = {
@@ -1083,13 +1241,15 @@ async def assert_public_exam_theme(page: Page) -> None:
     assert visual["coverTitle"] == "rgb(109, 19, 108)", visual
     assert visual["coverSubtitle"] == "rgb(90, 70, 95)", visual
     assert visual["innerText"] == "rgb(45, 41, 43)", visual
-    assert visual["coverPadding"] == ["120px", "340px", "620px"], visual
+    assert visual["coverPadding"] == ["120px", "300px", "300px"], visual
     assert visual["innerPadding"] == ["96px", "180px", "300px"], visual
     assert visual["overlays"] == ["0", "0"], visual
     assert visual["logos"] == 0, visual
     assert visual["coverTagDisplay"] == "none", visual
     assert visual["innerTagTop"] == "112px", visual
     assert visual["innerTagRight"] == "96px", visual
+
+    await assert_public_exam_safe_area(page)
 
     title_input = page.get_by_role("textbox", name="主标题颜色", exact=True)
     subtitle_input = page.get_by_role("textbox", name="副标题颜色", exact=True)

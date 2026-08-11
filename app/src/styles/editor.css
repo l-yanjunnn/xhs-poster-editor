@@ -21,7 +21,7 @@
 .editor-panel-heading > div {
   display: flex;
   width: 100%;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -34,8 +34,11 @@
 }
 
 .editor-panel-heading span {
+  max-width: 245px;
   color: #98a2b3;
   font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .editor-toolbar {

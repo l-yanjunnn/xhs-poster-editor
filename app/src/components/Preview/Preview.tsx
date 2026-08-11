@@ -836,7 +836,10 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
                   className="layout-guide-label"
                   style={{ left: `${canvasGeometry.contentLeft}px` }}
                 >
-                  排版安全区
+                  建议内容区
+                </div>
+                <div className="layout-guide-hint">
+                  重要文字尽量放在线内；背景图片可以铺满整页。参考线不会导出。
                 </div>
               </div>
             )}

@@ -16,7 +16,7 @@ from PIL import Image
 from playwright.async_api import async_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "https://xhs-poster-editor.l-yanjunnn.workers.dev/"
-EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.0"
+EXPECTED_VERSION = sys.argv[2] if len(sys.argv) > 2 else "v1.5.1"
 USE_PROXY = "workers.dev" in URL  # 大陆通道直连
 FONT_FILE = "/System/Library/Fonts/Supplemental/Comic Sans MS.ttf"
 OUT = Path("/tmp/prod_deep_test")

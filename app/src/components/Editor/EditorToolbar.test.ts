@@ -70,6 +70,9 @@ function setTextSelection(editor: Editor, from: number, to = from): void {
 describe('two-row editor toolbar', () => {
   it('keeps every tool directly visible with stable groups and toggle semantics', async () => {
     const { host } = await mountEditor({ onInsertImageClick: vi.fn() })
+    expect(host.textContent).toContain(
+      '标题作用于整段；Enter 分段，Shift+Enter 只换行',
+    )
     const toolbar = host.querySelector('[aria-label="正文排版工具"]')
     expect(toolbar).not.toBeNull()
     expect(
