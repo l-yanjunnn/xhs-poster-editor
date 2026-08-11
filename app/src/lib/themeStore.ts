@@ -2,7 +2,7 @@
 // 独立 DB（xhs-poster-themes），与素材/字体 DB 解耦
 // Theme.contentJSON 直接存对象，IndexedDB 原生支持结构化克隆
 
-import type { Theme } from './themes'
+import { normalizeTheme, type Theme } from './themes'
 
 const DB_NAME = 'xhs-poster-themes'
 const DB_VERSION = 1
@@ -36,9 +36,12 @@ function tx(db: IDBDatabase, mode: IDBTransactionMode) {
 
 // put 而非 add：同 id 直接覆盖（rename / 重新保存）
 export async function putUserTheme(theme: Theme): Promise<void> {
+  const normalized = normalizeTheme(theme)
+  if (!normalized) throw new Error('主题数据损坏：缺少必要字段')
+
   const db = await openDB()
   await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').put(theme)
+    const req = tx(db, 'readwrite').put(normalized)
     req.onsuccess = () => resolve()
     req.onerror = () => reject(req.error)
   })
@@ -49,9 +52,10 @@ export async function listUserThemes(): Promise<Theme[]> {
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly').getAll()
     req.onsuccess = () => {
-      const list = (req.result as Theme[]).sort(
-        (a, b) => b.createdAt - a.createdAt,
-      )
+      const list = (req.result as unknown[])
+        .map(normalizeTheme)
+        .filter((theme): theme is Theme => theme !== null)
+        .sort((a, b) => b.createdAt - a.createdAt)
       resolve(list)
     }
     req.onerror = () => reject(req.error)

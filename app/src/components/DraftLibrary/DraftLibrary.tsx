@@ -5,18 +5,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { EditorDocumentV1 } from '@/lib/documentStore'
+import type { EditorDocumentV2 } from '@/lib/documentStore'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  documents: EditorDocumentV1[]
+  documents: EditorDocumentV2[]
   activeDocumentId: string | null
   activeDocumentTitle: string
   storageError: string | null
   onSaveAs: (title: string) => Promise<boolean>
-  onOpenDocument: (document: EditorDocumentV1) => Promise<boolean>
-  onDeleteDocument: (document: EditorDocumentV1) => Promise<boolean>
+  onOpenDocument: (document: EditorDocumentV2) => Promise<boolean>
+  onDeleteDocument: (document: EditorDocumentV2) => Promise<boolean>
 }
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -50,7 +50,7 @@ export function DraftLibrary(p: Props) {
     }
   }
 
-  async function handleOpen(document: EditorDocumentV1) {
+  async function handleOpen(document: EditorDocumentV2) {
     if (busyAction || document.id === p.activeDocumentId) return
     setBusyAction(`open:${document.id}`)
     try {
@@ -60,7 +60,7 @@ export function DraftLibrary(p: Props) {
     }
   }
 
-  async function handleDelete(document: EditorDocumentV1) {
+  async function handleDelete(document: EditorDocumentV2) {
     if (busyAction) return
     if (confirmDeleteId !== document.id) {
       setConfirmDeleteId(document.id)

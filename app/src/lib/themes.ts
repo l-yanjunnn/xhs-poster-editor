@@ -1,6 +1,8 @@
 // 主题数据模型 + 内置主题 + 共享映射表
 // 主题里只存 assetId（不存 blob URL），apply 时再 resolve，避免 session 间失效
 
+import { normalizeHexColor } from './hexColor'
+
 export type LogoStrategy = 'every' | 'first' | 'first-last' | 'none'
 export type OverlayKey =
   | 'none'
@@ -12,7 +14,11 @@ export type OverlayKey =
 export type DensityLevel = 'compact' | 'normal' | 'relaxed' | 'loose'
 export type H1Width = '50%' | '66%' | '80%' | '100%'
 // 决定 .page div 的色彩 CSS class
-export type ThemeKey = '' | 'theme-minimal-white' | 'theme-dark-night'
+export type ThemeKey =
+  | ''
+  | 'theme-minimal-white'
+  | 'theme-dark-night'
+  | 'theme-public-exam-landscape'
 
 // 用户可保存复用的完整样式快照
 export interface Theme {
@@ -36,8 +42,11 @@ export interface Theme {
   fontSize: number
   density: DensityLevel
   logoStrategy: LogoStrategy
-  bgAssetId: string // builtin/user asset id；'' = 纯色背景
+  bgAssetId: string // 默认/内页背景；builtin/user asset id；'' = 纯色背景
+  coverBgAssetId: string // 首页 override；'' = 纯色背景
   logoAssetId: string
+  coverTitleColor: string
+  coverSubtitleColor: string
 
   // 正文（可选）— null = 仅样式；object = 含 Tiptap doc JSON
   contentJSON: object | null
@@ -46,6 +55,25 @@ export interface Theme {
 // 字体 stack 必须与 fontPresets 选项 value 严格对齐，否则 select 找不到匹配会回退首项
 const DISPLAY_SERIF = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif'
 const DISPLAY_SANS = '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif'
+
+export interface CoverTextColors {
+  title: string
+  subtitle: string
+}
+
+const COVER_TEXT_COLOR_DEFAULTS: Record<ThemeKey, CoverTextColors> = {
+  '': { title: '#1A1A1A', subtitle: '#1A1A1A' },
+  'theme-minimal-white': { title: '#111111', subtitle: '#111111' },
+  'theme-dark-night': { title: '#F0F0F0', subtitle: '#F0F0F0' },
+  'theme-public-exam-landscape': {
+    title: '#6D136C',
+    subtitle: '#5A465F',
+  },
+}
+
+export function getThemeCoverTextColors(themeClass: ThemeKey): CoverTextColors {
+  return { ...COVER_TEXT_COLOR_DEFAULTS[themeClass] }
+}
 
 export const BUILTIN_THEMES: Theme[] = [
   {
@@ -67,7 +95,10 @@ export const BUILTIN_THEMES: Theme[] = [
     density: 'normal',
     logoStrategy: 'every',
     bgAssetId: 'builtin-bg-xuan',
+    coverBgAssetId: 'builtin-bg-xuan',
     logoAssetId: 'builtin-logo-cat',
+    coverTitleColor: '#1A1A1A',
+    coverSubtitleColor: '#1A1A1A',
     contentJSON: null,
   },
   {
@@ -89,7 +120,10 @@ export const BUILTIN_THEMES: Theme[] = [
     density: 'normal',
     logoStrategy: 'every',
     bgAssetId: '',
+    coverBgAssetId: '',
     logoAssetId: 'builtin-logo-cat',
+    coverTitleColor: '#111111',
+    coverSubtitleColor: '#111111',
     contentJSON: null,
   },
   {
@@ -111,10 +145,142 @@ export const BUILTIN_THEMES: Theme[] = [
     density: 'normal',
     logoStrategy: 'every',
     bgAssetId: '',
+    coverBgAssetId: '',
     logoAssetId: 'builtin-logo-cat',
+    coverTitleColor: '#F0F0F0',
+    coverSubtitleColor: '#F0F0F0',
+    contentJSON: null,
+  },
+  {
+    id: 'builtin-public-exam-landscape',
+    name: '公考·山水卷',
+    isBuiltin: true,
+    createdAt: 0,
+    themeClass: 'theme-public-exam-landscape',
+    overlay: 'none',
+    h1Width: '80%',
+    fontH1: DISPLAY_SERIF,
+    fontH2: DISPLAY_SERIF,
+    fontH3: DISPLAY_SANS,
+    fontBody: DISPLAY_SANS,
+    h1Bold: true,
+    h2Bold: true,
+    h3Bold: true,
+    fontSize: 40,
+    density: 'normal',
+    logoStrategy: 'none',
+    bgAssetId: 'builtin-bg-public-exam-landscape-inner-v1',
+    coverBgAssetId: 'builtin-bg-public-exam-landscape-cover-v1',
+    logoAssetId: '',
+    coverTitleColor: '#6D136C',
+    coverSubtitleColor: '#5A465F',
     contentJSON: null,
   },
 ]
+
+const VALID_THEME_CLASSES = new Set<ThemeKey>([
+  '',
+  'theme-minimal-white',
+  'theme-dark-night',
+  'theme-public-exam-landscape',
+])
+const VALID_OVERLAYS = new Set<OverlayKey>([
+  'none',
+  'light-30',
+  'light-60',
+  'dark-30',
+  'dark-60',
+  'dark-80',
+])
+const VALID_H1_WIDTHS = new Set<H1Width>(['50%', '66%', '80%', '100%'])
+const VALID_DENSITIES = new Set<DensityLevel>([
+  'compact',
+  'normal',
+  'relaxed',
+  'loose',
+])
+const VALID_LOGO_STRATEGIES = new Set<LogoStrategy>([
+  'every',
+  'first',
+  'first-last',
+  'none',
+])
+
+/**
+ * Upgrade a stored V1 theme into the complete runtime Theme shape.
+ * Invalid V2 colors fall back to the theme's original visual color instead of
+ * leaking arbitrary CSS into the preview.
+ */
+export function normalizeTheme(value: unknown): Theme | null {
+  if (!value || typeof value !== 'object') return null
+
+  const theme = value as Partial<Record<keyof Theme, unknown>>
+  if (
+    typeof theme.id !== 'string' ||
+    typeof theme.name !== 'string' ||
+    typeof theme.isBuiltin !== 'boolean' ||
+    typeof theme.createdAt !== 'number' ||
+    !Number.isFinite(theme.createdAt) ||
+    typeof theme.themeClass !== 'string' ||
+    !VALID_THEME_CLASSES.has(theme.themeClass as ThemeKey) ||
+    typeof theme.overlay !== 'string' ||
+    !VALID_OVERLAYS.has(theme.overlay as OverlayKey) ||
+    typeof theme.h1Width !== 'string' ||
+    !VALID_H1_WIDTHS.has(theme.h1Width as H1Width) ||
+    typeof theme.fontH1 !== 'string' ||
+    typeof theme.fontH2 !== 'string' ||
+    typeof theme.fontH3 !== 'string' ||
+    typeof theme.fontBody !== 'string' ||
+    typeof theme.h1Bold !== 'boolean' ||
+    typeof theme.h2Bold !== 'boolean' ||
+    typeof theme.h3Bold !== 'boolean' ||
+    typeof theme.fontSize !== 'number' ||
+    !Number.isFinite(theme.fontSize) ||
+    typeof theme.density !== 'string' ||
+    !VALID_DENSITIES.has(theme.density as DensityLevel) ||
+    typeof theme.logoStrategy !== 'string' ||
+    !VALID_LOGO_STRATEGIES.has(theme.logoStrategy as LogoStrategy) ||
+    typeof theme.bgAssetId !== 'string' ||
+    typeof theme.logoAssetId !== 'string' ||
+    (theme.contentJSON !== null && typeof theme.contentJSON !== 'object')
+  ) {
+    return null
+  }
+
+  const themeClass = theme.themeClass as ThemeKey
+  const fallbackColors = COVER_TEXT_COLOR_DEFAULTS[themeClass]
+
+  return {
+    id: theme.id,
+    name: theme.name,
+    isBuiltin: theme.isBuiltin,
+    createdAt: theme.createdAt,
+    themeClass,
+    overlay: theme.overlay as OverlayKey,
+    h1Width: theme.h1Width as H1Width,
+    fontH1: theme.fontH1,
+    fontH2: theme.fontH2,
+    fontH3: theme.fontH3,
+    fontBody: theme.fontBody,
+    h1Bold: theme.h1Bold,
+    h2Bold: theme.h2Bold,
+    h3Bold: theme.h3Bold,
+    fontSize: theme.fontSize,
+    density: theme.density as DensityLevel,
+    logoStrategy: theme.logoStrategy as LogoStrategy,
+    bgAssetId: theme.bgAssetId,
+    coverBgAssetId:
+      typeof theme.coverBgAssetId === 'string'
+        ? theme.coverBgAssetId
+        : theme.bgAssetId,
+    logoAssetId: theme.logoAssetId,
+    coverTitleColor:
+      normalizeHexColor(theme.coverTitleColor) ?? fallbackColors.title,
+    coverSubtitleColor:
+      normalizeHexColor(theme.coverSubtitleColor) ?? fallbackColors.subtitle,
+    contentJSON: theme.contentJSON as object | null,
+  }
+}
 
 // App 启动加载的默认主题
 export const DEFAULT_THEME = BUILTIN_THEMES[0]

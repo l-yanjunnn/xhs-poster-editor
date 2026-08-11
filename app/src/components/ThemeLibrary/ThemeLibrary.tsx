@@ -127,6 +127,7 @@ function ThemeGrid({
         return (
           <div
             key={t.id}
+            data-theme-id={t.id}
             className={`group relative overflow-hidden rounded border-2 transition ${
               isCurrent
                 ? 'border-blue-500'
@@ -139,15 +140,28 @@ function ThemeGrid({
             </div>
             <div className="bg-neutral-900 px-2 py-2">
               <div className="flex items-center justify-between gap-1">
-                <div className="truncate text-xs text-neutral-200">{t.name}</div>
-                {t.contentJSON && (
-                  <span
-                    className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-300"
-                    title="主题含正文，应用时会替换编辑器内容"
-                  >
-                    含正文
-                  </span>
-                )}
+                <div className="min-w-0 flex-1 truncate text-xs text-neutral-200">
+                  {t.name}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {t.coverBgAssetId !== t.bgAssetId && (
+                    <span
+                      data-page-backgrounds="cover-inner"
+                      className="rounded bg-violet-950 px-1.5 py-0.5 text-[10px] text-violet-200"
+                      title="首页与内页使用不同背景"
+                    >
+                      首图 + 内页
+                    </span>
+                  )}
+                  {t.contentJSON && (
+                    <span
+                      className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-300"
+                      title="主题含正文，应用时会替换编辑器内容"
+                    >
+                      含正文
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 className="mt-1.5 w-full rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-500"

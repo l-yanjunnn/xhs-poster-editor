@@ -1,4 +1,8 @@
-import { useId, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useId,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import {
   AlertTriangle,
   AlignCenter,
@@ -52,6 +56,7 @@ import {
   type ImageAlign,
 } from '@/lib/imageModel'
 import { TEXT_HIGHLIGHT_COLOR } from '@/lib/textHighlight'
+import { normalizeHexColor } from '@/lib/hexColor'
 
 export interface RecentAction {
   id: string
@@ -89,6 +94,8 @@ interface Props {
   h1Width: H1Width
   overlay: OverlayKey
   logoStrategy: LogoStrategy
+  coverTitleColor: string
+  coverSubtitleColor: string
   userFontFamilies: string[]
   onFontH1: (value: string) => void
   onFontH2: (value: string) => void
@@ -102,6 +109,9 @@ interface Props {
   onH1Width: (value: H1Width) => void
   onOverlay: (value: OverlayKey) => void
   onLogoStrategy: (value: LogoStrategy) => void
+  onCoverTitleColor: (color: string) => void
+  onCoverSubtitleColor: (color: string) => void
+  onRestoreCoverColors: () => void
   onOpenAssetLibrary: () => void
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
@@ -449,6 +459,14 @@ function PageInspector(props: Props) {
           </button>
         </div>
 
+        <CoverColorFields
+          titleColor={props.coverTitleColor}
+          subtitleColor={props.coverSubtitleColor}
+          onTitleColor={props.onCoverTitleColor}
+          onSubtitleColor={props.onCoverSubtitleColor}
+          onRestore={props.onRestoreCoverColors}
+        />
+
         <Field label="叠色">
           <SimpleSelect
             value={props.overlay}
@@ -536,6 +554,124 @@ function PageInspector(props: Props) {
         <span>请先选中文字，再调整荧光笔。</span>
       </div>
     </>
+  )
+}
+
+function CoverColorFields({
+  titleColor,
+  subtitleColor,
+  onTitleColor,
+  onSubtitleColor,
+  onRestore,
+}: {
+  titleColor: string
+  subtitleColor: string
+  onTitleColor: (color: string) => void
+  onSubtitleColor: (color: string) => void
+  onRestore: () => void
+}) {
+  return (
+    <fieldset className="m-0 flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <legend className="px-1 text-xs font-semibold text-neutral-700">
+        封面文字颜色
+      </legend>
+      <HexColorInput
+        key={`title-${titleColor}`}
+        label="主标题"
+        value={titleColor}
+        onCommit={onTitleColor}
+      />
+      <HexColorInput
+        key={`subtitle-${subtitleColor}`}
+        label="副标题"
+        value={subtitleColor}
+        onCommit={onSubtitleColor}
+      />
+      <button
+        type="button"
+        className="inspector-reset-action w-full"
+        onClick={onRestore}
+      >
+        <RotateCcw aria-hidden="true" />
+        恢复模板颜色
+      </button>
+    </fieldset>
+  )
+}
+
+function HexColorInput({
+  label,
+  value,
+  onCommit,
+}: {
+  label: string
+  value: string
+  onCommit: (color: string) => void
+}) {
+  const inputId = useId()
+  const errorId = useId()
+  const [draft, setDraft] = useState(value)
+  const [error, setError] = useState<string | null>(null)
+
+  function commit(rawValue: string) {
+    const normalized = normalizeHexColor(rawValue)
+    if (!normalized) {
+      setError('请输入 # 加 6 位十六进制颜色，例如 #6D136C')
+      return
+    }
+
+    setDraft(normalized)
+    setError(null)
+    if (normalized !== value) onCommit(normalized)
+  }
+
+  const previewColor =
+    normalizeHexColor(draft) ?? normalizeHexColor(value) ?? '#000000'
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={inputId} className="text-[11px] font-semibold text-neutral-600">
+        {label}
+      </label>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-9 w-9 flex-none rounded-lg border-4 border-white shadow-[0_0_0_1px_#e4e7ec]"
+          style={{ backgroundColor: previewColor }}
+          aria-hidden="true"
+        />
+        <input
+          id={inputId}
+          className={`h-9 min-w-0 flex-1 rounded-lg border bg-white px-3 font-mono text-xs uppercase text-neutral-800 outline-none transition focus:ring-2 ${
+            error
+              ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+              : 'border-neutral-300 focus:border-blue-400 focus:ring-blue-100'
+          }`}
+          type="text"
+          value={draft}
+          maxLength={7}
+          spellCheck={false}
+          autoCapitalize="characters"
+          aria-label={`${label}颜色`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setError(null)
+          }}
+          onBlur={(event) => commit(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            commit(event.currentTarget.value)
+          }}
+        />
+      </div>
+      {error ? (
+        <p id={errorId} role="alert" className="m-0 text-[10px] leading-4 text-red-600">
+          {error}
+        </p>
+      ) : null}
+    </div>
   )
 }
 

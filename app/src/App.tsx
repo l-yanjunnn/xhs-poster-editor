@@ -23,6 +23,7 @@ import {
 import {
   BUILTIN_THEMES,
   DEFAULT_THEME,
+  getThemeCoverTextColors,
   OVERLAY_MAP,
   type DensityLevel,
   type H1Width,
@@ -81,9 +82,14 @@ import {
   readEditorDocumentRecovery,
   setActiveDocumentId,
   writeEditorDocumentRecovery,
-  type EditorDocumentStyleV1,
-  type EditorDocumentV1,
+  type EditorDocumentStyleV2,
+  type EditorDocumentV2,
 } from '@/lib/documentStore'
+import {
+  resolvePageBackgrounds,
+  type PageBackgroundIssue,
+  type PageBackgroundRole,
+} from '@/lib/pageBackgrounds'
 import './styles/canvas.css'
 import './styles/workspace.css'
 
@@ -109,6 +115,14 @@ type ResourceIssueScope = 'document' | 'font' | 'library'
 
 interface AppResourceIssue extends ResourceIssue {
   scope: ResourceIssueScope
+  backgroundRole?: PageBackgroundRole
+}
+
+interface PageBackgroundState {
+  coverAssetId: string
+  innerAssetId: string
+  coverSrc: string
+  innerSrc: string
 }
 
 function resourceErrorMessage(error: unknown): string {
@@ -124,7 +138,7 @@ function primaryFontFamily(stack: string): string {
     .replace(/^["']|["']$/g, '')
 }
 
-function styleFromTheme(theme: Theme): EditorDocumentStyleV1 {
+function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
   return {
     themeClass: theme.themeClass,
     overlay: theme.overlay,
@@ -140,8 +154,23 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV1 {
     density: theme.density,
     logoStrategy: theme.logoStrategy,
     bgAssetId: theme.bgAssetId,
+    coverBgAssetId: theme.coverBgAssetId,
     logoAssetId: theme.logoAssetId,
+    coverTitleColor: theme.coverTitleColor,
+    coverSubtitleColor: theme.coverSubtitleColor,
   }
+}
+
+function pageBackgroundIssues(
+  issues: readonly PageBackgroundIssue[],
+): AppResourceIssue[] {
+  return issues.map((issue) => ({
+    id: issue.id,
+    scope: 'document',
+    label: issue.label,
+    message: issue.message,
+    backgroundRole: issue.role,
+  }))
 }
 
 function App() {
@@ -163,13 +192,29 @@ function App() {
   const [logoStrategy, setLogoStrategy] = useState<LogoStrategy>(
     DEFAULT_THEME.logoStrategy,
   )
+  const [coverTitleColor, setCoverTitleColor] = useState(
+    DEFAULT_THEME.coverTitleColor,
+  )
+  const [coverSubtitleColor, setCoverSubtitleColor] = useState(
+    DEFAULT_THEME.coverSubtitleColor,
+  )
 
   // 资源同时持有 id（用于主题序列化）和 src（用于渲染）
-  const [bgAssetId, setBgAssetId] = useState(DEFAULT_THEME.bgAssetId)
+  const [pageBackground, setPageBackground] = useState<PageBackgroundState>(() => ({
+    coverAssetId: DEFAULT_THEME.coverBgAssetId,
+    innerAssetId: DEFAULT_THEME.bgAssetId,
+    coverSrc:
+      findAssetById(BUILTIN_BACKGROUNDS, DEFAULT_THEME.coverBgAssetId)?.src ?? '',
+    innerSrc:
+      findAssetById(BUILTIN_BACKGROUNDS, DEFAULT_THEME.bgAssetId)?.src ?? '',
+  }))
+  const {
+    coverAssetId,
+    innerAssetId: bgAssetId,
+    coverSrc,
+    innerSrc: bgSrc,
+  } = pageBackground
   const [logoAssetId, setLogoAssetId] = useState(DEFAULT_THEME.logoAssetId)
-  const [bgSrc, setBgSrc] = useState(
-    findAssetById(BUILTIN_BACKGROUNDS, DEFAULT_THEME.bgAssetId)?.src ?? '',
-  )
   const [logoSrc, setLogoSrc] = useState(
     findAssetById(BUILTIN_LOGOS, DEFAULT_THEME.logoAssetId)?.src ?? '',
   )
@@ -182,7 +227,7 @@ function App() {
   const [draftReady, setDraftReady] = useState(false)
   const [activeDraft, setActiveDraft] = useState<DraftIdentity | null>(null)
   const activeDraftRef = useRef<DraftIdentity | null>(null)
-  const [draftDocuments, setDraftDocuments] = useState<EditorDocumentV1[]>([])
+  const [draftDocuments, setDraftDocuments] = useState<EditorDocumentV2[]>([])
   const [draftSaveStatus, setDraftSaveStatus] =
     useState<DraftSaveStatus>('restoring')
   const [draftStorageError, setDraftStorageError] = useState<string | null>(null)
@@ -192,7 +237,7 @@ function App() {
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
   const editRevisionRef = useRef(0)
   const documentRevisionRef = useRef(0)
-  const pendingSnapshotRef = useRef<EditorDocumentV1 | null>(null)
+  const pendingSnapshotRef = useRef<EditorDocumentV2 | null>(null)
   const dirtyDocumentRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
   const hydratingDocumentRef = useRef(false)
@@ -251,7 +296,7 @@ function App() {
   const themeApplyRevisionRef = useRef(0)
   const resourceOperationRevisionRef = useRef(0)
 
-  const documentStyle = useMemo<EditorDocumentStyleV1>(
+  const documentStyle = useMemo<EditorDocumentStyleV2>(
     () => ({
       themeClass,
       overlay,
@@ -267,7 +312,10 @@ function App() {
       density,
       logoStrategy,
       bgAssetId,
+      coverBgAssetId: coverAssetId,
       logoAssetId,
+      coverTitleColor,
+      coverSubtitleColor,
     }),
     [
       themeClass,
@@ -284,7 +332,10 @@ function App() {
       density,
       logoStrategy,
       bgAssetId,
+      coverAssetId,
       logoAssetId,
+      coverTitleColor,
+      coverSubtitleColor,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -322,8 +373,8 @@ function App() {
     (
       identity: DraftIdentity,
       contentJSON = editorRef.current?.getJSON(),
-      style?: EditorDocumentStyleV1,
-    ): EditorDocumentV1 | null => {
+      style?: EditorDocumentStyleV2,
+    ): EditorDocumentV2 | null => {
       if (!contentJSON) return null
       return {
         schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
@@ -339,7 +390,7 @@ function App() {
   )
 
   const persistDocument = useCallback(
-    async (document: EditorDocumentV1, revision: number): Promise<boolean> => {
+    async (document: EditorDocumentV2, revision: number): Promise<boolean> => {
       if (
         activeDraftRef.current?.id === document.id &&
         revision === editRevisionRef.current
@@ -425,35 +476,41 @@ function App() {
     return fontRestorePromiseRef.current
   }, [replaceResourceIssueScope])
 
-  const hydrateDocument = useCallback(async (document: EditorDocumentV1) => {
+  const hydrateDocument = useCallback(async (document: EditorDocumentV2) => {
     themeApplyRevisionRef.current += 1
-    resourceOperationRevisionRef.current += 1
+    const operationRevision = ++resourceOperationRevisionRef.current
     setResourceRetrying(false)
     setThemeApplying(false)
     documentRevisionRef.current = document.revision
     pendingSnapshotRef.current = null
     dirtyDocumentRef.current = false
-    const [backgroundResult, logoResult, contentResult] = await Promise.allSettled([
-      resolveAssetSrcWithStatus(document.style.bgAssetId, 'background'),
-      resolveAssetSrcWithStatus(document.style.logoAssetId, 'logo'),
-      resolveContentImagesWithReport(document.contentJSON),
-    ])
+    const [backgroundResult, logoResult, contentResult] =
+      await Promise.allSettled([
+        resolvePageBackgrounds({
+          coverAssetId: document.style.coverBgAssetId,
+          innerAssetId: document.style.bgAssetId,
+        }),
+        resolveAssetSrcWithStatus(document.style.logoAssetId, 'logo'),
+        resolveContentImagesWithReport(document.contentJSON),
+      ])
+
+    // A later theme apply, resource retry or draft open owns the UI now. Never
+    // let this older async restore overwrite its complete background pair.
+    if (operationRevision !== resourceOperationRevisionRef.current) return
 
     const documentIssues: AppResourceIssue[] = []
     if (backgroundResult.status === 'rejected') {
-      documentIssues.push({
-        id: `background:${document.style.bgAssetId || 'unknown'}`,
-        scope: 'document',
-        label: '页面背景',
-        message: resourceErrorMessage(backgroundResult.reason),
-      })
-    } else if (backgroundResult.value.missing) {
-      documentIssues.push({
-        id: `background:${document.style.bgAssetId}`,
-        scope: 'document',
-        label: '页面背景',
-        message: '素材已经被删除或暂时无法读取',
-      })
+      documentIssues.push(
+        ...(['cover', 'inner'] as const).map((role) => ({
+          id: `background:${role}:unknown`,
+          scope: 'document' as const,
+          label: role === 'cover' ? '首图背景' : '内页背景',
+          message: resourceErrorMessage(backgroundResult.reason),
+          backgroundRole: role,
+        })),
+      )
+    } else {
+      documentIssues.push(...pageBackgroundIssues(backgroundResult.value.issues))
     }
     if (logoResult.status === 'rejected') {
       documentIssues.push({
@@ -502,9 +559,21 @@ function App() {
     setH1Width(document.style.h1Width)
     setOverlay(document.style.overlay)
     setLogoStrategy(document.style.logoStrategy)
-    setBgAssetId(document.style.bgAssetId)
+    setCoverTitleColor(document.style.coverTitleColor)
+    setCoverSubtitleColor(document.style.coverSubtitleColor)
     setLogoAssetId(document.style.logoAssetId)
-    setBgSrc(backgroundResult.status === 'fulfilled' ? backgroundResult.value.src : '')
+    setPageBackground({
+      coverAssetId: document.style.coverBgAssetId,
+      innerAssetId: document.style.bgAssetId,
+      coverSrc:
+        backgroundResult.status === 'fulfilled'
+          ? backgroundResult.value.coverSrc
+          : '',
+      innerSrc:
+        backgroundResult.status === 'fulfilled'
+          ? backgroundResult.value.innerSrc
+          : '',
+    })
     setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value.src : '')
     setCurrentThemeId(null)
     editorRef.current?.setContent(
@@ -533,6 +602,7 @@ function App() {
       themeApplyRevisionRef.current += 1
       resourceOperationRevisionRef.current += 1
       setThemeApplying(false)
+      setResourceRetrying(false)
     }
     if (
       draftReady &&
@@ -638,7 +708,7 @@ function App() {
             (activeDocument?.id === recovery.id ? activeDocument : null)
           : null
         let shouldRecover = false
-        let conflictDocument: EditorDocumentV1 | null = null
+        let conflictDocument: EditorDocumentV2 | null = null
         if (recovery && !matchingPersisted) {
           shouldRecover = true
         } else if (recovery && matchingPersisted) {
@@ -777,7 +847,7 @@ function App() {
   // 用户刚输入就切到后台/关闭页面时，900ms 防抖可能尚未到点。
   // visibilitychange 可以提前发起 best-effort IDB 写入，又不会像 beforeunload 那样阻塞离开。
   useEffect(() => {
-    function captureLastChanceSnapshot(): EditorDocumentV1 | null {
+    function captureLastChanceSnapshot(): EditorDocumentV2 | null {
       if (!draftReady || writerLeaseState !== 'owned') return null
       if (pendingSnapshotRef.current && !dirtyDocumentRef.current) {
         writeEditorDocumentRecovery(pendingSnapshotRef.current)
@@ -857,7 +927,7 @@ function App() {
     replaceResourceIssueScope('library', [])
   }, [replaceResourceIssueScope])
 
-  async function retryResources() {
+  async function retryResources(backgroundRole?: PageBackgroundRole) {
     if (resourceRetrying) return
     themeApplyRevisionRef.current += 1
     setThemeApplying(false)
@@ -865,11 +935,15 @@ function App() {
     const operationRevision = ++resourceOperationRevisionRef.current
     const draftId = activeDraftRef.current?.id ?? null
     const contentJSON = editorRef.current?.getJSON()
+    const backgroundIds = {
+      coverAssetId,
+      innerAssetId: bgAssetId,
+    }
     fontRestorePromiseRef.current = null
     const fontLoad = ensureUserFontsLoaded()
     const [backgroundResult, logoResult, contentResult, fontResult, themeResult] =
       await Promise.allSettled([
-        resolveAssetSrcWithStatus(bgAssetId, 'background'),
+        resolvePageBackgrounds(backgroundIds),
         resolveAssetSrcWithStatus(logoAssetId, 'logo'),
         contentJSON
           ? resolveContentImagesWithReport(contentJSON)
@@ -882,28 +956,27 @@ function App() {
       operationRevision !== resourceOperationRevisionRef.current ||
       draftId !== (activeDraftRef.current?.id ?? null)
     ) {
-      setResourceRetrying(false)
       return
     }
 
     const nextIssues: AppResourceIssue[] = []
     if (backgroundResult.status === 'fulfilled') {
-      setBgSrc(backgroundResult.value.src)
-      if (backgroundResult.value.missing) {
-        nextIssues.push({
-          id: `background:${bgAssetId}`,
-          scope: 'document',
-          label: '页面背景',
-          message: '素材已经被删除或暂时无法读取',
-        })
-      }
-    } else {
-      nextIssues.push({
-        id: `background:${bgAssetId || 'unknown'}`,
-        scope: 'document',
-        label: '页面背景',
-        message: resourceErrorMessage(backgroundResult.reason),
+      setPageBackground({
+        ...backgroundIds,
+        coverSrc: backgroundResult.value.coverSrc,
+        innerSrc: backgroundResult.value.innerSrc,
       })
+      nextIssues.push(...pageBackgroundIssues(backgroundResult.value.issues))
+    } else {
+      nextIssues.push(
+        ...(['cover', 'inner'] as const).map((role) => ({
+          id: `background:${role}:unknown`,
+          scope: 'document' as const,
+          label: role === 'cover' ? '首图背景' : '内页背景',
+          message: resourceErrorMessage(backgroundResult.reason),
+          backgroundRole: role,
+        })),
+      )
     }
     if (logoResult.status === 'fulfilled') {
       setLogoSrc(logoResult.value.src)
@@ -974,7 +1047,15 @@ function App() {
       })
     }
     setResourceIssues(nextIssues)
-    if (nextIssues.length === 0) recordRecentAction('资源重新载入完成')
+    if (nextIssues.length === 0) {
+      recordRecentAction(
+        backgroundRole === 'cover'
+          ? '首图背景重新载入完成'
+          : backgroundRole === 'inner'
+            ? '内页背景重新载入完成'
+            : '资源重新载入完成',
+      )
+    }
     setResourceRetrying(false)
   }
 
@@ -982,10 +1063,14 @@ function App() {
   async function applyTheme(theme: Theme) {
     const revision = ++themeApplyRevisionRef.current
     resourceOperationRevisionRef.current += 1
+    setResourceRetrying(false)
     setThemeApplying(true)
     dirtyDocumentRef.current = true
     const [backgroundResult, logoResult, contentResult] = await Promise.allSettled([
-      resolveAssetSrcWithStatus(theme.bgAssetId, 'background'),
+      resolvePageBackgrounds({
+        coverAssetId: theme.coverBgAssetId,
+        innerAssetId: theme.bgAssetId,
+      }),
       resolveAssetSrcWithStatus(theme.logoAssetId, 'logo'),
       theme.contentJSON
         ? resolveContentImagesWithReport(theme.contentJSON)
@@ -994,16 +1079,18 @@ function App() {
     if (revision !== themeApplyRevisionRef.current) return
 
     const nextIssues: AppResourceIssue[] = []
-    if (backgroundResult.status === 'rejected' || backgroundResult.value.missing) {
-      nextIssues.push({
-        id: `background:${theme.bgAssetId || 'unknown'}`,
-        scope: 'document',
-        label: '页面背景',
-        message:
-          backgroundResult.status === 'rejected'
-            ? resourceErrorMessage(backgroundResult.reason)
-            : '素材已经被删除或暂时无法读取',
-      })
+    if (backgroundResult.status === 'rejected') {
+      nextIssues.push(
+        ...(['cover', 'inner'] as const).map((role) => ({
+          id: `background:${role}:unknown`,
+          scope: 'document' as const,
+          label: role === 'cover' ? '首图背景' : '内页背景',
+          message: resourceErrorMessage(backgroundResult.reason),
+          backgroundRole: role,
+        })),
+      )
+    } else {
+      nextIssues.push(...pageBackgroundIssues(backgroundResult.value.issues))
     }
     if (logoResult.status === 'rejected' || logoResult.value.missing) {
       nextIssues.push({
@@ -1048,9 +1135,21 @@ function App() {
     setH1Width(theme.h1Width)
     setOverlay(theme.overlay)
     setLogoStrategy(theme.logoStrategy)
-    setBgAssetId(theme.bgAssetId)
+    setCoverTitleColor(theme.coverTitleColor)
+    setCoverSubtitleColor(theme.coverSubtitleColor)
     setLogoAssetId(theme.logoAssetId)
-    setBgSrc(backgroundResult.status === 'fulfilled' ? backgroundResult.value.src : '')
+    setPageBackground({
+      coverAssetId: theme.coverBgAssetId,
+      innerAssetId: theme.bgAssetId,
+      coverSrc:
+        backgroundResult.status === 'fulfilled'
+          ? backgroundResult.value.coverSrc
+          : '',
+      innerSrc:
+        backgroundResult.status === 'fulfilled'
+          ? backgroundResult.value.innerSrc
+          : '',
+    })
     setLogoSrc(logoResult.status === 'fulfilled' ? logoResult.value.src : '')
     setCurrentThemeId(theme.id)
     if (theme.contentJSON && contentResult.status === 'fulfilled' && contentResult.value) {
@@ -1081,7 +1180,10 @@ function App() {
       density,
       logoStrategy,
       bgAssetId,
+      coverBgAssetId: coverAssetId,
       logoAssetId,
+      coverTitleColor,
+      coverSubtitleColor,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
@@ -1096,6 +1198,7 @@ function App() {
       themeApplyRevisionRef.current += 1
       resourceOperationRevisionRef.current += 1
       setThemeApplying(false)
+      setResourceRetrying(false)
       dirtyDocumentRef.current = true
       setter(v)
       setCurrentThemeId(null)
@@ -1110,13 +1213,30 @@ function App() {
     if (theme) applyTheme(theme)
   }
 
+  function handleRestoreCoverColors() {
+    const colors = getThemeCoverTextColors(themeClass)
+    themeApplyRevisionRef.current += 1
+    resourceOperationRevisionRef.current += 1
+    setThemeApplying(false)
+    setResourceRetrying(false)
+    dirtyDocumentRef.current = true
+    setCoverTitleColor(colors.title)
+    setCoverSubtitleColor(colors.subtitle)
+    setCurrentThemeId(null)
+  }
+
   function handlePickBackground(asset: Asset) {
     themeApplyRevisionRef.current += 1
     resourceOperationRevisionRef.current += 1
     setThemeApplying(false)
     dirtyDocumentRef.current = true
-    setBgAssetId(asset.id)
-    setBgSrc(asset.src)
+    setResourceRetrying(false)
+    setPageBackground({
+      coverAssetId: asset.id,
+      innerAssetId: asset.id,
+      coverSrc: asset.src,
+      innerSrc: asset.src,
+    })
     setCurrentThemeId(null)
     setResourceIssues((previous) =>
       previous.filter((issue) => !issue.id.startsWith('background:')),
@@ -1126,6 +1246,7 @@ function App() {
     themeApplyRevisionRef.current += 1
     resourceOperationRevisionRef.current += 1
     setThemeApplying(false)
+    setResourceRetrying(false)
     dirtyDocumentRef.current = true
     setLogoAssetId(asset.id)
     setLogoSrc(asset.src)
@@ -1138,6 +1259,7 @@ function App() {
     themeApplyRevisionRef.current += 1
     resourceOperationRevisionRef.current += 1
     setThemeApplying(false)
+    setResourceRetrying(false)
     if (replaceImageId) {
       if (
         editorRef.current?.commitImageAttributes(replaceImageId, {
@@ -1299,7 +1421,7 @@ function App() {
   }
 
   async function handleOpenDraft(
-    document: EditorDocumentV1,
+    document: EditorDocumentV2,
   ): Promise<boolean> {
     if (document.id === activeDraftRef.current?.id) return true
     if (!(await flushActiveDraft())) return false
@@ -1331,7 +1453,7 @@ function App() {
   }
 
   async function handleDeleteDraft(
-    document: EditorDocumentV1,
+    document: EditorDocumentV2,
   ): Promise<boolean> {
     const deletingActive = document.id === activeDraftRef.current?.id
     if (!deletingActive) {
@@ -1419,6 +1541,8 @@ function App() {
     root.style.setProperty('--fw-h2', h2Bold ? '700' : '400')
     root.style.setProperty('--fw-h3', h3Bold ? '700' : '400')
     root.style.setProperty('--h1-max-width', h1Width)
+    root.style.setProperty('--c-cover-title', coverTitleColor)
+    root.style.setProperty('--c-cover-subtitle', coverSubtitleColor)
 
     for (const [k, v] of Object.entries(computeFontSizeVars(fontSize))) {
       root.style.setProperty(k, v)
@@ -1430,7 +1554,21 @@ function App() {
     const [color, opacity] = OVERLAY_MAP[overlay]
     root.style.setProperty('--c-overlay-color', color)
     root.style.setProperty('--c-overlay-opacity', String(opacity))
-  }, [fontH1, fontH2, fontH3, fontBody, h1Bold, h2Bold, h3Bold, fontSize, density, h1Width, overlay])
+  }, [
+    fontH1,
+    fontH2,
+    fontH3,
+    fontBody,
+    h1Bold,
+    h2Bold,
+    h3Bold,
+    fontSize,
+    density,
+    h1Width,
+    overlay,
+    coverTitleColor,
+    coverSubtitleColor,
+  ])
 
   useEffect(() => {
     function clearSelectedImage(event: KeyboardEvent) {
@@ -1529,6 +1667,7 @@ function App() {
         .filter((issue) => {
           if (issue.scope === 'library') return false
           if (issue.id.startsWith('logo:') && logoStrategy === 'none') return false
+          if (issue.backgroundRole === 'inner' && pages.length <= 1) return false
           if (issue.scope === 'document') return true
           return customFontFamilies.has(issue.id.slice('font:'.length))
         })
@@ -1718,7 +1857,7 @@ function App() {
                   }}
                   html={pageHtml}
                   themeClass={themeClass}
-                  bgSrc={bgSrc}
+                  bgSrc={index === 0 ? coverSrc : bgSrc}
                   logoSrc={logoSrc}
                   showLogo={shouldShowLogo(index, pages.length)}
                   pageIndex={index}
@@ -1761,6 +1900,8 @@ function App() {
               h1Width={h1Width}
               overlay={overlay}
               logoStrategy={logoStrategy}
+              coverTitleColor={coverTitleColor}
+              coverSubtitleColor={coverSubtitleColor}
               userFontFamilies={userFontFamilies}
               onFontH1={customize(setFontH1)}
               onFontH2={customize(setFontH2)}
@@ -1774,6 +1915,9 @@ function App() {
               onH1Width={customize(setH1Width)}
               onOverlay={customize(setOverlay)}
               onLogoStrategy={customize(setLogoStrategy)}
+              onCoverTitleColor={customize(setCoverTitleColor)}
+              onCoverSubtitleColor={customize(setCoverSubtitleColor)}
+              onRestoreCoverColors={handleRestoreCoverColors}
               onOpenAssetLibrary={() => {
                 setReplaceImageId(null)
                 setAssetLibInitialKind(undefined)

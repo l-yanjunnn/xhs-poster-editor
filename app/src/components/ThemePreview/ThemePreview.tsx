@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { OVERLAY_MAP, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { DENSITY_MAP } from '@/lib/density'
@@ -19,23 +19,43 @@ interface Props {
 }
 
 export function ThemePreview({ theme, scale = 0.14 }: Props) {
-  const [bgSrc, setBgSrc] = useState('')
-  const [logoSrc, setLogoSrc] = useState('')
+  const [resolvedAssets, setResolvedAssets] = useState({
+    coverBgAssetId: '',
+    logoAssetId: '',
+    bgSrc: '',
+    logoSrc: '',
+  })
+  const assetRevisionRef = useRef(0)
+
+  // 解析结果与请求 id pair 绑定。theme 切换后旧 pair 立即失效，
+  // 在新资源返回前两个 src 都视为空，避免闪现「新主题 + 旧封面」。
+  const assetsAreCurrent =
+    resolvedAssets.coverBgAssetId === theme.coverBgAssetId &&
+    resolvedAssets.logoAssetId === theme.logoAssetId
+  const bgSrc = assetsAreCurrent ? resolvedAssets.bgSrc : ''
+  const logoSrc = assetsAreCurrent ? resolvedAssets.logoSrc : ''
 
   useEffect(() => {
+    const revision = ++assetRevisionRef.current
     let alive = true
     ;(async () => {
-      const bg = await resolveAssetSrc(theme.bgAssetId, 'background')
-      const logo = await resolveAssetSrc(theme.logoAssetId, 'logo')
-      if (alive) {
-        setBgSrc(bg)
-        setLogoSrc(logo)
-      }
+      const [backgroundResult, logoResult] = await Promise.allSettled([
+        resolveAssetSrc(theme.coverBgAssetId, 'background'),
+        resolveAssetSrc(theme.logoAssetId, 'logo'),
+      ])
+      if (!alive || revision !== assetRevisionRef.current) return
+      setResolvedAssets({
+        coverBgAssetId: theme.coverBgAssetId,
+        logoAssetId: theme.logoAssetId,
+        bgSrc:
+          backgroundResult.status === 'fulfilled' ? backgroundResult.value : '',
+        logoSrc: logoResult.status === 'fulfilled' ? logoResult.value : '',
+      })
     })()
     return () => {
       alive = false
     }
-  }, [theme.bgAssetId, theme.logoAssetId])
+  }, [theme.coverBgAssetId, theme.logoAssetId])
 
   const [overlayColor, overlayOpacity] = OVERLAY_MAP[theme.overlay]
   // 缩略图固定展示首页；除“不显示”外，其余策略首页都会有 Logo。
@@ -54,6 +74,8 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     ['--h1-max-width' as never]: theme.h1Width,
     ['--c-overlay-color' as never]: overlayColor,
     ['--c-overlay-opacity' as never]: String(overlayOpacity),
+    ['--c-cover-title' as never]: theme.coverTitleColor,
+    ['--c-cover-subtitle' as never]: theme.coverSubtitleColor,
     ...(Object.fromEntries(
       Object.entries(computeFontSizeVars(theme.fontSize)).map(([k, v]) => [
         k,
@@ -64,6 +86,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
       Object.entries(DENSITY_MAP[theme.density]).map(([k, v]) => [k, v]),
     ) as CSSProperties),
   }
+  const isPublicExam = theme.themeClass === 'theme-public-exam-landscape'
 
   return (
     <div
@@ -91,16 +114,30 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
           <div className="overlay" />
           {showLogo && logoSrc && <img className="logo" src={logoSrc} alt="" />}
           <div className="content">
-            <h1>小红书风格长图</h1>
-            <p>这是一段正文示例。左边是 Tiptap 编辑器，右边是 9:15 画布预览。</p>
-            <h2>二级标题</h2>
-            <p>切换顶部主题、字号、间距、字体，右边画布会实时更新。</p>
-            <h3>三级标题</h3>
-            <blockquote>引用块的样式来自 editor.html 的同名 token。</blockquote>
-            <ul>
-              <li>列表项 1</li>
-              <li>列表项 2</li>
-            </ul>
+            {isPublicExam ? (
+              <>
+                <h1>申论高分方法</h1>
+                <p>公考上岸 · 核心答题思路</p>
+              </>
+            ) : (
+              <>
+                <h1>小红书风格长图</h1>
+                <p>
+                  这是一段正文示例。左边是 Tiptap 编辑器，右边是 9:15
+                  画布预览。
+                </p>
+                <h2>二级标题</h2>
+                <p>
+                  切换顶部主题、字号、间距、字体，右边画布会实时更新。
+                </p>
+                <h3>三级标题</h3>
+                <blockquote>引用块的样式来自 editor.html 的同名 token。</blockquote>
+                <ul>
+                  <li>列表项 1</li>
+                  <li>列表项 2</li>
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -5,8 +5,10 @@ import type {
   OverlayKey,
   ThemeKey,
 } from './themes'
+import { isNormalizedHexColor } from './hexColor'
 
-export const EDITOR_DOCUMENT_SCHEMA_VERSION = 1 as const
+export const EDITOR_DOCUMENT_SCHEMA_VERSION_V1 = 1 as const
+export const EDITOR_DOCUMENT_SCHEMA_VERSION = 2 as const
 
 /**
  * A document owns a style snapshot. Themes remain reusable style presets and
@@ -30,8 +32,16 @@ export interface EditorDocumentStyleV1 {
   logoAssetId: string
 }
 
+export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
+  /** 首页底图；空字符串是可持久化的“纯色封面”语义。 */
+  coverBgAssetId: string
+  /** 只接受已规范化的 #RRGGBB，避免恢复时注入模糊 CSS 值。 */
+  coverTitleColor: string
+  coverSubtitleColor: string
+}
+
 export interface EditorDocumentV1 {
-  schemaVersion: typeof EDITOR_DOCUMENT_SCHEMA_VERSION
+  schemaVersion: typeof EDITOR_DOCUMENT_SCHEMA_VERSION_V1
   id: string
   /** 唯一写前日志 id；IDB 提交与 localStorage 清理必须按它精确匹配。 */
   recoveryId: string
@@ -44,17 +54,43 @@ export interface EditorDocumentV1 {
   style: EditorDocumentStyleV1
 }
 
+export interface EditorDocumentV2 {
+  schemaVersion: typeof EDITOR_DOCUMENT_SCHEMA_VERSION
+  id: string
+  recoveryId: string
+  revision: number
+  title: string
+  createdAt: number
+  updatedAt: number
+  contentJSON: object
+  style: EditorDocumentStyleV2
+}
+
 const DB_NAME = 'xhs-poster-documents'
 const DB_VERSION = 1
 const DOCUMENTS_STORE = 'documents'
 const META_STORE = 'meta'
 const ACTIVE_DOCUMENT_KEY = 'active-document-id'
-const RECOVERY_STORAGE_KEY = 'xhs-poster-active-document-recovery-v1'
-const VALID_THEME_CLASSES = new Set<ThemeKey>([
+const RECOVERY_STORAGE_KEY_V1 = 'xhs-poster-active-document-recovery-v1'
+const RECOVERY_STORAGE_KEY_V2 = 'xhs-poster-active-document-recovery-v2'
+const RECOVERY_STORAGE_KEYS = [
+  RECOVERY_STORAGE_KEY_V2,
+  RECOVERY_STORAGE_KEY_V1,
+] as const
+const VALID_V1_THEME_CLASSES = new Set<string>([
   '',
   'theme-minimal-white',
   'theme-dark-night',
 ])
+const VALID_V2_THEME_CLASSES = new Set<string>([
+  ...VALID_V1_THEME_CLASSES,
+  'theme-public-exam-landscape',
+])
+const LEGACY_PRIMARY_COLOR_BY_THEME_CLASS: Record<string, string> = {
+  '': '#1A1A1A',
+  'theme-minimal-white': '#111111',
+  'theme-dark-night': '#F0F0F0',
+}
 const VALID_OVERLAYS = new Set<OverlayKey>([
   'none',
   'light-30',
@@ -82,8 +118,20 @@ interface StoredMeta {
   value: string
 }
 
+interface StoredDocumentEnvelope {
+  schemaVersion: unknown
+  id: string
+  recoveryId: string
+  revision: number
+  title: string
+  createdAt: number
+  updatedAt: number
+  contentJSON: object
+  style: object
+}
+
 export interface DocumentStoreBackend {
-  put: (document: EditorDocumentV1, makeActive: boolean) => Promise<void>
+  put: (document: EditorDocumentV2, makeActive: boolean) => Promise<void>
   list: () => Promise<unknown[]>
   get: (id: string) => Promise<unknown | undefined>
   getActiveId: () => Promise<string | null>
@@ -151,17 +199,12 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
-function parseStoredDocument(value: unknown): EditorDocumentV1 {
+function parseDocumentEnvelope(value: unknown): StoredDocumentEnvelope {
   if (!value || typeof value !== 'object') {
     throw new Error('草稿数据损坏：无法识别文档内容')
   }
 
-  const document = value as Partial<EditorDocumentV1>
-  if (document.schemaVersion !== EDITOR_DOCUMENT_SCHEMA_VERSION) {
-    throw new Error(
-      `暂不支持草稿版本 ${String(document.schemaVersion)}，请使用更新版编辑器打开`,
-    )
-  }
+  const document = value as Partial<EditorDocumentV2>
   if (
     typeof document.id !== 'string' ||
     typeof document.recoveryId !== 'string' ||
@@ -180,7 +223,18 @@ function parseStoredDocument(value: unknown): EditorDocumentV1 {
     throw new Error('草稿数据损坏：缺少必要字段')
   }
 
-  const style = document.style as Partial<EditorDocumentStyleV1>
+  return document as StoredDocumentEnvelope
+}
+
+function parseDocumentStyleV1(
+  value: unknown,
+  validThemeClasses = VALID_V1_THEME_CLASSES,
+): EditorDocumentStyleV1 {
+  if (!value || typeof value !== 'object') {
+    throw new Error('草稿数据损坏：样式字段不完整')
+  }
+
+  const style = value as Partial<EditorDocumentStyleV1>
   const stringFields: (keyof EditorDocumentStyleV1)[] = [
     'themeClass',
     'overlay',
@@ -210,7 +264,7 @@ function parseStoredDocument(value: unknown): EditorDocumentV1 {
     throw new Error('草稿数据损坏：样式字段不完整')
   }
   if (
-    !VALID_THEME_CLASSES.has(style.themeClass as ThemeKey) ||
+    !validThemeClasses.has(style.themeClass as string) ||
     !VALID_OVERLAYS.has(style.overlay as OverlayKey) ||
     !VALID_H1_WIDTHS.has(style.h1Width as H1Width) ||
     !VALID_DENSITIES.has(style.density as DensityLevel) ||
@@ -219,22 +273,92 @@ function parseStoredDocument(value: unknown): EditorDocumentV1 {
     throw new Error('草稿数据损坏：样式枚举值无效')
   }
 
-  return document as EditorDocumentV1
+  return style as EditorDocumentStyleV1
+}
+
+function parseStoredDocumentV1(value: unknown): EditorDocumentV1 {
+  const document = parseDocumentEnvelope(value)
+  if (document.schemaVersion !== EDITOR_DOCUMENT_SCHEMA_VERSION_V1) {
+    throw new Error('草稿数据损坏：不是 V1 文档')
+  }
+  const style = parseDocumentStyleV1(document.style)
+  return { ...document, schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION_V1, style }
+}
+
+function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
+  const document = parseDocumentEnvelope(value)
+  if (document.schemaVersion !== EDITOR_DOCUMENT_SCHEMA_VERSION) {
+    throw new Error('草稿数据损坏：不是 V2 文档')
+  }
+  const style = parseDocumentStyleV1(
+    document.style,
+    VALID_V2_THEME_CLASSES,
+  ) as Partial<EditorDocumentStyleV2>
+  if (
+    typeof style.coverBgAssetId !== 'string' ||
+    typeof style.coverTitleColor !== 'string' ||
+    typeof style.coverSubtitleColor !== 'string'
+  ) {
+    throw new Error('草稿数据损坏：V2 封面样式字段不完整')
+  }
+  if (
+    !isNormalizedHexColor(style.coverTitleColor) ||
+    !isNormalizedHexColor(style.coverSubtitleColor)
+  ) {
+    throw new Error('草稿数据损坏：封面颜色必须是规范六位 HEX')
+  }
+  return {
+    ...document,
+    schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
+    style: style as EditorDocumentStyleV2,
+  }
+}
+
+function migrateStoredDocumentV1(document: EditorDocumentV1): EditorDocumentV2 {
+  const legacyPrimaryColor =
+    LEGACY_PRIMARY_COLOR_BY_THEME_CLASS[document.style.themeClass] ?? '#1A1A1A'
+  return {
+    ...document,
+    schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
+    style: {
+      ...document.style,
+      coverBgAssetId: document.style.bgAssetId,
+      coverTitleColor: legacyPrimaryColor,
+      coverSubtitleColor: legacyPrimaryColor,
+    },
+  }
+}
+
+/** 持久化边界同时理解 V1/V2，但业务层永远只收到 V2。 */
+function parseStoredDocument(value: unknown): EditorDocumentV2 {
+  if (!value || typeof value !== 'object') {
+    throw new Error('草稿数据损坏：无法识别文档内容')
+  }
+  const schemaVersion = (value as { schemaVersion?: unknown }).schemaVersion
+  if (schemaVersion === EDITOR_DOCUMENT_SCHEMA_VERSION_V1) {
+    return migrateStoredDocumentV1(parseStoredDocumentV1(value))
+  }
+  if (schemaVersion === EDITOR_DOCUMENT_SCHEMA_VERSION) {
+    return parseStoredDocumentV2(value)
+  }
+  throw new Error(
+    `暂不支持草稿版本 ${String(schemaVersion)}，请使用更新版编辑器打开`,
+  )
 }
 
 /** Save a complete document snapshot and make it the last active document atomically. */
 async function putIndexedDbDocument(
-  document: EditorDocumentV1,
+  document: EditorDocumentV2,
   makeActive = true,
 ): Promise<void> {
   // Validate before IndexedDB structured-clones it so bad snapshots fail loudly.
-  parseStoredDocument(document)
+  const normalizedDocument = parseStoredDocument(document)
   const db = await openDB()
   const stores = makeActive
     ? [DOCUMENTS_STORE, META_STORE]
     : [DOCUMENTS_STORE]
   const transaction = db.transaction(stores, 'readwrite')
-  transaction.objectStore(DOCUMENTS_STORE).put(document)
+  transaction.objectStore(DOCUMENTS_STORE).put(normalizedDocument)
   if (makeActive) {
     transaction.objectStore(META_STORE).put({
       key: ACTIVE_DOCUMENT_KEY,
@@ -316,15 +440,15 @@ function backend(): DocumentStoreBackend {
 }
 
 export async function putEditorDocument(
-  document: EditorDocumentV1,
+  document: EditorDocumentV2,
   makeActive = true,
 ): Promise<void> {
-  parseStoredDocument(document)
-  await backend().put(document, makeActive)
+  const normalizedDocument = parseStoredDocument(document)
+  await backend().put(normalizedDocument, makeActive)
 }
 
-export async function listEditorDocuments(): Promise<EditorDocumentV1[]> {
-  const documents: EditorDocumentV1[] = []
+export async function listEditorDocuments(): Promise<EditorDocumentV2[]> {
+  const documents: EditorDocumentV2[] = []
   for (const value of await backend().list()) {
     try {
       documents.push(parseStoredDocument(value))
@@ -339,7 +463,7 @@ export async function listEditorDocuments(): Promise<EditorDocumentV1[]> {
 
 export async function getEditorDocument(
   id: string,
-): Promise<EditorDocumentV1 | null> {
+): Promise<EditorDocumentV2 | null> {
   const value = await backend().get(id)
   return value === undefined ? null : parseStoredDocument(value)
 }
@@ -348,7 +472,7 @@ export async function getActiveDocumentId(): Promise<string | null> {
   return backend().getActiveId()
 }
 
-export async function getActiveEditorDocument(): Promise<EditorDocumentV1 | null> {
+export async function getActiveEditorDocument(): Promise<EditorDocumentV2 | null> {
   const id = await getActiveDocumentId()
   if (!id) return null
   try {
@@ -395,82 +519,117 @@ export function describeDocumentStoreError(error: unknown): string {
  * IndexedDB 仍是草稿主存储；日志在对应快照落盘后立即清除。
  */
 export function writeEditorDocumentRecovery(
-  document: EditorDocumentV1,
+  document: EditorDocumentV2,
 ): boolean {
   try {
-    parseStoredDocument(document)
-    const serialized = JSON.stringify(document)
+    const normalizedDocument = parseStoredDocument(document)
+    const serialized = JSON.stringify(normalizedDocument)
     // assetId/blob URL 正常很小；超大 data URL 不应在每次按键时同步阻塞主线程。
     if (serialized.length > 1_000_000) {
       console.warn('草稿恢复日志超过 1MB，跳过同步保护并继续使用 IndexedDB')
-      try {
-        localStorage.removeItem(RECOVERY_STORAGE_KEY)
-      } catch {
-        // 正式 IDB 保存仍会继续；关键是不能让旧 WAL 冒充这次新编辑。
-      }
+      removeAllEditorDocumentRecoveryKeys()
       return false
     }
-    localStorage.setItem(RECOVERY_STORAGE_KEY, serialized)
+    // 新 WAL 落盘前先清除旧 key；否则 v2 提交后被清掉时，v1 会被下次启动误当成待恢复编辑。
+    localStorage.removeItem(RECOVERY_STORAGE_KEY_V1)
+    localStorage.setItem(RECOVERY_STORAGE_KEY_V2, serialized)
     return true
   } catch (error) {
     // 极大 base64 正文可能超过 localStorage 配额；不能因此阻断正常 IDB 保存。
     console.warn('无法写入草稿恢复日志，将继续使用 IndexedDB 自动保存', error)
-    try {
-      localStorage.removeItem(RECOVERY_STORAGE_KEY)
-    } catch {
-      // 同上：清理失败时也不阻断 IndexedDB 主路径。
-    }
+    removeAllEditorDocumentRecoveryKeys()
     return false
   }
 }
 
-export function readEditorDocumentRecovery(): EditorDocumentV1 | null {
-  try {
-    const raw = localStorage.getItem(RECOVERY_STORAGE_KEY)
-    if (!raw) return null
-    return parseStoredDocument(JSON.parse(raw))
-  } catch (error) {
-    console.warn('草稿恢复日志损坏，已忽略', error)
+function removeAllEditorDocumentRecoveryKeys(): void {
+  for (const key of RECOVERY_STORAGE_KEYS) {
     try {
-      localStorage.removeItem(RECOVERY_STORAGE_KEY)
+      localStorage.removeItem(key)
     } catch {
-      // 隐私模式下 localStorage 自身也可能不可用；读取路径保持可恢复。
+      // 一个 key 失败也继续尝试另一个；IndexedDB 主路径不受影响。
     }
-    return null
   }
 }
 
-/** 只清掉与已落盘 recoveryId 完全一致的日志，旧写入永不误删新编辑。 */
+export function readEditorDocumentRecovery(): EditorDocumentV2 | null {
+  for (const key of RECOVERY_STORAGE_KEYS) {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      return parseStoredDocument(JSON.parse(raw))
+    } catch (error) {
+      console.warn('草稿恢复日志损坏，已忽略', error)
+      try {
+        localStorage.removeItem(key)
+      } catch {
+        // 隐私模式下 localStorage 自身也可能不可用；读取路径保持可恢复。
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * 清掉已落盘的精确快照，并移除它已取代的更旧 v1 WAL。
+ * 同 revision 冲突或更新日志仍保留，避免旧 IDB 提交误删新编辑。
+ */
 export function clearEditorDocumentRecovery(
   documentId: string,
   committedRecoveryId: string,
 ): void {
-  try {
-    const raw = localStorage.getItem(RECOVERY_STORAGE_KEY)
-    if (!raw) return
-    const recovery = parseStoredDocument(JSON.parse(raw))
-    if (
-      recovery.id === documentId &&
-      recovery.recoveryId === committedRecoveryId
-    ) {
-      localStorage.removeItem(RECOVERY_STORAGE_KEY)
+  let committedV2Revision: number | null = null
+  for (const key of RECOVERY_STORAGE_KEYS) {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      const recovery = parseStoredDocument(JSON.parse(raw))
+      const isCommittedRecovery =
+        recovery.id === documentId &&
+        recovery.recoveryId === committedRecoveryId
+      if (key === RECOVERY_STORAGE_KEY_V2 && isCommittedRecovery) {
+        committedV2Revision = recovery.revision
+        localStorage.removeItem(key)
+      } else if (key === RECOVERY_STORAGE_KEY_V1 && isCommittedRecovery) {
+        localStorage.removeItem(key)
+      } else if (
+        key === RECOVERY_STORAGE_KEY_V1 &&
+        committedV2Revision !== null &&
+        recovery.id === documentId &&
+        recovery.revision < committedV2Revision
+      ) {
+        // 清理已被 v2 取代的更旧 v1 WAL，但保留同 revision 冲突或更新编辑。
+        localStorage.removeItem(key)
+      }
+    } catch (error) {
+      console.warn('清理草稿恢复日志失败', error)
+      try {
+        localStorage.removeItem(key)
+      } catch {
+        // 不阻断 IndexedDB 主路径。
+      }
     }
-  } catch (error) {
-    console.warn('清理草稿恢复日志失败', error)
   }
 }
 
 /** 用户明确删除草稿时，丢弃该文档尚未提交的恢复日志，防止下次启动复活。 */
 export function discardEditorDocumentRecovery(documentId: string): void {
-  try {
-    const raw = localStorage.getItem(RECOVERY_STORAGE_KEY)
-    if (!raw) return
-    const recovery = parseStoredDocument(JSON.parse(raw))
-    if (recovery.id === documentId) {
-      localStorage.removeItem(RECOVERY_STORAGE_KEY)
+  for (const key of RECOVERY_STORAGE_KEYS) {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      const recovery = parseStoredDocument(JSON.parse(raw))
+      if (recovery.id === documentId) {
+        localStorage.removeItem(key)
+      }
+    } catch (error) {
+      console.warn('丢弃草稿恢复日志失败', error)
+      try {
+        localStorage.removeItem(key)
+      } catch {
+        // 不阻断用户删除 IndexedDB 中的正式草稿。
+      }
     }
-  } catch (error) {
-    console.warn('丢弃草稿恢复日志失败', error)
   }
 }
 
