@@ -63,7 +63,7 @@ import {
   ExportReadinessError,
 } from '@/lib/exportReadiness'
 import {
-  CANVAS_CONTENT_WIDTH,
+  coverContentWidthForTheme,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
 } from '@/lib/canvas'
@@ -346,9 +346,10 @@ function App() {
       fontSizePx: Math.round((fontSize * 90) / 40),
       fontWeight: h1Bold ? 700 : 400,
       maxWidthPx:
-        CANVAS_CONTENT_WIDTH * (Number.parseFloat(h1Width) / 100),
+        coverContentWidthForTheme(themeClass) *
+        (Number.parseFloat(h1Width) / 100),
     }),
-    [fontH1, fontSize, h1Bold, h1Width],
+    [fontH1, fontSize, h1Bold, h1Width, themeClass],
   )
   const previewLayoutRevision = [
     fontH1,
@@ -365,6 +366,10 @@ function App() {
   ].join('|')
 
   const selectActiveDraft = useCallback((identity: DraftIdentity) => {
+    // 草稿身份是资源操作的提交边界。另存为可能发生在异步重试返回前；
+    // 此处统一使旧请求失效并复位按钮，避免 stale guard 只丢结果却遗留 loading UI。
+    resourceOperationRevisionRef.current += 1
+    setResourceRetrying(false)
     activeDraftRef.current = identity
     setActiveDraft(identity)
   }, [])
@@ -927,7 +932,63 @@ function App() {
     replaceResourceIssueScope('library', [])
   }, [replaceResourceIssueScope])
 
+  async function retryPageBackground(backgroundRole: PageBackgroundRole) {
+    if (resourceRetrying) return
+    themeApplyRevisionRef.current += 1
+    setThemeApplying(false)
+    setResourceRetrying(true)
+    const operationRevision = ++resourceOperationRevisionRef.current
+    const draftId = activeDraftRef.current?.id ?? null
+    const backgroundIds = {
+      coverAssetId,
+      innerAssetId: bgAssetId,
+    }
+    const [result] = await Promise.allSettled([
+      resolvePageBackgrounds(backgroundIds),
+    ])
+    if (
+      operationRevision !== resourceOperationRevisionRef.current ||
+      draftId !== (activeDraftRef.current?.id ?? null)
+    ) {
+      return
+    }
+
+    const issues =
+      result.status === 'fulfilled'
+        ? pageBackgroundIssues(result.value.issues)
+        : (['cover', 'inner'] as const).map((role) => ({
+            id: `background:${role}:unknown`,
+            scope: 'document' as const,
+            label: role === 'cover' ? '首图背景' : '内页背景',
+            message: resourceErrorMessage(result.reason),
+            backgroundRole: role,
+          }))
+    if (result.status === 'fulfilled') {
+      setPageBackground({
+        ...backgroundIds,
+        coverSrc: result.value.coverSrc,
+        innerSrc: result.value.innerSrc,
+      })
+    }
+    setResourceIssues((previous) => [
+      ...previous.filter((issue) => !issue.id.startsWith('background:')),
+      ...issues,
+    ])
+    if (!issues.some((issue) => issue.backgroundRole === backgroundRole)) {
+      recordRecentAction(
+        backgroundRole === 'cover'
+          ? '首图背景重新载入完成'
+          : '内页背景重新载入完成',
+      )
+    }
+    setResourceRetrying(false)
+  }
+
   async function retryResources(backgroundRole?: PageBackgroundRole) {
+    if (backgroundRole) {
+      await retryPageBackground(backgroundRole)
+      return
+    }
     if (resourceRetrying) return
     themeApplyRevisionRef.current += 1
     setThemeApplying(false)
@@ -1047,15 +1108,7 @@ function App() {
       })
     }
     setResourceIssues(nextIssues)
-    if (nextIssues.length === 0) {
-      recordRecentAction(
-        backgroundRole === 'cover'
-          ? '首图背景重新载入完成'
-          : backgroundRole === 'inner'
-            ? '内页背景重新载入完成'
-            : '资源重新载入完成',
-      )
-    }
+    if (nextIssues.length === 0) recordRecentAction('资源重新载入完成')
     setResourceRetrying(false)
   }
 
@@ -1120,7 +1173,21 @@ function App() {
         })),
       )
     }
-    replaceResourceIssueScope('document', nextIssues)
+    if (theme.contentJSON) {
+      replaceResourceIssueScope('document', nextIssues)
+    } else {
+      // Style-only themes keep the current Tiptap document. Preserve its
+      // recoverable image issues while replacing only theme-owned resources.
+      setResourceIssues((previous) => [
+        ...previous.filter(
+          (issue) =>
+            issue.scope !== 'document' ||
+            (!issue.id.startsWith('background:') &&
+              !issue.id.startsWith('logo:')),
+        ),
+        ...nextIssues,
+      ])
+    }
 
     setThemeClass(theme.themeClass)
     setFontH1(theme.fontH1)
@@ -1884,7 +1951,9 @@ function App() {
               resourceIssues={resourceIssues}
               resourceRetrying={resourceRetrying}
               resourceLoading={themeApplying}
-              onRetryResources={() => void retryResources()}
+              onRetryResources={(backgroundRole) =>
+                void retryResources(backgroundRole)
+              }
               currentThemeId={currentThemeId}
               userThemes={userThemes}
               onTheme={handleSelectThemeById}

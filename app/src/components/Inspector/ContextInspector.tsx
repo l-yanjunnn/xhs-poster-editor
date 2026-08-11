@@ -68,6 +68,7 @@ export interface ResourceIssue {
   id: string
   label: string
   message: string
+  backgroundRole?: 'cover' | 'inner'
 }
 
 interface Props {
@@ -77,7 +78,7 @@ interface Props {
   resourceIssues: ResourceIssue[]
   resourceRetrying: boolean
   resourceLoading: boolean
-  onRetryResources: () => void
+  onRetryResources: (backgroundRole?: 'cover' | 'inner') => void
 
   currentThemeId: string | null
   userThemes: Theme[]
@@ -178,7 +179,7 @@ function ResourceIssues({
 }: {
   issues: ResourceIssue[]
   retrying: boolean
-  onRetry: () => void
+  onRetry: (backgroundRole?: 'cover' | 'inner') => void
 }) {
   return (
     <section className="resource-issues" aria-labelledby="resource-issues-title">
@@ -194,10 +195,22 @@ function ResourceIssues({
           <li key={issue.id}>
             <strong>{issue.label}</strong>
             <span>{issue.message}</span>
+            {issue.backgroundRole ? (
+              <button
+                type="button"
+                className="resource-issue-retry"
+                onClick={() => onRetry(issue.backgroundRole)}
+                disabled={retrying}
+                aria-label={`重新载入${issue.label}`}
+              >
+                <RefreshCw aria-hidden="true" />
+                单独重试
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
-      <button type="button" onClick={onRetry} disabled={retrying}>
+      <button type="button" onClick={() => onRetry()} disabled={retrying}>
         <RefreshCw aria-hidden="true" className={retrying ? 'is-spinning' : ''} />
         {retrying ? '正在重试…' : '重新载入资源'}
       </button>
@@ -570,19 +583,26 @@ function CoverColorFields({
   onSubtitleColor: (color: string) => void
   onRestore: () => void
 }) {
+  const [resetNonce, setResetNonce] = useState(0)
+
+  function restoreColors() {
+    setResetNonce((value) => value + 1)
+    onRestore()
+  }
+
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
       <legend className="px-1 text-xs font-semibold text-neutral-700">
         封面文字颜色
       </legend>
       <HexColorInput
-        key={`title-${titleColor}`}
+        key={`title-${titleColor}-${resetNonce}`}
         label="主标题"
         value={titleColor}
         onCommit={onTitleColor}
       />
       <HexColorInput
-        key={`subtitle-${subtitleColor}`}
+        key={`subtitle-${subtitleColor}-${resetNonce}`}
         label="副标题"
         value={subtitleColor}
         onCommit={onSubtitleColor}
@@ -590,7 +610,7 @@ function CoverColorFields({
       <button
         type="button"
         className="inspector-reset-action w-full"
-        onClick={onRestore}
+        onClick={restoreColors}
       >
         <RotateCcw aria-hidden="true" />
         恢复模板颜色

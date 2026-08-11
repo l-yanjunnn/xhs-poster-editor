@@ -6,9 +6,12 @@ import {
   COVER_CROP_BOTTOM,
   COVER_CROP_HEIGHT,
   COVER_CROP_TOP,
+  coverContentWidthForTheme,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
   PAGE_PADDING_X,
+  PUBLIC_EXAM_COVER_PADDING_X,
+  PUBLIC_EXAM_INNER_PADDING_X,
 } from './canvas'
 
 describe('canvas geometry', () => {
@@ -26,6 +29,13 @@ describe('canvas geometry', () => {
   it('正文内容宽度与左右安全边距一致', () => {
     expect(PAGE_PADDING_X).toBe(80)
     expect(CANVAS_CONTENT_WIDTH).toBe(920)
+  })
+
+  it('公考主题的首图与内页使用独立安全边距', () => {
+    expect(PUBLIC_EXAM_COVER_PADDING_X).toBe(120)
+    expect(PUBLIC_EXAM_INNER_PADDING_X).toBe(96)
+    expect(coverContentWidthForTheme('theme-public-exam-landscape')).toBe(840)
+    expect(coverContentWidthForTheme('theme-minimal-white')).toBe(920)
   })
 
   it('首图中心 3:4 可见区上下各裁 180px', () => {

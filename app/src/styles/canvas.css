@@ -93,6 +93,91 @@
   background: #1a1a1a;
 }
 
+/* 封面语义色对所有主题生效：旧主题注入原主色后外观不变，
+ * 公考和用户主题则可通过同一组 token 实时修改。 */
+.page--first .content > h1:first-of-type {
+  color: var(--c-cover-title, var(--c-text-primary));
+}
+.page--first .content > h1:first-of-type + p {
+  color: var(--c-cover-subtitle, var(--c-text-secondary));
+}
+
+/* ============ 主题：公考·山水卷 ============
+ * 首图/内页底图的留白不同，但页角色仍只由 page--first 推导。
+ * 颜色和安全区全部收敛在主题 class 下，不改写旧主题 token。 */
+.theme-public-exam-landscape {
+  --page-padding-x: 96px;
+  --page-padding-top: 180px;
+  --page-padding-bottom: 300px;
+  --c-text-primary: #2D292B;
+  --c-text-secondary: #5F5659;
+  --c-text-muted: #5F5659;
+  --c-accent: #8A4B7C;
+  --c-quote-bg: rgba(123, 59, 139, 0.08);
+  --c-code-bg: rgba(138, 75, 124, 0.06);
+  --c-divider: rgba(138, 75, 124, 0.36);
+  --c-overlay-color: transparent;
+  --c-overlay-opacity: 0;
+  --lh-display: 1.28;
+  --lh-body: 1.85;
+}
+
+.theme-public-exam-landscape.page--first {
+  --page-padding-x: 120px;
+  --page-padding-top: 340px;
+  --page-padding-bottom: 620px;
+}
+
+/* 底图纸纹与山水已完成明度标定，不再叠加用户上一主题的遮罩。 */
+.theme-public-exam-landscape .overlay {
+  background: transparent;
+  opacity: 0;
+}
+
+/* 公考主题不使用猫 Logo；即使历史草稿保留 logo id 也不污染画面。 */
+.theme-public-exam-landscape .logo {
+  display: none;
+}
+
+/* 封面专属字号/行距仍限定在公考主题；语义颜色由上方全局封面规则统一处理。 */
+.theme-public-exam-landscape.page--first
+  .content
+  > h1:first-of-type {
+  line-height: 1.22;
+  letter-spacing: 0.01em;
+}
+.theme-public-exam-landscape.page--first
+  .content
+  > h1:first-of-type
+  + p {
+  max-width: 80%;
+  font-size: calc(var(--fs-body) + 2px);
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+}
+
+.theme-public-exam-landscape .content h2 {
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+.theme-public-exam-landscape .content blockquote {
+  border-left: 8px solid var(--c-accent);
+  border-radius: 4px;
+}
+
+.theme-public-exam-landscape.page--first .page-tag {
+  display: none;
+}
+.theme-public-exam-landscape:not(.page--first) .page-tag {
+  top: 112px;
+  right: 96px;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  color: var(--c-accent);
+  letter-spacing: 0.08em;
+}
+
 /* ============ 单页 9:15（3:5）画布 ============ */
 .page-wrapper {
   position: relative;

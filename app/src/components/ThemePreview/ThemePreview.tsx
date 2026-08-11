@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { OVERLAY_MAP, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
+import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
 import { DENSITY_MAP } from '@/lib/density'
 import { computeFontSizeVars } from '@/lib/fontSize'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas'
@@ -21,6 +22,7 @@ interface Props {
 export function ThemePreview({ theme, scale = 0.14 }: Props) {
   const [resolvedAssets, setResolvedAssets] = useState({
     coverBgAssetId: '',
+    innerBgAssetId: '',
     logoAssetId: '',
     bgSrc: '',
     logoSrc: '',
@@ -31,6 +33,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
   // 在新资源返回前两个 src 都视为空，避免闪现「新主题 + 旧封面」。
   const assetsAreCurrent =
     resolvedAssets.coverBgAssetId === theme.coverBgAssetId &&
+    resolvedAssets.innerBgAssetId === theme.bgAssetId &&
     resolvedAssets.logoAssetId === theme.logoAssetId
   const bgSrc = assetsAreCurrent ? resolvedAssets.bgSrc : ''
   const logoSrc = assetsAreCurrent ? resolvedAssets.logoSrc : ''
@@ -40,22 +43,28 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     let alive = true
     ;(async () => {
       const [backgroundResult, logoResult] = await Promise.allSettled([
-        resolveAssetSrc(theme.coverBgAssetId, 'background'),
+        resolvePageBackgrounds({
+          coverAssetId: theme.coverBgAssetId,
+          innerAssetId: theme.bgAssetId,
+        }),
         resolveAssetSrc(theme.logoAssetId, 'logo'),
       ])
       if (!alive || revision !== assetRevisionRef.current) return
       setResolvedAssets({
         coverBgAssetId: theme.coverBgAssetId,
+        innerBgAssetId: theme.bgAssetId,
         logoAssetId: theme.logoAssetId,
         bgSrc:
-          backgroundResult.status === 'fulfilled' ? backgroundResult.value : '',
+          backgroundResult.status === 'fulfilled'
+            ? backgroundResult.value.coverSrc
+            : '',
         logoSrc: logoResult.status === 'fulfilled' ? logoResult.value : '',
       })
     })()
     return () => {
       alive = false
     }
-  }, [theme.coverBgAssetId, theme.logoAssetId])
+  }, [theme.bgAssetId, theme.coverBgAssetId, theme.logoAssetId])
 
   const [overlayColor, overlayOpacity] = OVERLAY_MAP[theme.overlay]
   // 缩略图固定展示首页；除“不显示”外，其余策略首页都会有 Logo。

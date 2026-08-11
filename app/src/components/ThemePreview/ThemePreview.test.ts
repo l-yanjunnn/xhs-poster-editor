@@ -3,10 +3,14 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUILTIN_THEMES, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
+import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
 import { ThemePreview } from './ThemePreview'
 
 vi.mock('@/lib/resolveAsset', () => ({
   resolveAssetSrc: vi.fn(),
+}))
+vi.mock('@/lib/pageBackgrounds', () => ({
+  resolvePageBackgrounds: vi.fn(),
 }))
 
 type ReactActGlobal = typeof globalThis & {
@@ -15,6 +19,7 @@ type ReactActGlobal = typeof globalThis & {
 ;(globalThis as ReactActGlobal).IS_REACT_ACT_ENVIRONMENT = true
 
 const mockedResolveAssetSrc = vi.mocked(resolveAssetSrc)
+const mockedResolvePageBackgrounds = vi.mocked(resolvePageBackgrounds)
 const mounted: Array<{ host: HTMLDivElement; root: Root }> = []
 
 function publicExamTheme(overrides: Partial<Theme> = {}): Theme {
@@ -47,6 +52,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   mockedResolveAssetSrc.mockReset()
+  mockedResolvePageBackgrounds.mockReset()
 })
 
 afterEach(async () => {
@@ -58,23 +64,22 @@ afterEach(async () => {
 
 describe('ThemePreview cover semantics', () => {
   it('用 cover asset 渲染首页，注入主副标题色并展示公考封面文案', async () => {
-    mockedResolveAssetSrc.mockImplementation(async (assetId) =>
-      assetId ? `/resolved/${assetId}.png` : '',
-    )
+    mockedResolveAssetSrc.mockResolvedValue('')
     const theme = publicExamTheme({
       coverTitleColor: '#123456',
       coverSubtitleColor: '#654321',
     })
+    mockedResolvePageBackgrounds.mockResolvedValue({
+      coverSrc: `/resolved/${theme.coverBgAssetId}.png`,
+      innerSrc: `/resolved/${theme.bgAssetId}.png`,
+      issues: [],
+    })
     const { host } = await mountThemePreview(theme)
 
-    expect(mockedResolveAssetSrc).toHaveBeenCalledWith(
-      theme.coverBgAssetId,
-      'background',
-    )
-    expect(mockedResolveAssetSrc).not.toHaveBeenCalledWith(
-      theme.bgAssetId,
-      'background',
-    )
+    expect(mockedResolvePageBackgrounds).toHaveBeenCalledWith({
+      coverAssetId: theme.coverBgAssetId,
+      innerAssetId: theme.bgAssetId,
+    })
     expect(host.querySelector<HTMLImageElement>('img.bg')?.getAttribute('src')).toBe(
       `/resolved/${theme.coverBgAssetId}.png`,
     )
@@ -93,14 +98,28 @@ describe('ThemePreview cover semantics', () => {
   })
 
   it('切换主题时立即清空旧 src，且慢请求不会覆盖新结果', async () => {
-    const slow = deferred<string>()
-    const latest = deferred<string>()
-    mockedResolveAssetSrc.mockImplementation((assetId, kind) => {
-      if (kind === 'logo') return Promise.resolve('')
-      if (assetId === 'cover-initial') return Promise.resolve('/initial.png')
-      if (assetId === 'cover-slow') return slow.promise
-      if (assetId === 'cover-latest') return latest.promise
-      return Promise.resolve('')
+    const slow = deferred<{
+      coverSrc: string
+      innerSrc: string
+      issues: []
+    }>()
+    const latest = deferred<{
+      coverSrc: string
+      innerSrc: string
+      issues: []
+    }>()
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockImplementation(({ coverAssetId }) => {
+      if (coverAssetId === 'cover-initial') {
+        return Promise.resolve({
+          coverSrc: '/initial.png',
+          innerSrc: '',
+          issues: [],
+        })
+      }
+      if (coverAssetId === 'cover-slow') return slow.promise
+      if (coverAssetId === 'cover-latest') return latest.promise
+      return Promise.resolve({ coverSrc: '', innerSrc: '', issues: [] })
     })
 
     const initialTheme = publicExamTheme({ coverBgAssetId: 'cover-initial' })
@@ -118,14 +137,14 @@ describe('ThemePreview cover semantics', () => {
 
     await act(async () => {
       item.root.render(createElement(ThemePreview, { theme: latestTheme }))
-      latest.resolve('/latest.png')
+      latest.resolve({ coverSrc: '/latest.png', innerSrc: '', issues: [] })
     })
     expect(item.host.querySelector('img.bg')?.getAttribute('src')).toBe(
       '/latest.png',
     )
 
     await act(async () => {
-      slow.resolve('/stale.png')
+      slow.resolve({ coverSrc: '/stale.png', innerSrc: '', issues: [] })
     })
     expect(item.host.querySelector('img.bg')?.getAttribute('src')).toBe(
       '/latest.png',

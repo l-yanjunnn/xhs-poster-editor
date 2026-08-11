@@ -221,4 +221,60 @@ describe('ContextInspector cover colors', () => {
     expect(colorInput(item.host, '副标题').value).toBe('#445566')
     expect(colorInput(item.host, '主标题').hasAttribute('aria-invalid')).toBe(false)
   })
+
+  it('clears invalid drafts when restoring an unchanged template color', async () => {
+    const item = await mountInspector()
+    const title = colorInput(item.host, '主标题')
+
+    await changeInput(title, '#123')
+    await blurInput(title)
+    expect(title.getAttribute('aria-invalid')).toBe('true')
+
+    const restore = Array.from(item.host.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('恢复模板颜色'),
+    )
+    await act(async () => restore?.click())
+
+    expect(item.props.onRestoreCoverColors).toHaveBeenCalledOnce()
+    expect(colorInput(item.host, '主标题').value).toBe('#6D136C')
+    expect(colorInput(item.host, '主标题').hasAttribute('aria-invalid')).toBe(false)
+  })
+})
+
+describe('ContextInspector background retries', () => {
+  it('forwards cover and inner retry intent separately', async () => {
+    const onRetryResources = vi.fn()
+    const { host } = await mountInspector({
+      onRetryResources,
+      resourceIssues: [
+        {
+          id: 'background:cover:missing',
+          label: '首图背景',
+          message: '素材丢失',
+          backgroundRole: 'cover',
+        },
+        {
+          id: 'background:inner:missing',
+          label: '内页背景',
+          message: '素材丢失',
+          backgroundRole: 'inner',
+        },
+      ],
+    })
+
+    const coverRetry = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="重新载入首图背景"]',
+    )
+    const innerRetry = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="重新载入内页背景"]',
+    )
+    expect(coverRetry).not.toBeNull()
+    expect(innerRetry).not.toBeNull()
+
+    await act(async () => coverRetry!.click())
+    await act(async () => innerRetry!.click())
+
+    expect(onRetryResources).toHaveBeenNthCalledWith(1, 'cover')
+    expect(onRetryResources).toHaveBeenNthCalledWith(2, 'inner')
+  })
 })

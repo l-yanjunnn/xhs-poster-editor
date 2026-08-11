@@ -10,6 +10,7 @@
 
 import asyncio
 import sys
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -897,6 +898,311 @@ async def assert_page_break_invariants(page: Page) -> None:
     )
 
 
+async def assert_public_exam_theme(page: Page) -> None:
+    log("验证公考双底图、语义色、三档预览与两页 ZIP 导出")
+    document = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "heading",
+                "attrs": {"level": 1},
+                "content": [{"type": "text", "text": "申论高分方法"}],
+            },
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "材料阅读 · 归纳概括 · 规范表达",
+                    }
+                ],
+            },
+            {"type": "horizontalRule"},
+            {
+                "type": "heading",
+                "attrs": {"level": 2},
+                "content": [{"type": "text", "text": "提出对策题"}],
+            },
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "先定位问题，再从材料中提炼主体、动作与目标。",
+                    }
+                ],
+            },
+            {
+                "type": "blockquote",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "对策必须能对应问题，并具备可执行性。",
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "type": "heading",
+                "attrs": {"level": 3},
+                "content": [{"type": "text", "text": "作答步骤"}],
+            },
+            {
+                "type": "orderedList",
+                "attrs": {"start": 1},
+                "content": [
+                    {
+                        "type": "listItem",
+                        "content": [
+                            {
+                                "type": "paragraph",
+                                "content": [
+                                    {"type": "text", "text": "概括核心问题"}
+                                ],
+                            }
+                        ],
+                    },
+                    {
+                        "type": "listItem",
+                        "content": [
+                            {
+                                "type": "paragraph",
+                                "content": [
+                                    {"type": "text", "text": "匹配材料做法"}
+                                ],
+                            }
+                        ],
+                    },
+                    {
+                        "type": "listItem",
+                        "content": [
+                            {
+                                "type": "paragraph",
+                                "content": [
+                                    {"type": "text", "text": "压缩为规范表述"}
+                                ],
+                            }
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+    await set_document(page, document, 2)
+    before_theme = await page.evaluate("window.__editor.getJSON()")
+
+    for label in ("裁切参考", "排版参考"):
+        switch = page.get_by_role("switch", name=label, exact=True)
+        if await switch.get_attribute("aria-checked") == "true":
+            await switch.click()
+
+    await page.get_by_role("button", name="主题库", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    card = dialog.locator(
+        '[data-theme-id="builtin-public-exam-landscape"]'
+    )
+    await card.wait_for()
+    assert await card.locator('[data-page-backgrounds="cover-inner"]').count() == 1
+    await card.get_by_role("button", name="应用", exact=True).click()
+    await dialog.wait_for(state="hidden")
+    await page.wait_for_function(
+        """
+        () => {
+          const pages = [...document.querySelectorAll(
+            '.page.theme-public-exam-landscape',
+          )]
+          const backgrounds = pages.map((item) => item.querySelector('img.bg'))
+          return pages.length === 2 && backgrounds.every(
+            (image) => image && image.complete && image.naturalWidth > 0,
+          ) && !document.querySelector('.workspace-blocking-layer')
+        }
+        """
+    )
+    await next_layout(page)
+
+    after_theme = await page.evaluate("window.__editor.getJSON()")
+    assert after_theme == before_theme, "样式主题不得替换或改写正文 JSON"
+
+    visual = await page.evaluate(
+        """
+        () => {
+          const pages = [...document.querySelectorAll('.page')]
+          const cover = pages[0]
+          const inner = pages[1]
+          const coverStyle = getComputedStyle(cover)
+          const innerStyle = getComputedStyle(inner)
+          const coverTag = cover.querySelector('.page-tag')
+          const innerTag = inner.querySelector('.page-tag')
+          const path = (item) => new URL(item.currentSrc || item.src).pathname
+          return {
+            coverBackground: path(cover.querySelector('img.bg')),
+            innerBackground: path(inner.querySelector('img.bg')),
+            coverTitle: getComputedStyle(
+              cover.querySelector('.content > h1:first-of-type'),
+            ).color,
+            coverSubtitle: getComputedStyle(
+              cover.querySelector('.content > h1:first-of-type + p'),
+            ).color,
+            innerText: getComputedStyle(
+              inner.querySelector('.content > p'),
+            ).color,
+            coverPadding: [
+              coverStyle.getPropertyValue('--page-padding-x').trim(),
+              coverStyle.getPropertyValue('--page-padding-top').trim(),
+              coverStyle.getPropertyValue('--page-padding-bottom').trim(),
+            ],
+            innerPadding: [
+              innerStyle.getPropertyValue('--page-padding-x').trim(),
+              innerStyle.getPropertyValue('--page-padding-top').trim(),
+              innerStyle.getPropertyValue('--page-padding-bottom').trim(),
+            ],
+            overlays: pages.map(
+              (item) => getComputedStyle(item.querySelector('.overlay')).opacity,
+            ),
+            logos: pages.reduce(
+              (total, item) => total + item.querySelectorAll('.logo').length,
+              0,
+            ),
+            coverTagDisplay: getComputedStyle(coverTag).display,
+            innerTagTop: getComputedStyle(innerTag).top,
+            innerTagRight: getComputedStyle(innerTag).right,
+          }
+        }
+        """
+    )
+    assert visual["coverBackground"].endswith(
+        "/builtin-assets/bg-public-exam-landscape-cover-v1.png"
+    ), visual
+    assert visual["innerBackground"].endswith(
+        "/builtin-assets/bg-public-exam-landscape-inner-v1.png"
+    ), visual
+    assert visual["coverTitle"] == "rgb(109, 19, 108)", visual
+    assert visual["coverSubtitle"] == "rgb(90, 70, 95)", visual
+    assert visual["innerText"] == "rgb(45, 41, 43)", visual
+    assert visual["coverPadding"] == ["120px", "340px", "620px"], visual
+    assert visual["innerPadding"] == ["96px", "180px", "300px"], visual
+    assert visual["overlays"] == ["0", "0"], visual
+    assert visual["logos"] == 0, visual
+    assert visual["coverTagDisplay"] == "none", visual
+    assert visual["innerTagTop"] == "112px", visual
+    assert visual["innerTagRight"] == "96px", visual
+
+    title_input = page.get_by_role("textbox", name="主标题颜色", exact=True)
+    subtitle_input = page.get_by_role("textbox", name="副标题颜色", exact=True)
+    await title_input.fill("#123")
+    await title_input.blur()
+    await page.get_by_role("alert").filter(has_text="6 位十六进制颜色").wait_for()
+    assert await page.locator(
+        '.page--first .content > h1:first-of-type'
+    ).evaluate("(item) => getComputedStyle(item).color") == "rgb(109, 19, 108)"
+
+    await page.get_by_role(
+        "button", name="恢复模板颜色", exact=True
+    ).click()
+    await page.wait_for_function(
+        """
+        () => {
+          const input = document.querySelector(
+            'input[aria-label="主标题颜色"]',
+          )
+          return input?.value === '#6D136C' && !input.hasAttribute('aria-invalid')
+        }
+        """
+    )
+
+    await title_input.fill("#123456")
+    await title_input.press("Enter")
+    await subtitle_input.fill("#654321")
+    await subtitle_input.press("Enter")
+    await page.wait_for_function(
+        """
+        () => {
+          const cover = document.querySelector('.page--first')
+          return getComputedStyle(
+            cover.querySelector('.content > h1:first-of-type'),
+          ).color === 'rgb(18, 52, 86)' && getComputedStyle(
+            cover.querySelector('.content > h1:first-of-type + p'),
+          ).color === 'rgb(101, 67, 33)'
+        }
+        """
+    )
+    await page.get_by_role(
+        "button", name="恢复模板颜色", exact=True
+    ).click()
+    await page.wait_for_function(
+        """
+        () => getComputedStyle(
+          document.querySelector('.page--first .content > h1:first-of-type'),
+        ).color === 'rgb(109, 19, 108)'
+        """
+    )
+
+    for width, height in ((1280, 800), (1440, 900), (1536, 1024)):
+        await page.set_viewport_size({"width": width, "height": height})
+        await page.locator(".workspace-canvas-pages").evaluate(
+            "(item) => { item.scrollTop = 0 }"
+        )
+        await next_layout(page)
+        await page.screenshot(
+            path=str(OUT / f"public-exam-{width}x{height}.png")
+        )
+
+    await page.set_viewport_size({"width": 1536, "height": 1024})
+    await next_layout(page)
+    await page.locator(".page").nth(0).screenshot(
+        path=str(OUT / "public-exam-preview-cover.png")
+    )
+    await page.locator(".page").nth(1).screenshot(
+        path=str(OUT / "public-exam-preview-inner.png")
+    )
+
+    await page.get_by_role("button", name="导出 PNG", exact=True).click()
+    export_dialog = page.get_by_role("dialog")
+    filename = export_dialog.get_by_role("textbox")
+    await filename.fill("public-exam-v150")
+    async with page.expect_download(timeout=120_000) as download_info:
+        await export_dialog.get_by_role("button", name="导出", exact=True).click()
+    download = await download_info.value
+    assert download.suggested_filename == "public-exam-v150.zip"
+    zip_path = OUT / "public-exam-v150.zip"
+    await download.save_as(str(zip_path))
+    await export_dialog.wait_for(state="hidden")
+
+    with zipfile.ZipFile(zip_path) as archive:
+        members = sorted(
+            name for name in archive.namelist() if name.lower().endswith(".png")
+        )
+        assert members == [
+            "public-exam-v150-1.png",
+            "public-exam-v150-2.png",
+        ], members
+        for member in members:
+            archive.extract(member, OUT)
+
+    cover_export = OUT / members[0]
+    inner_export = OUT / members[1]
+    with Image.open(cover_export) as cover_image, Image.open(
+        inner_export
+    ) as inner_image:
+        assert cover_image.size == (2160, 3600), cover_image.size
+        assert inner_image.size == (2160, 3600), inner_image.size
+        cover_pixel = cover_image.convert("RGB").getpixel((200, 164))
+        inner_pixel = inner_image.convert("RGB").getpixel((200, 164))
+        assert min(cover_pixel) > 220, cover_pixel
+        assert (
+            inner_pixel[0] > 100
+            and inner_pixel[1] < 115
+            and inner_pixel[2] > 100
+            and abs(inner_pixel[0] - inner_pixel[2]) < 35
+        ), inner_pixel
+
+    log(f"公考主题截图与导出：{OUT}")
+
+
 async def main() -> None:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
@@ -916,6 +1222,7 @@ async def main() -> None:
             await assert_image_keyboard_and_resource_history(page)
             await assert_draft_history_boundary(page)
             await assert_missing_image_preflight(page)
+            await assert_public_exam_theme(page)
             log(f"全部通过；布局截图：{OUT}")
         finally:
             await context.close()

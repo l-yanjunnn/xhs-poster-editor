@@ -13,11 +13,9 @@ import {
 import { MoveHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  CANVAS_CONTENT_WIDTH,
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   COVER_CROP_TOP,
-  PAGE_PADDING_X,
 } from '@/lib/canvas'
 import {
   formatImageWidth,
@@ -59,6 +57,18 @@ interface SelectionBox {
   height: number
 }
 
+interface PreviewCanvasGeometry {
+  scale: number
+  pageLeft: number
+  pageTop: number
+  contentLeft: number
+  contentRight: number
+  contentTop: number
+  contentBottom: number
+  contentWidth: number
+  contentCenter: number
+}
+
 type ResizeDirection = 'left' | 'right'
 
 interface ActiveGesture {
@@ -69,8 +79,11 @@ interface ActiveGesture {
   imageId: string
   startClientX: number
   startLeft: number
+  startTop: number
   startWidth: number
+  startHeight: number
   scale: number
+  geometry: PreviewCanvasGeometry
   resizeDirection?: ResizeDirection
   targetLefts: { left: number; center: number; right: number }
   originalStyle: string | null
@@ -86,9 +99,133 @@ interface GestureFeedback {
   label: string | null
 }
 
-const PAGE_PADDING_TOP = 300
-const FIRST_PAGE_PADDING_TOP = 320
-const PAGE_PADDING_BOTTOM = 160
+function parseCssLength(value: string): number | null {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function cssPadding(
+  pageStyle: CSSStyleDeclaration,
+  contentStyle: CSSStyleDeclaration,
+  variable: '--page-padding-x' | '--page-padding-top' | '--page-padding-bottom',
+  fallbackProperty: 'paddingLeft' | 'paddingTop' | 'paddingBottom',
+): number {
+  return (
+    parseCssLength(pageStyle.getPropertyValue(variable)) ??
+    parseCssLength(contentStyle[fallbackProperty]) ??
+    0
+  )
+}
+
+/**
+ * 把当前 `.page` 的 CSS 安全区转成 1080×1800 画布坐标。
+ * 优先读页面角色上的 `--page-padding-*`，并结合真实 content rect；
+ * 因此 Cover / Inner / 旧主题不需要在交互层重复一套常量。
+ */
+function measurePreviewCanvasGeometry(
+  page: HTMLDivElement,
+  content: HTMLDivElement,
+): PreviewCanvasGeometry | null {
+  const pageRect = page.getBoundingClientRect()
+  const scale = pageRect.width / CANVAS_WIDTH
+  if (!Number.isFinite(scale) || scale <= 0) return null
+
+  const contentRect = content.getBoundingClientRect()
+  const pageStyle = window.getComputedStyle(page)
+  const contentStyle = window.getComputedStyle(content)
+  const paddingX = cssPadding(
+    pageStyle,
+    contentStyle,
+    '--page-padding-x',
+    'paddingLeft',
+  )
+  const paddingTop = cssPadding(
+    pageStyle,
+    contentStyle,
+    '--page-padding-top',
+    'paddingTop',
+  )
+  const paddingBottom = cssPadding(
+    pageStyle,
+    contentStyle,
+    '--page-padding-bottom',
+    'paddingBottom',
+  )
+
+  // hidden/jsdom 环境下 content rect 可能是 0；真实浏览器则使用
+  // content border-box 的实际偏移，而不假定它永远与 page 重合。
+  const hasContentWidth = contentRect.width > 0
+  const hasContentHeight = contentRect.height > 0
+  const contentBorderLeft = hasContentWidth
+    ? (contentRect.left - pageRect.left) / scale
+    : 0
+  const contentBorderRight = hasContentWidth
+    ? (contentRect.right - pageRect.left) / scale
+    : CANVAS_WIDTH
+  const contentBorderTop = hasContentHeight
+    ? (contentRect.top - pageRect.top) / scale
+    : 0
+  const contentBorderBottom = hasContentHeight
+    ? (contentRect.bottom - pageRect.top) / scale
+    : CANVAS_HEIGHT
+  const contentLeft = contentBorderLeft + paddingX
+  const contentRight = contentBorderRight - paddingX
+  const contentTop = contentBorderTop + paddingTop
+  const contentBottom = contentBorderBottom - paddingBottom
+  const contentWidth = contentRight - contentLeft
+  if (
+    !Number.isFinite(contentWidth) ||
+    contentWidth <= 0 ||
+    contentBottom < contentTop
+  ) {
+    return null
+  }
+
+  return {
+    scale,
+    pageLeft: pageRect.left,
+    pageTop: pageRect.top,
+    contentLeft,
+    contentRight,
+    contentTop,
+    contentBottom,
+    contentWidth,
+    contentCenter: contentLeft + contentWidth / 2,
+  }
+}
+
+function sameCanvasLayout(
+  previous: PreviewCanvasGeometry | null,
+  next: PreviewCanvasGeometry,
+): boolean {
+  if (!previous) return false
+  return (
+    Math.abs(previous.contentLeft - next.contentLeft) < 0.1 &&
+    Math.abs(previous.contentRight - next.contentRight) < 0.1 &&
+    Math.abs(previous.contentTop - next.contentTop) < 0.1 &&
+    Math.abs(previous.contentBottom - next.contentBottom) < 0.1 &&
+    Math.abs(previous.contentCenter - next.contentCenter) < 0.1
+  )
+}
+
+function alignedImageLeft(
+  align: ImageAlign,
+  width: number,
+  geometry: PreviewCanvasGeometry,
+): number {
+  if (align === 'center') return geometry.contentCenter - width / 2
+  if (align === 'right') return geometry.contentRight - width
+  return geometry.contentLeft
+}
+
+function alignmentGuideX(
+  align: ImageAlign,
+  geometry: PreviewCanvasGeometry,
+): number {
+  if (align === 'center') return geometry.contentCenter
+  if (align === 'right') return geometry.contentRight
+  return geometry.contentLeft
+}
 
 function setForwardedRef(
   ref: React.ForwardedRef<HTMLDivElement>,
@@ -148,6 +285,8 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   const contentRef = useRef<HTMLDivElement | null>(null)
   const gestureRef = useRef<ActiveGesture | null>(null)
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
+  const [canvasGeometry, setCanvasGeometry] =
+    useState<PreviewCanvasGeometry | null>(null)
   const [feedback, setFeedback] = useState<GestureFeedback>({
     lineX: null,
     label: null,
@@ -174,50 +313,72 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     )
   }, [selectedImageId])
 
-  const measureSelection = useCallback(() => {
-    const page = pageRef.current
-    const image = findSelectedImage()
-    if (!page || !image) {
-      setSelectionBox((previous) => (previous === null ? previous : null))
-      return null
-    }
-    const pageRect = page.getBoundingClientRect()
-    const imageRect = image.getBoundingClientRect()
-    const scale = pageRect.width / CANVAS_WIDTH
-    if (!Number.isFinite(scale) || scale <= 0) return null
-    const box = {
-      left: (imageRect.left - pageRect.left) / scale,
-      top: (imageRect.top - pageRect.top) / scale,
-      width: imageRect.width / scale,
-      height: imageRect.height / scale,
-    }
-    setSelectionBox((previous) =>
-      previous &&
-      Math.abs(previous.left - box.left) < 0.1 &&
-      Math.abs(previous.top - box.top) < 0.1 &&
-      Math.abs(previous.width - box.width) < 0.1 &&
-      Math.abs(previous.height - box.height) < 0.1
-        ? previous
-        : box,
-    )
-    return { box, image, scale }
-  }, [findSelectedImage])
-
-  const measureOverflow = useCallback(() => {
+  const refreshCanvasGeometry = useCallback(() => {
     const page = pageRef.current
     const content = contentRef.current
-    if (!page || !content) return
-    const last = content.lastElementChild
-    if (!last) {
-      setOverflowing(false)
-      return
+    if (!page || !content) {
+      setCanvasGeometry((previous) => (previous === null ? previous : null))
+      return null
     }
-    const pageRect = page.getBoundingClientRect()
-    const lastRect = last.getBoundingClientRect()
-    const scale = pageRect.width / CANVAS_WIDTH
-    const safeBottom = pageRect.bottom - PAGE_PADDING_BOTTOM * scale
-    setOverflowing(lastRect.bottom > safeBottom + 1)
+    const next = measurePreviewCanvasGeometry(page, content)
+    setCanvasGeometry((previous) =>
+      next && sameCanvasLayout(previous, next) ? previous : next,
+    )
+    return next
   }, [])
+
+  const measureSelection = useCallback(
+    (geometrySnapshot?: PreviewCanvasGeometry | null) => {
+      const image = findSelectedImage()
+      const geometry =
+        geometrySnapshot === undefined
+          ? refreshCanvasGeometry()
+          : geometrySnapshot
+      if (!geometry || !image) {
+        setSelectionBox((previous) => (previous === null ? previous : null))
+        return null
+      }
+      const imageRect = image.getBoundingClientRect()
+      const box = {
+        left: (imageRect.left - geometry.pageLeft) / geometry.scale,
+        top: (imageRect.top - geometry.pageTop) / geometry.scale,
+        width: imageRect.width / geometry.scale,
+        height: imageRect.height / geometry.scale,
+      }
+      setSelectionBox((previous) =>
+        previous &&
+        Math.abs(previous.left - box.left) < 0.1 &&
+        Math.abs(previous.top - box.top) < 0.1 &&
+        Math.abs(previous.width - box.width) < 0.1 &&
+        Math.abs(previous.height - box.height) < 0.1
+          ? previous
+          : box,
+      )
+      return { box, image, geometry }
+    },
+    [findSelectedImage, refreshCanvasGeometry],
+  )
+
+  const measureOverflow = useCallback(
+    (geometrySnapshot?: PreviewCanvasGeometry | null) => {
+      const content = contentRef.current
+      const geometry =
+        geometrySnapshot === undefined
+          ? refreshCanvasGeometry()
+          : geometrySnapshot
+      if (!content || !geometry) return
+      const last = content.lastElementChild
+      if (!last) {
+        setOverflowing(false)
+        return
+      }
+      const lastRect = last.getBoundingClientRect()
+      const safeBottom =
+        geometry.pageTop + geometry.contentBottom * geometry.scale
+      setOverflowing(lastRect.bottom > safeBottom + 1)
+    },
+    [refreshCanvasGeometry],
+  )
 
   useLayoutEffect(() => {
     const content = contentRef.current
@@ -229,8 +390,9 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
       window.cancelAnimationFrame(animationFrame)
       animationFrame = window.requestAnimationFrame(() => {
         if (disposed) return
-        measureSelection()
-        measureOverflow()
+        const geometry = refreshCanvasGeometry()
+        measureSelection(geometry)
+        measureOverflow(geometry)
       })
     }
     for (const image of images) {
@@ -242,8 +404,9 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
         ? null
         : new ResizeObserver(remeasure)
     resizeObserver?.observe(content)
-    measureSelection()
-    measureOverflow()
+    const geometry = refreshCanvasGeometry()
+    measureSelection(geometry)
+    measureOverflow(geometry)
     void document.fonts.ready.then(() => {
       if (!disposed) remeasure()
     })
@@ -256,17 +419,31 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
         image.removeEventListener('error', remeasure)
       }
     }
-  }, [html, measureOverflow, measureSelection, previewScale])
+  }, [
+    html,
+    measureOverflow,
+    measureSelection,
+    previewScale,
+    refreshCanvasGeometry,
+  ])
 
   // 字号、密度、字体与 H1 宽度通过 :root CSS vars 更新，不会改变固定高度的
   // `.content` border-box，因此 ResizeObserver 无法感知。等父级写完变量后在下一帧重测。
   useEffect(() => {
     const animationFrame = window.requestAnimationFrame(() => {
-      measureSelection()
-      measureOverflow()
+      const geometry = refreshCanvasGeometry()
+      measureSelection(geometry)
+      measureOverflow(geometry)
     })
     return () => window.cancelAnimationFrame(animationFrame)
-  }, [layoutRevision, measureOverflow, measureSelection, themeClass])
+  }, [
+    isFirstPage,
+    layoutRevision,
+    measureOverflow,
+    measureSelection,
+    refreshCanvasGeometry,
+    themeClass,
+  ])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -328,7 +505,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    const { box, image, scale } = measured
+    const { box, image, geometry } = measured
     gestureRef.current = {
       kind,
       pointerId: event.pointerId,
@@ -337,17 +514,20 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
       imageId,
       startClientX: event.clientX,
       startLeft: box.left,
+      startTop: box.top,
       startWidth: box.width,
-      scale,
+      startHeight: box.height,
+      scale: geometry.scale,
+      geometry,
       resizeDirection,
       targetLefts: {
-        left: PAGE_PADDING_X,
-        center: PAGE_PADDING_X + (CANVAS_CONTENT_WIDTH - box.width) / 2,
-        right: PAGE_PADDING_X + CANVAS_CONTENT_WIDTH - box.width,
+        left: geometry.contentLeft,
+        center: geometry.contentCenter - box.width / 2,
+        right: geometry.contentRight - box.width,
       },
       originalStyle: image.getAttribute('style'),
       originalAlign: image.getAttribute('data-align'),
-      draftWidth: (box.width / CANVAS_CONTENT_WIDTH) * 100,
+      draftWidth: (box.width / geometry.contentWidth) * 100,
       draftAlign: normalizeImageAlign(image.dataset.align),
       snappedWidth: null,
       didMove: false,
@@ -367,7 +547,8 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     if (gesture.kind === 'resize') {
       const direction = gesture.resizeDirection === 'left' ? -1 : 1
       const rawWidth =
-        ((gesture.startWidth + deltaCanvas * direction) / CANVAS_CONTENT_WIDTH) *
+        ((gesture.startWidth + deltaCanvas * direction) /
+          gesture.geometry.contentWidth) *
         100
       const snapped = snapImageWidth(rawWidth, {
         enabled: snapEnabled,
@@ -379,21 +560,28 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
       gesture.image.style.height = 'auto'
       gesture.image.style.removeProperty('transform')
       const align = normalizeImageAlign(gesture.image.dataset.align)
+      const nextWidth =
+        (gesture.geometry.contentWidth * snapped.width) / 100
+      const nextHeight =
+        gesture.startWidth > 0
+          ? gesture.startHeight * (nextWidth / gesture.startWidth)
+          : gesture.startHeight
+      setSelectionBox({
+        left: alignedImageLeft(align, nextWidth, gesture.geometry),
+        top: gesture.startTop,
+        width: nextWidth,
+        height: nextHeight,
+      })
       setFeedback({
         lineX:
           snapped.snappedTo === null
             ? null
-            : align === 'left'
-              ? PAGE_PADDING_X
-              : align === 'center'
-                ? CANVAS_WIDTH / 2
-                : CANVAS_WIDTH - PAGE_PADDING_X,
+            : alignmentGuideX(align, gesture.geometry),
         label:
           snapped.snappedTo === null
             ? `宽度 ${Math.round(snapped.width)}%`
             : `已吸附 · ${snapped.snappedTo}%`,
       })
-      measureSelection()
       return
     }
 
@@ -409,13 +597,14 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     if (snapped.align) {
       gesture.image.dataset.align = snapped.align
       gesture.image.style.removeProperty('transform')
+      setSelectionBox({
+        left: gesture.targetLefts[snapped.align],
+        top: gesture.startTop,
+        width: gesture.startWidth,
+        height: gesture.startHeight,
+      })
       setFeedback({
-        lineX:
-          snapped.align === 'left'
-            ? PAGE_PADDING_X
-            : snapped.align === 'center'
-              ? CANVAS_WIDTH / 2
-              : CANVAS_WIDTH - PAGE_PADDING_X,
+        lineX: alignmentGuideX(snapped.align, gesture.geometry),
         label: `已吸附 · ${
           snapped.align === 'left'
             ? '左对齐'
@@ -427,9 +616,14 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     } else {
       gesture.image.dataset.align = normalizeImageAlign(gesture.originalAlign)
       gesture.image.style.transform = `translateX(${deltaCanvas}px)`
+      setSelectionBox({
+        left: proposedLeft,
+        top: gesture.startTop,
+        width: gesture.startWidth,
+        height: gesture.startHeight,
+      })
       setFeedback({ lineX: null, label: '松开后将回到原位' })
     }
-    measureSelection()
   }
 
   function finishGesture(event: ReactPointerEvent<HTMLElement>) {
@@ -459,7 +653,10 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
         { width },
         `调整为 ${width}`,
       )
-      if (!committed) restoreGestureDom(gesture)
+      if (!committed) {
+        restoreGestureDom(gesture)
+        measureSelection()
+      }
       return
     }
 
@@ -475,7 +672,10 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
       { align },
       align === 'left' ? '左对齐' : align === 'center' ? '居中对齐' : '右对齐',
     )
-    if (!committed) restoreGestureDom(gesture)
+    if (!committed) {
+      restoreGestureDom(gesture)
+      measureSelection()
+    }
   }
 
   function cancelGesture() {
@@ -500,6 +700,13 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     width: `${CANVAS_WIDTH * previewScale}px`,
     height: `${CANVAS_HEIGHT * previewScale}px`,
   } as CSSProperties
+  const interactionLayerStyle = canvasGeometry
+    ? ({
+        '--page-padding-x': `${canvasGeometry.contentLeft}px`,
+        '--page-padding-top': `${canvasGeometry.contentTop}px`,
+        '--page-padding-bottom': `${CANVAS_HEIGHT - canvasGeometry.contentBottom}px`,
+      } as CSSProperties)
+    : undefined
 
   return (
     <div className="page-preview-group">
@@ -532,6 +739,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
             className="canvas-interaction-layer"
             data-preview-only=""
             aria-hidden={!selectionBox && !layoutGuidesOn && !cropGuideOn}
+            style={interactionLayerStyle}
           >
             {cropGuideOn && isFirstPage && (
               <div
@@ -548,19 +756,44 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
               </div>
             )}
 
-            {layoutGuidesOn && (
+            {layoutGuidesOn && canvasGeometry && (
               <div className="layout-guides">
-                <div className="layout-guide layout-guide--left" />
-                <div className="layout-guide layout-guide--center" />
-                <div className="layout-guide layout-guide--right" />
+                <div
+                  className="layout-guide layout-guide--left"
+                  style={{ left: `${canvasGeometry.contentLeft}px` }}
+                />
+                <div
+                  className="layout-guide layout-guide--center"
+                  style={{ left: `${canvasGeometry.contentCenter}px` }}
+                />
+                <div
+                  className="layout-guide layout-guide--right"
+                  style={{
+                    right: `${CANVAS_WIDTH - canvasGeometry.contentRight}px`,
+                  }}
+                />
                 <div
                   className="layout-guide layout-guide--top"
                   style={{
-                    top: `${isFirstPage ? FIRST_PAGE_PADDING_TOP : PAGE_PADDING_TOP}px`,
+                    top: `${canvasGeometry.contentTop}px`,
+                    left: `${canvasGeometry.contentLeft}px`,
+                    right: `${CANVAS_WIDTH - canvasGeometry.contentRight}px`,
                   }}
                 />
-                <div className="layout-guide layout-guide--bottom" />
-                <div className="layout-guide-label">排版安全区</div>
+                <div
+                  className="layout-guide layout-guide--bottom"
+                  style={{
+                    bottom: `${CANVAS_HEIGHT - canvasGeometry.contentBottom}px`,
+                    left: `${canvasGeometry.contentLeft}px`,
+                    right: `${CANVAS_WIDTH - canvasGeometry.contentRight}px`,
+                  }}
+                />
+                <div
+                  className="layout-guide-label"
+                  style={{ left: `${canvasGeometry.contentLeft}px` }}
+                >
+                  排版安全区
+                </div>
               </div>
             )}
 

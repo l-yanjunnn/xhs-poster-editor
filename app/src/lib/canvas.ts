@@ -5,6 +5,16 @@ export const CANVAS_HEIGHT = 1800
 export const EXPORT_SCALE = 2
 export const PAGE_PADDING_X = 80
 export const CANVAS_CONTENT_WIDTH = CANVAS_WIDTH - PAGE_PADDING_X * 2
+export const PUBLIC_EXAM_COVER_PADDING_X = 120
+export const PUBLIC_EXAM_INNER_PADDING_X = 96
+
+export function coverContentWidthForTheme(themeClass: string): number {
+  const paddingX =
+    themeClass === 'theme-public-exam-landscape'
+      ? PUBLIC_EXAM_COVER_PADDING_X
+      : PAGE_PADDING_X
+  return CANVAS_WIDTH - paddingX * 2
+}
 
 export const EXPORT_WIDTH = CANVAS_WIDTH * EXPORT_SCALE
 export const EXPORT_HEIGHT = CANVAS_HEIGHT * EXPORT_SCALE
