@@ -479,7 +479,12 @@
   white-space: nowrap;
   user-select: none;
   pointer-events: none;
-  transform: translateY(var(--optical-list-marker-shift-y, 0));
+  transform: translateY(
+    calc(
+      var(--optical-list-marker-shift-y, 0px) +
+        var(--optical-list-marker-export-shift-y, 0px)
+    )
+  );
 }
 .content ul li,
 .content ol li {

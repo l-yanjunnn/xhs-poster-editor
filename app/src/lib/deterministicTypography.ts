@@ -775,6 +775,7 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
     root.querySelectorAll<HTMLElement>('.dtl-atom'),
   ).filter((atom) => (atom.textContent ?? '') !== '')
   const adjustments: BaselineAdjustment[] = []
+  const adjustmentByAtom = new Map<HTMLElement, BaselineAdjustment>()
   const signature: string[] = []
   let failed = false
   for (const atom of targetAtoms) {
@@ -878,10 +879,45 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
   }
 
   for (const adjustment of adjustments) {
+    adjustmentByAtom.set(adjustment.atom, adjustment)
     adjustment.atom.style.top = `${adjustment.atomTop + adjustment.delta}px`
     adjustment.atom.dataset.layoutExportBaselineShift =
       adjustment.delta.toFixed(3)
     signature.push(adjustment.signature)
+  }
+
+  // 列表 marker 仍由浏览器作为普通文本渲染，而列表正文已变成逐 atom
+  // 的确定性行。html2canvas 的 Range baseline 会让正文 atom 产生 renderer
+  // 适配位移；marker 若留在预览位置，就会与首行文字出现同幅反向错位。
+  // 这里让 marker 继承其直接正文首 atom 的同一垂直位移，只修离屏副本，
+  // 不重算预览的光学净空，也不改变 sealed source snapshot。
+  for (const marker of Array.from(
+    root.querySelectorAll<HTMLElement>('[data-optical-list-marker]'),
+  )) {
+    const item = marker.parentElement
+    const reference = item
+      ? Array.from(item.children).find(
+          (child) =>
+            child !== marker &&
+            child.tagName !== 'OL' &&
+            child.tagName !== 'UL',
+        )
+      : null
+    const referenceAtom = reference?.querySelector<HTMLElement>(
+      '.dtl-atom:not([data-layout-kind="space"])',
+    )
+    const adjustment = referenceAtom
+      ? adjustmentByAtom.get(referenceAtom)
+      : undefined
+    const delta = adjustment?.delta ?? 0
+    marker.style.setProperty(
+      '--optical-list-marker-export-shift-y',
+      `${delta.toFixed(3)}px`,
+    )
+    marker.dataset.layoutExportBaselineShift = delta.toFixed(3)
+    signature.push(
+      `marker:${marker.textContent ?? ''}:${delta.toFixed(3)}`,
+    )
   }
   root.dataset.layoutExportBaselineHash = stableHash(signature.join('|'))
   return adjustments.length

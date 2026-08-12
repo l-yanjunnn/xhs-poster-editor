@@ -159,7 +159,7 @@ describe('字体光学对齐 CSS 契约', () => {
       'var(--optical-list-marker-column-width, 2ch)',
     )
     expect(property(marker, 'transform')).toBe(
-      'translateY(var(--optical-list-marker-shift-y, 0))',
+      'translateY( calc( var(--optical-list-marker-shift-y, 0px) + var(--optical-list-marker-export-shift-y, 0px) ) )',
     )
   })
 })

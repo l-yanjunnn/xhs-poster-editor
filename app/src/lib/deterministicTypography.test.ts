@@ -445,6 +445,49 @@ describe('deterministic typography DOM snapshot', () => {
     }
   })
 
+  it('moves an ordered-list marker with its first deterministic text atom for export', () => {
+    const page = pageWithContent()
+    const result = layout(
+      page,
+      '<ol><li><span class="optical-list-marker" data-optical-list-marker data-optical-list-value="10">10.</span><p style="width: 240px; font-size: 20px; line-height: 32px">列表正文</p></li></ol>',
+    )
+    const marker = page.querySelector<HTMLElement>(
+      '[data-optical-list-marker]',
+    )!
+    const referenceAtom = page.querySelector<HTMLElement>('.dtl-atom')!
+    const rangeRectSpy = vi
+      .spyOn(window.Range.prototype, 'getBoundingClientRect')
+      .mockReturnValue({
+        bottom: 28,
+        height: 20,
+        left: 0,
+        right: 20,
+        top: 8,
+        width: 20,
+        x: 0,
+        y: 8,
+        toJSON: () => ({}),
+      })
+
+    try {
+      expect(result.issues).toEqual([])
+      expect(calibrateDeterministicGlyphBaselinesForHtml2Canvas(page)).toBe(
+        page.querySelectorAll('.dtl-atom').length,
+      )
+      expect(
+        marker.style.getPropertyValue(
+          '--optical-list-marker-export-shift-y',
+        ),
+      ).toBe(`${referenceAtom.dataset.layoutExportBaselineShift}px`)
+      expect(marker.dataset.layoutExportBaselineShift).toBe(
+        referenceAtom.dataset.layoutExportBaselineShift,
+      )
+      expect(page.dataset.layoutExportBaselineHash).toMatch(/^[0-9a-f]{8}$/u)
+    } finally {
+      rangeRectSpy.mockRestore()
+    }
+  })
+
   it('fails baseline calibration atomically when any shift exceeds its cap', () => {
     const page = pageWithContent()
     const result = layout(
