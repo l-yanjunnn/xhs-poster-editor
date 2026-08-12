@@ -293,6 +293,17 @@
   font-size: 13px;
   font-weight: 680;
 }
+.workspace-canvas-heading-info {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+/* 滚动联动开关复用 topbar-switch 视觉；标题栏更矮，压一档高度 */
+.canvas-heading-switch {
+  height: 30px;
+  flex: none;
+}
 .workspace-canvas-heading span {
   color: #667085;
   font-size: 11px;

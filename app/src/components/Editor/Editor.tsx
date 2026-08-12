@@ -119,6 +119,10 @@ export interface EditorHandle {
   ) => boolean
   undo: () => boolean
   redo: () => boolean
+  // v1.8 滚动联动：协调层需要左栏滚动容器与 ProseMirror 根节点做几何测量。
+  // 只读 DOM 引用，不承诺任何可变操作。
+  getScrollAreaElement: () => HTMLElement | null
+  getEditorRootElement: () => HTMLElement | null
 }
 
 interface Props {
@@ -227,6 +231,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   ref,
 ) {
   const noWrapH1LayoutRef = useRef(noWrapH1Layout)
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
 
   const reportEditorState = useCallback((ed: Editor) => {
     const imageActive = ed.isActive('image')
@@ -503,6 +508,8 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       },
       undo: () => editor?.commands.undo() ?? false,
       redo: () => editor?.commands.redo() ?? false,
+      getScrollAreaElement: () => scrollAreaRef.current,
+      getEditorRootElement: () => editor?.view.dom ?? null,
     }),
   )
 
@@ -543,7 +550,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         onInsertImageClick={onInsertImageClick}
         noWrapH1Layout={noWrapH1Layout}
       />
-      <div className="editor-scroll-area">
+      <div className="editor-scroll-area" ref={scrollAreaRef}>
         <EditorContent editor={editor} className="tiptap-editor" />
       </div>
     </div>

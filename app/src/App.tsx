@@ -73,6 +73,7 @@ import {
 } from '@/lib/resolveAsset'
 import { BODY_FONTS, DISPLAY_FONTS } from '@/lib/fontPresets'
 import { splitIntoPages } from '@/lib/splitPages'
+import { useDocumentScrollSync } from '@/lib/useDocumentScrollSync'
 import { suggestFilename } from '@/lib/exportPng'
 import {
   EXPORT_DELIVERY_MODE,
@@ -314,6 +315,10 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false)
   // 收集多页 .page DOM 节点供导出截图使用
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
+  // v1.8 滚动联动：会话态开关（不进草稿/undo/导出）+ 中栏滚动容器与 sticky 标题
+  const [scrollSyncOn, setScrollSyncOn] = useState(true)
+  const canvasPanelRef = useRef<HTMLElement | null>(null)
+  const canvasHeadingRef = useRef<HTMLDivElement | null>(null)
   const [userFontFamilies, setUserFontFamilies] = useState<string[]>([])
   const fontRegistryRevision = useSyncExternalStore(
     subscribeFontRegistryRevision,
@@ -1854,6 +1859,23 @@ function App() {
 
   const pages = useMemo(() => splitIntoPages(content), [content])
 
+  // v1.8 长文双向滚动联动：只写两个容器的 scrollTop，不碰正文/选区/导出 DOM。
+  // 图片手势期间暂停；草稿切换/导入即清零，首次人工滚动前保持静止。
+  useDocumentScrollSync({
+    enabled: scrollSyncOn,
+    suspended: canvasGestureActive,
+    getEditorScrollArea: () =>
+      editorRef.current?.getScrollAreaElement() ?? null,
+    getEditorRoot: () => editorRef.current?.getEditorRootElement() ?? null,
+    getCanvasScrollPanel: () => canvasPanelRef.current,
+    getCanvasHeading: () => canvasHeadingRef.current,
+    getPageElements: () => pageRefs.current.slice(0, pages.length),
+    documentIdentity: activeDraft?.id ?? 'unsaved',
+    structureRevision: [pages.length, themeClass, previewLayoutRevision].join(
+      '|',
+    ),
+  })
+
   async function handleExport(
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
@@ -2197,12 +2219,31 @@ function App() {
             />
           </section>
 
-          <section className="workspace-canvas-panel" aria-label="9:15 成品画布">
-            <div className="workspace-canvas-heading">
-              <strong>成品画布</strong>
-              <span>
-                {pages.length} 页 · 导出 {EXPORT_WIDTH} × {EXPORT_HEIGHT}
-              </span>
+          <section
+            ref={canvasPanelRef}
+            className="workspace-canvas-panel"
+            aria-label="9:15 成品画布"
+          >
+            <div className="workspace-canvas-heading" ref={canvasHeadingRef}>
+              <div className="workspace-canvas-heading-info">
+                <strong>成品画布</strong>
+                <span>
+                  {pages.length} 页 · 导出 {EXPORT_WIDTH} × {EXPORT_HEIGHT}
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={scrollSyncOn}
+                className="topbar-switch canvas-heading-switch"
+                onClick={() => setScrollSyncOn((value) => !value)}
+                title={`${scrollSyncOn ? '关闭' : '开启'}滚动联动：编辑区与成品画布互相定位`}
+              >
+                <span>滚动联动</span>
+                <span className="topbar-switch-track" aria-hidden="true">
+                  <span className="topbar-switch-thumb" />
+                </span>
+              </button>
             </div>
             <div className="workspace-canvas-pages">
               {pages.map((pageHtml, index) => (
