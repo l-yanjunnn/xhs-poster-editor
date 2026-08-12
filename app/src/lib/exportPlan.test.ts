@@ -110,6 +110,43 @@ describe('导出命名与清单', () => {
     expect(JSON.parse(plan.manifestJson)).toEqual(plan.manifest)
   })
 
+  it('用户确认的 preflight warning 落入清单并统一按导出时间落章', () => {
+    const plan = createFolderExportPlan({
+      sourceName: '申论还原型概括题.md',
+      pageCount: 19,
+      exportedAt,
+      preflightWarnings: [
+        {
+          pageNumber: 19,
+          code: 'unsatisfied-line',
+          blockText: '这里面存在着许多看似道不清、言不明的道理。',
+          message: '第 1 行在字距/标点上限内无法排入版心',
+          snapshotId: 'abc12345',
+        },
+      ],
+    })
+    expect(plan.manifest.preflightWarnings).toEqual([
+      {
+        pageNumber: 19,
+        code: 'unsatisfied-line',
+        blockText: '这里面存在着许多看似道不清、言不明的道理。',
+        message: '第 1 行在字距/标点上限内无法排入版心',
+        snapshotId: 'abc12345',
+        confirmedAt: plan.manifest.generatedAt,
+      },
+    ])
+    expect(JSON.parse(plan.manifestJson)).toEqual(plan.manifest)
+
+    // 无警告导出保持既有 schema，不出现空数组字段。
+    const clean = createFolderExportPlan({
+      sourceName: '申论还原型概括题.md',
+      pageCount: 19,
+      exportedAt,
+      preflightWarnings: [],
+    })
+    expect('preflightWarnings' in clean.manifest).toBe(false)
+  })
+
   it('范围和非连续自选均保留原稿页码，不从 01 重编', () => {
     const range = createFolderExportPlan({
       sourceName: '夏日露营',

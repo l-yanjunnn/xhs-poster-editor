@@ -3,13 +3,29 @@ import {
   DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
   validateLayoutFontRequests,
 } from './deterministicFontReadiness'
+import {
+  hasBlockingDeterministicLayoutIssues,
+  readDeterministicLayoutIssues,
+} from './deterministicTypography'
 
 export type ExportResourceIssueKind = 'image' | 'font' | 'layout'
+
+export type ExportIssueSeverity = 'warning' | 'blocking'
 
 export interface ExportResourceIssue {
   kind: ExportResourceIssueKind
   label: string
   message: string
+  /** 缺省视为 blocking；只有明确标记 warning 的项可被用户确认放行。 */
+  severity?: ExportIssueSeverity
+  pageNumber?: number
+  code?: string
+  blockIndex?: number
+  blockText?: string
+}
+
+export function isBlockingExportIssue(issue: ExportResourceIssue): boolean {
+  return issue.severity !== 'warning'
 }
 
 export class ExportReadinessError extends Error {
@@ -108,15 +124,45 @@ export async function checkExportReadiness(
     const hasSnapshot = Boolean(page.dataset.layoutSnapshot)
     const sealed = page.dataset.layoutSnapshotPhase === 'sealed'
     if (state === 'ready' && issueCount === 0 && hasSnapshot && sealed) continue
-    let detail = ''
-    try {
-      const parsed = JSON.parse(page.dataset.layoutIssues ?? '[]') as Array<{
-        message?: string
-      }>
-      detail = parsed.find((item) => item.message)?.message ?? ''
-    } catch {
-      // 历史页面没有结构化 issue 时使用下方状态文案。
+    const explicitPageNumber = Number(page.dataset.pageNumber)
+    const pageNumber =
+      Number.isSafeInteger(explicitPageNumber) && explicitPageNumber > 0
+        ? explicitPageNumber
+        : index + 1
+    const layoutIssues = readDeterministicLayoutIssues(page)
+
+    // warning-only 且快照已封存的页面：逐条产出可确认放行的警告，
+    // 携带段落定位信息；任何硬阻断或状态异常仍走下方 blocking 分支。
+    if (
+      state === 'ready-with-warnings' &&
+      hasSnapshot &&
+      sealed &&
+      layoutIssues.length > 0 &&
+      !hasBlockingDeterministicLayoutIssues(layoutIssues)
+    ) {
+      for (const issue of layoutIssues) {
+        const location =
+          issue.blockIndex >= 0
+            ? `第 ${issue.blockIndex + 1} 段` +
+              (issue.blockText ? `「${issue.blockText}」` : '')
+            : ''
+        issues.push({
+          kind: 'layout',
+          severity: 'warning',
+          label: `第 ${pageNumber} 页排版`,
+          message: location
+            ? `${location}：${issue.message}`
+            : issue.message,
+          pageNumber,
+          code: issue.code,
+          blockIndex: issue.blockIndex,
+          blockText: issue.blockText,
+        })
+      }
+      continue
     }
+
+    const detail = layoutIssues.find((item) => item.message)?.message ?? ''
     let fontDetail = ''
     if (state === 'font-error') {
       try {
@@ -128,14 +174,11 @@ export async function checkExportReadiness(
         // 旧页面没有结构化字体错误时使用明确的兜底文案。
       }
     }
-    const explicitPageNumber = Number(page.dataset.pageNumber)
-    const pageNumber =
-      Number.isSafeInteger(explicitPageNumber) && explicitPageNumber > 0
-        ? explicitPageNumber
-        : index + 1
     issues.push({
       kind: 'layout',
+      severity: 'blocking',
       label: `第 ${pageNumber} 页排版`,
+      pageNumber,
       message:
         fontDetail ||
         detail ||
@@ -193,8 +236,13 @@ export async function checkExportReadiness(
 
 export async function assertExportReadiness(
   pages: HTMLElement[],
-  options?: ReadinessOptions,
+  options?: ReadinessOptions & { allowWarnings?: boolean },
 ): Promise<void> {
   const issues = await checkExportReadiness(pages, options)
-  if (issues.length > 0) throw new ExportReadinessError(issues)
+  const blocking = issues.filter(isBlockingExportIssue)
+  // blocking 永不可绕过；warning 只有在用户明确确认后才放行。
+  if (blocking.length > 0) throw new ExportReadinessError(issues)
+  if (issues.length > 0 && !options?.allowWarnings) {
+    throw new ExportReadinessError(issues)
+  }
 }

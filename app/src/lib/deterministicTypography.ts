@@ -28,6 +28,57 @@ export interface DeterministicTypographyIssue {
   message: string
 }
 
+export type DeterministicLayoutIssueSeverity = 'warning' | 'blocking'
+
+export interface SerializedLayoutIssue {
+  code: string
+  blockIndex: number
+  blockText: string
+  message: string
+}
+
+/**
+ * 预检分级：只有「DOM 与文字完整、字体和 baseline 已校准、当前预览
+ * 可实际渲染，仅排版质量约束未满足」的 unsatisfied-line 是可覆盖
+ * 警告。其余与未知 code 一律硬阻断——失败时闭合，绝不把新问题
+ * 默认放行。
+ */
+export function deterministicLayoutIssueSeverity(
+  code: string,
+): DeterministicLayoutIssueSeverity {
+  return code === 'unsatisfied-line' ? 'warning' : 'blocking'
+}
+
+export function hasBlockingDeterministicLayoutIssues(
+  issues: ReadonlyArray<{ code?: string }>,
+): boolean {
+  return issues.some(
+    (issue) =>
+      deterministicLayoutIssueSeverity(issue.code ?? '') === 'blocking',
+  )
+}
+
+/** 从页面 dataset 读取结构化排版问题；历史页面缺字段时给空串。 */
+export function readDeterministicLayoutIssues(
+  page: HTMLElement,
+): SerializedLayoutIssue[] {
+  try {
+    const parsed = JSON.parse(
+      page.dataset.layoutIssues ?? '[]',
+    ) as Array<Partial<SerializedLayoutIssue>>
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((issue) => ({
+      code: typeof issue.code === 'string' ? issue.code : '',
+      blockIndex:
+        typeof issue.blockIndex === 'number' ? issue.blockIndex : -1,
+      blockText: typeof issue.blockText === 'string' ? issue.blockText : '',
+      message: typeof issue.message === 'string' ? issue.message : '',
+    }))
+  } catch {
+    return []
+  }
+}
+
 export interface DeterministicTypographyResult {
   snapshotId: string
   blockCount: number
@@ -985,9 +1036,12 @@ function decorationRuns<T>(
       continue
     }
     const isHangingLineEndClosing =
-      line.justified &&
       atomIndex === lastVisibleIndex &&
-      atom.kind === 'closing-punctuation'
+      atom.kind === 'closing-punctuation' &&
+      (line.justified ||
+        // 末行闭标点透明净空悬挂到版心外时，装饰同样只画到可见
+        // 墨迹；未悬挂的末行保持原有整 box 行为不变。
+        atom.x + atom.boxWidth > line.targetWidth)
     const atomDecorationEnd = isHangingLineEndClosing
       ? Math.min(
           line.targetWidth,
@@ -1441,13 +1495,17 @@ export function materializeDeterministicTypography(
   page.dataset.layoutSnapshot = snapshotId
   page.dataset.layoutBaseSnapshot = snapshotId
   page.dataset.layoutSnapshotPhase = 'layout'
-  page.dataset.layoutState =
-    issues.length > 0 ? 'error' : (options.state ?? 'pending')
+  // 只有含硬阻断问题才进入 error；warning-only（如 unsatisfied-line）
+  // 允许事务继续走到封存，最终由 Preview 标记 ready-with-warnings。
+  page.dataset.layoutState = hasBlockingDeterministicLayoutIssues(issues)
+    ? 'error'
+    : (options.state ?? 'pending')
   page.dataset.layoutIssueCount = String(issues.length)
   page.dataset.layoutIssues = JSON.stringify(
     issues.map((issue) => ({
       code: issue.code,
       blockIndex: issue.blockIndex,
+      blockText: issue.blockText,
       message: issue.message,
     })),
   )

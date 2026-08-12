@@ -86,7 +86,12 @@ import {
 import {
   checkExportReadiness,
   ExportReadinessError,
+  isBlockingExportIssue,
 } from '@/lib/exportReadiness'
+import {
+  hasBlockingDeterministicLayoutIssues,
+  readDeterministicLayoutIssues,
+} from '@/lib/deterministicTypography'
 import {
   coverContentWidthForTheme,
   EXPORT_HEIGHT,
@@ -1852,7 +1857,7 @@ function App() {
   async function handleExport(
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
-    options?: { skipReadiness?: boolean },
+    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
   ) {
     if (canvasGestureActive || themeApplying) {
       throw new Error(
@@ -1954,8 +1959,37 @@ function App() {
         ].map((issue) => [`${issue.kind}:${issue.label}:${issue.message}`, issue]),
       )
       const issues = Array.from(issueMap.values())
-      if (issues.length > 0) throw new ExportReadinessError(issues)
+      // blocking 永不可绕过；warning（如 unsatisfied-line）需要用户在
+      // 弹窗里明确确认「按当前预览强制导出」后才放行。
+      const blockingIssues = issues.filter(isBlockingExportIssue)
+      if (blockingIssues.length > 0) throw new ExportReadinessError(issues)
+      if (issues.length > 0 && !options?.allowLayoutWarnings) {
+        throw new ExportReadinessError(issues)
+      }
     }
+    // 强制导出的 warning 记录以页面 DOM 为准写入导出清单；快照 ID 与
+    // 实际渲染使用同一 sealed snapshot。
+    const confirmedWarnings = options?.allowLayoutWarnings
+      ? selectedElements.flatMap((page, index) => {
+          if (page.dataset.layoutState !== 'ready-with-warnings') return []
+          const parsed = readDeterministicLayoutIssues(page)
+          if (
+            parsed.length === 0 ||
+            hasBlockingDeterministicLayoutIssues(parsed)
+          ) {
+            return []
+          }
+          const pageNumber = plan.pages[index]
+          return parsed.map((issue) => ({
+            pageNumber,
+            code: issue.code,
+            blockText: issue.blockText,
+            message: issue.message,
+            snapshotId: page.dataset.layoutSnapshot ?? '',
+          }))
+        })
+      : []
+    const allowWarnings = Boolean(options?.allowLayoutWarnings)
     if (request.resumeToken) {
       await resumeDirectoryExport(
         request.resumeToken,
@@ -1978,25 +2012,40 @@ function App() {
           selectedPages: request.selectedPages,
           exportedAt,
           deliveryMode: EXPORT_DELIVERY_MODE.DIRECTORY,
+          preflightWarnings: confirmedWarnings,
         },
         createPlan: createFolderExportPlan,
         pageElements: allPageElements,
         onProgress,
+        allowWarnings,
         startCollisionIndex: request.collisionIndex,
       })
       recordRecentAction(`已导出 ${completedPlan.pages.length} 张到独立文件夹`)
       return
     }
 
+    // 带确认 warning 的 ZIP 导出需要把记录写进清单，重建同参数 plan。
+    const zipPlan = confirmedWarnings.length > 0
+      ? createFolderExportPlan({
+          sourceName: request.filename,
+          pageCount: pages.length,
+          selectedPages: request.selectedPages,
+          exportedAt,
+          collisionIndex: request.collisionIndex,
+          deliveryMode: request.deliveryMode,
+          preflightWarnings: confirmedWarnings,
+        })
+      : plan
     await executeZipExport({
-      plan,
+      plan: zipPlan,
       pageElements: allPageElements,
       zipFileName: request.zipFileName,
       collisionIndex: request.collisionIndex,
       saveFileHandle: request.saveFileHandle,
       onProgress,
+      allowWarnings,
     })
-    recordRecentAction(`已导出 ${plan.pages.length} 张到单个兼容 ZIP`)
+    recordRecentAction(`已导出 ${zipPlan.pages.length} 张到单个兼容 ZIP`)
   }
 
   function shouldShowLogo(pageIndex: number, total: number): boolean {

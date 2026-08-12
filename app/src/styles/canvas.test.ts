@@ -112,8 +112,13 @@ describe('theme-public-exam-landscape canvas CSS', () => {
     const innerPageTag = findRule(
       '.theme-public-exam-landscape:not(.page--first) .page-tag',
     )
-    expect(property(innerPageTag, 'top')).toBe('112px')
-    expect(property(innerPageTag, 'right')).toBe('96px')
+    // v1.7.3：用户目检两版 demo 后定稿为下方居中（原 v1.5.0 为
+    // 顶线下方右侧 top:112/right:96）。
+    expect(property(innerPageTag, 'top')).toBe('auto')
+    expect(property(innerPageTag, 'bottom')).toBe('96px')
+    expect(property(innerPageTag, 'right')).toBe('auto')
+    expect(property(innerPageTag, 'left')).toBe('50%')
+    expect(property(innerPageTag, 'transform')).toBe('translateX(-50%)')
     expect(
       property(findRule('.theme-public-exam-landscape .logo'), 'display'),
     ).toBe('none')

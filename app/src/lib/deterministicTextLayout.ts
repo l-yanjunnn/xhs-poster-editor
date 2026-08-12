@@ -1475,6 +1475,46 @@ interface LineAdjustmentModel {
   hangingClosingIndex: number | null
 }
 
+function hangingClosingIndexFor(model: LineWidthModel): number {
+  const lastVisibleIndex = model.boxes.findLastIndex(
+    (slot, index) => model.atoms[index].text !== '' && slot.max > 0,
+  )
+  if (
+    lastVisibleIndex < 0 ||
+    model.atoms[lastVisibleIndex].kind !== 'closing-punctuation'
+  ) {
+    return -1
+  }
+  return lastVisibleIndex
+}
+
+/**
+ * 非两端对齐行的放行宽度：末字为闭标点时按实际可见墨迹右缘判定，
+ * 透明 trailing clearance 允许悬挂到版心外；其余行仍用完整逻辑
+ * 宽度。段落末行若用完整逻辑 box 判宽，会把「句号墨迹仍在版心内、
+ * 仅透明净空越界」的行误判成 unsatisfied-line。
+ */
+function raggedFittingWidth(
+  model: LineWidthModel,
+  options: ResolvedLayoutOptions,
+): number {
+  const lastVisibleIndex = hangingClosingIndexFor(model)
+  if (lastVisibleIndex < 0) return model.natural
+  const adjusted = adjustWidths(model, model.natural, false, options.epsilon)
+  let x = 0
+  for (let index = 0; index < lastVisibleIndex; index += 1) {
+    x += adjusted.boxes[index] + (adjusted.gaps[index] ?? 0)
+  }
+  return (
+    x +
+    glyphOffset(
+      adjusted.model.boxes[lastVisibleIndex],
+      adjusted.boxes[lastVisibleIndex],
+    ) +
+    atomInkMetrics(model.atoms[lastVisibleIndex]).inkRight
+  )
+}
+
 function lineAdjustmentModel(
   atoms: readonly LayoutAtomInput[],
   targetWidth: number,
@@ -1482,18 +1522,21 @@ function lineAdjustmentModel(
   justified: boolean,
 ): LineAdjustmentModel {
   const model = widthModel(atoms, options)
-  const lastVisibleIndex = model.boxes.findLastIndex(
-    (slot, index) => atoms[index].text !== '' && slot.max > 0,
-  )
-  if (
-    !justified ||
-    lastVisibleIndex < 0 ||
-    atoms[lastVisibleIndex].kind !== 'closing-punctuation'
-  ) {
+  const lastVisibleIndex = hangingClosingIndexFor(model)
+  if (lastVisibleIndex < 0) {
     return {
       model,
       solvingTarget: targetWidth,
       hangingClosingIndex: null,
+    }
+  }
+  if (!justified) {
+    // 末行/非两端对齐行不做拉伸，但行尾闭标点同样以可见墨迹右缘
+    // 参与宽度判定；材料化后 actualWidth 即可见右缘。
+    return {
+      model,
+      solvingTarget: targetWidth,
+      hangingClosingIndex: lastVisibleIndex,
     }
   }
 
@@ -1675,7 +1718,8 @@ function solveSegment(
           legalBreak(atoms[end - 1], atoms[end], groupWidths)
         ) {
           if (
-            model.natural <= targetWidth + options.epsilon &&
+            raggedFittingWidth(model, options) <=
+              targetWidth + options.epsilon &&
             lineCanSatisfyVisibleCorridors(
               model,
               model.natural,
@@ -1736,7 +1780,9 @@ function solveSegment(
       const model = adjustment.model
       const feasible = ragged
         ? (
-            model.natural <= targetWidth + options.epsilon || slice.length === 1
+            raggedFittingWidth(model, options) <=
+              targetWidth + options.epsilon ||
+            slice.length === 1
           ) && lineCanSatisfyVisibleCorridors(
             model,
             model.natural,

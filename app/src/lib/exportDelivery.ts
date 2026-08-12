@@ -54,6 +54,8 @@ export interface DirectoryExportResumeToken {
   plan: FolderExportPlan
   directoryHandle: ExportDirectoryHandle
   completedPages: number[]
+  /** 用户已确认「按当前预览强制导出」的 warning 白名单跟随续写。 */
+  allowWarnings?: boolean
 }
 
 export class DirectoryExportInterruptedError extends Error {
@@ -79,6 +81,8 @@ export class DirectoryExportInterruptedError extends Error {
 interface BaseExecutionOptions {
   pageElements: readonly HTMLElement[]
   onProgress?: (current: number, total: number) => void
+  /** 仅放行 warning 级排版问题的强制导出；硬阻断仍会渲染失败。 */
+  allowWarnings?: boolean
 }
 
 export interface ExecuteDirectoryExportOptions extends BaseExecutionOptions {
@@ -116,6 +120,7 @@ export async function executeDirectoryExport({
   createPlan,
   pageElements,
   onProgress,
+  allowWarnings,
   startCollisionIndex = 1,
 }: ExecuteDirectoryExportOptions): Promise<FolderExportPlan> {
   const resolved = await createUniqueDirectory(
@@ -130,6 +135,7 @@ export async function executeDirectoryExport({
     completedPages: [],
     pageElements,
     onProgress,
+    allowWarnings,
   })
   return resolved.plan
 }
@@ -155,6 +161,7 @@ export async function executeZipExport({
   collisionIndex = 1,
   saveFileHandle,
   onProgress,
+  allowWarnings,
 }: ExecuteZipExportOptions): Promise<FolderExportPlan> {
   assertPageElements(plan, pageElements)
   const totalSteps = plan.pages.length + 1
@@ -165,7 +172,7 @@ export async function executeZipExport({
   for (let index = 0; index < plan.files.length; index += 1) {
     const file = plan.files[index]
     const page = pageElements[file.pageNumber - 1]
-    const blob = await renderPagePngBlob(page)
+    const blob = await renderPagePngBlob(page, { allowWarnings })
     folder.file(file.fileName, blob)
     onProgress?.(index + 1, totalSteps)
   }
@@ -238,6 +245,7 @@ async function writeDirectoryPlan({
   completedPages,
   pageElements,
   onProgress,
+  allowWarnings,
 }: DirectoryExportResumeToken & BaseExecutionOptions): Promise<void> {
   assertPageElements(plan, pageElements)
   const resume = createDirectoryResumePlan(plan, completedPages)
@@ -248,7 +256,7 @@ async function writeDirectoryPlan({
   try {
     for (const file of resume.remainingFiles) {
       const page = pageElements[file.pageNumber - 1]
-      const blob = await renderPagePngBlob(page)
+      const blob = await renderPagePngBlob(page, { allowWarnings })
       const fileHandle = await directoryHandle.getFileHandle(file.fileName, {
         create: true,
       })
@@ -268,7 +276,7 @@ async function writeDirectoryPlan({
     onProgress?.(totalSteps, totalSteps)
   } catch (cause) {
     throw new DirectoryExportInterruptedError(
-      { plan, directoryHandle, completedPages: completed },
+      { plan, directoryHandle, completedPages: completed, allowWarnings },
       cause,
     )
   }

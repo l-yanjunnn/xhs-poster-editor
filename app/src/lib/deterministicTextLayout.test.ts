@@ -1177,6 +1177,66 @@ describe('deterministic text layout line solving', () => {
     ).toBe('不拆词')
   })
 
+  it('accepts a paragraph tail whose closing punctuation ink fits, even with a hardNoBreak tail phrase', () => {
+    // 2026-08-12 真实草稿回归：「…言不明的道理。」在「道理」hard
+    // no-break 时被误判 unsatisfied-line。末行的句号逻辑 box 略超版
+    // 心，但可见墨迹仍在版心内，必须按可见右缘放行且不拆短语。
+    const buildSentence = (hardNoBreak: boolean): LayoutAtomInput[] => {
+      const head = opticalHanAtoms('这里面存在着许多看似道不清言不明的', 'tail-han')
+      const phrase = Array.from('道理', (text, index) =>
+        atom(`tail-phrase-${index}`, text, 'han', {
+          ...NOTO_INK.han,
+          ...(hardNoBreak
+            ? { breakGroup: 'tail-phrase', hardNoBreak: true }
+            : {}),
+        }),
+      )
+      return [
+        ...head,
+        ...phrase,
+        atom('tail-stop', '。', 'closing-punctuation', NOTO_INK.fullStop),
+      ]
+    }
+
+    const probe = solveDeterministicTextLayout(buildSentence(true), 100000)
+    expect(probe).toHaveLength(1)
+    const logicalWidth = probe[0].naturalWidth
+    const visibleWidth = visibleInkRight(probe[0].atoms.at(-1)!)
+    expect(visibleWidth).toBeLessThan(logicalWidth)
+
+    // 版心宽度落在「可见墨迹放得下、完整逻辑 box 放不下」的区间。
+    const targetWidth = (logicalWidth + visibleWidth) / 2
+    const lines = solveDeterministicTextLayout(
+      buildSentence(true),
+      targetWidth,
+    )
+
+    expect(lines).toHaveLength(1)
+    const tail = lines[0]
+    expect(tail.end).toBe('paragraph')
+    expect(tail.justified).toBe(false)
+    expect(tail.emergency).toBe(false)
+    expect(
+      tail.atoms
+        .filter((item) => item.breakGroup === 'tail-phrase')
+        .map((item) => item.text)
+        .join(''),
+    ).toBe('道理')
+    expect(visibleInkRight(tail.atoms.at(-1)!)).toBeLessThanOrEqual(
+      targetWidth + EPSILON,
+    )
+    expect(tail.actualWidth).toBeLessThanOrEqual(targetWidth + EPSILON)
+    expect(tail.actualWidth).toBeLessThan(tail.naturalWidth)
+
+    // 不加 hard no-break 时同一版心也必须整段放行，不再拆「道理」。
+    const withoutMark = solveDeterministicTextLayout(
+      buildSentence(false),
+      targetWidth,
+    )
+    expect(withoutMark).toHaveLength(1)
+    expect(withoutMark[0].emergency).toBe(false)
+  })
+
   it('does not justify the line before an explicit break or the paragraph tail', () => {
     const lines = solveDeterministicTextLayout(
       [

@@ -34,6 +34,7 @@ import {
   DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
 } from '@/lib/deterministicFontReadiness'
 import {
+  hasBlockingDeterministicLayoutIssues,
   materializeDeterministicTypography,
   sealDeterministicTypographySnapshot,
 } from '@/lib/deterministicTypography'
@@ -516,6 +517,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
         page.removeAttribute('data-layout-font-issues')
         let markerGeometryStable = false
+        let layoutHasWarnings = false
         // 字体最终就绪后，序号“9. → 10.”可能让列宽改变。
         // 一旦校准改了列表版心，必须在同一事务内用新列宽重做
         // 行级求解与校准；绝不封存旧 line width。
@@ -553,10 +555,11 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
             refreshAfterTypography()
             return
           }
-          if (layoutResult.issues.length > 0) {
+          if (hasBlockingDeterministicLayoutIssues(layoutResult.issues)) {
             refreshAfterTypography()
             return
           }
+          layoutHasWarnings = layoutResult.issues.length > 0
 
           markerGeometryStable =
             (page.dataset.layoutListMarkerGeometry ?? '[]') ===
@@ -569,7 +572,12 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
         sealDeterministicTypographySnapshot(page)
         page.removeAttribute('data-layout-font-issues')
-        page.dataset.layoutState = 'ready'
+        // warning-only（如 unsatisfied-line）的页面同样封存快照：
+        // 预览显示的就是可导出的版式，由导出预检决定是否需要用户
+        // 二次确认；含硬阻断问题的页面在上面已经提前返回。
+        page.dataset.layoutState = layoutHasWarnings
+          ? 'ready-with-warnings'
+          : 'ready'
         awaitingLateFonts = false
         refreshAfterTypography()
       } catch (error: unknown) {

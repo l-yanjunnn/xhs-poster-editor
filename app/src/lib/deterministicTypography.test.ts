@@ -555,7 +555,17 @@ describe('deterministic typography DOM snapshot', () => {
     expect(impossible.issues).toEqual([
       expect.objectContaining({ code: 'unsatisfied-line' }),
     ])
-    expect(impossiblePage.dataset.layoutState).toBe('error')
+    // v1.7.3：unsatisfied-line 属可覆盖警告，页面如实渲染、不再进入
+    // error；是否放行由导出预检的 warning 分级和用户确认决定。
+    expect(impossiblePage.dataset.layoutState).toBe('ready')
+    expect(
+      JSON.parse(impossiblePage.dataset.layoutIssues ?? '[]'),
+    ).toEqual([
+      expect.objectContaining({
+        code: 'unsatisfied-line',
+        blockText: expect.stringContaining('这是超过整行宽度的不拆短语'),
+      }),
+    ])
     expect(impossiblePage.querySelectorAll('.dtl-line')).toHaveLength(1)
   })
 

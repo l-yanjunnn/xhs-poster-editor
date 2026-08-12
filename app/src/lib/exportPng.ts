@@ -6,7 +6,11 @@ import {
   checkDeterministicFontReadiness,
   DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
 } from './deterministicFontReadiness'
-import { calibrateDeterministicGlyphBaselinesForHtml2Canvas } from './deterministicTypography'
+import {
+  calibrateDeterministicGlyphBaselinesForHtml2Canvas,
+  hasBlockingDeterministicLayoutIssues,
+  readDeterministicLayoutIssues,
+} from './deterministicTypography'
 
 // v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
@@ -93,19 +97,49 @@ export function removePreviewOnlyElements(root: HTMLElement): void {
     .forEach((el) => el.remove())
 }
 
+export interface RenderPageOptions {
+  /**
+   * 仅允许 warning 级排版问题（如 unsatisfied-line）经用户二次确认后
+   * 按当前预览导出；任何硬阻断问题（字体、文本一致性、快照缺失）
+   * 仍然拒绝渲染。这不是宽泛的 skip：快照必须已封存。
+   */
+  allowWarnings?: boolean
+}
+
+function pageHasOnlyWarningLayoutIssues(page: HTMLElement): boolean {
+  const issues = readDeterministicLayoutIssues(page)
+  return issues.length > 0 && !hasBlockingDeterministicLayoutIssues(issues)
+}
+
+function assertPageExportable(
+  page: HTMLElement,
+  options?: RenderPageOptions,
+): void {
+  const sealed = page.dataset.layoutSnapshotPhase === 'sealed'
+  const issueCount = Number(page.dataset.layoutIssueCount ?? '0')
+  const state = page.dataset.layoutState
+  if (state === 'ready' && issueCount === 0 && sealed) return
+  if (
+    options?.allowWarnings &&
+    state === 'ready-with-warnings' &&
+    sealed &&
+    pageHasOnlyWarningLayoutIssues(page)
+  ) {
+    return
+  }
+  throw new Error('页面的确定性排版尚未通过字体与几何预检')
+}
+
 // export 仅为 E2E 测试直取 canvas 用（跳过下载管线做像素断言），业务方走 exportPages
-export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
+export async function pageToPngCanvas(
+  page: HTMLElement,
+  options?: RenderPageOptions,
+): Promise<HTMLCanvasElement> {
   const sourceSnapshot = page.dataset.layoutSnapshot
   if (!sourceSnapshot) {
     throw new Error('页面的确定性排版快照尚未生成')
   }
-  if (
-    page.dataset.layoutState !== 'ready' ||
-    Number(page.dataset.layoutIssueCount ?? '0') > 0 ||
-    page.dataset.layoutSnapshotPhase !== 'sealed'
-  ) {
-    throw new Error('页面的确定性排版尚未通过字体与几何预检')
-  }
+  assertPageExportable(page, options)
   // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
   const stage = document.createElement('div')
   stage.setAttribute('data-export-stage', '')
@@ -286,11 +320,14 @@ async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
  * 把单个成品页渲染为 PNG Blob。
  * 目录导出、页码自选和兼容 ZIP 共用这一条已验证的渲染链。
  */
-export async function renderPagePngBlob(page: HTMLElement): Promise<Blob> {
+export async function renderPagePngBlob(
+  page: HTMLElement,
+  options?: RenderPageOptions,
+): Promise<Blob> {
   const maxAttempts = 3
   let lastCanvas: HTMLCanvasElement | null = null
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const canvas = await pageToPngCanvas(page)
+    const canvas = await pageToPngCanvas(page, options)
     lastCanvas = canvas
     if (!hasRaceArtifact(canvas)) {
       return canvasToBlob(canvas)

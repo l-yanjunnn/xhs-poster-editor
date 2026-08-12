@@ -263,4 +263,72 @@ describe('pageToPngCanvas typography stage', () => {
     expect(mockedHtml2Canvas).not.toHaveBeenCalled()
     source.remove()
   })
+
+  function warningOnlyPage(): HTMLDivElement {
+    const source = document.createElement('div')
+    source.className = 'page'
+    source.dataset.layoutSnapshot = 'warning-snapshot'
+    source.dataset.layoutState = 'ready-with-warnings'
+    source.dataset.layoutIssueCount = '1'
+    source.dataset.layoutSnapshotPhase = 'sealed'
+    source.dataset.layoutIssues = JSON.stringify([
+      {
+        code: 'unsatisfied-line',
+        blockIndex: 1,
+        blockText: '这里面存在着许多看似道不清、言不明的道理。',
+        message: '第 1 行在字距/标点上限内无法排入版心',
+      },
+    ])
+    source.innerHTML = '<div class="content"><p>正文</p></div>'
+    return source
+  }
+
+  it('warning-only 页面：未确认拒绝，allowWarnings 确认后按同一快照渲染', async () => {
+    const source = warningOnlyPage()
+    document.body.appendChild(source)
+    mockedHtml2Canvas.mockImplementation(async () =>
+      document.createElement('canvas'),
+    )
+
+    try {
+      await expect(pageToPngCanvas(source)).rejects.toThrow(
+        '页面的确定性排版尚未通过字体与几何预检',
+      )
+      expect(mockedHtml2Canvas).not.toHaveBeenCalled()
+
+      const canvas = await pageToPngCanvas(source, { allowWarnings: true })
+      expect(mockedHtml2Canvas).toHaveBeenCalledTimes(1)
+      // 强制导出使用的正是预览封存的同一快照。
+      expect(canvas.dataset.layoutSnapshot).toBe('warning-snapshot')
+    } finally {
+      source.remove()
+    }
+  })
+
+  it('allowWarnings 不能放行硬阻断：blocking code 或未封存快照仍拒绝', async () => {
+    const blockingIssue = warningOnlyPage()
+    blockingIssue.dataset.layoutIssues = JSON.stringify([
+      {
+        code: 'text-mismatch',
+        blockIndex: 0,
+        blockText: '段落',
+        message: '物化排版后的 Unicode 文本与编辑源不一致',
+      },
+    ])
+    document.body.appendChild(blockingIssue)
+    await expect(
+      pageToPngCanvas(blockingIssue, { allowWarnings: true }),
+    ).rejects.toThrow('页面的确定性排版尚未通过字体与几何预检')
+    blockingIssue.remove()
+
+    const unsealed = warningOnlyPage()
+    unsealed.dataset.layoutSnapshotPhase = 'layout'
+    document.body.appendChild(unsealed)
+    await expect(
+      pageToPngCanvas(unsealed, { allowWarnings: true }),
+    ).rejects.toThrow('页面的确定性排版尚未通过字体与几何预检')
+    unsealed.remove()
+
+    expect(mockedHtml2Canvas).not.toHaveBeenCalled()
+  })
 })

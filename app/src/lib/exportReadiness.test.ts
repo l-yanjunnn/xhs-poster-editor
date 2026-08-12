@@ -113,8 +113,98 @@ describe('export readiness', () => {
     expect(issues).toContainEqual(
       expect.objectContaining({
         kind: 'layout',
+        severity: 'blocking',
         message: '确定性行布局快照尚未生成',
       }),
     )
+  })
+
+  it('把已封存的 warning-only 页面报告为可确认的警告并带段落定位', async () => {
+    const page = document.createElement('div')
+    page.dataset.layoutState = 'ready-with-warnings'
+    page.dataset.layoutIssueCount = '1'
+    page.dataset.layoutSnapshot = 'warning-snapshot'
+    page.dataset.layoutSnapshotPhase = 'sealed'
+    page.dataset.pageNumber = '19'
+    page.dataset.layoutIssues = JSON.stringify([
+      {
+        code: 'unsatisfied-line',
+        blockIndex: 1,
+        blockText: '这里面存在着许多看似道不清、言不明的道理。',
+        message: '第 1 行在字距/标点上限内无法排入版心',
+      },
+    ])
+
+    const issues = await checkExportReadiness([page])
+
+    expect(issues).toEqual([
+      expect.objectContaining({
+        kind: 'layout',
+        severity: 'warning',
+        label: '第 19 页排版',
+        pageNumber: 19,
+        code: 'unsatisfied-line',
+        blockText: '这里面存在着许多看似道不清、言不明的道理。',
+        message:
+          '第 2 段「这里面存在着许多看似道不清、言不明的道理。」：第 1 行在字距/标点上限内无法排入版心',
+      }),
+    ])
+    // 未确认时仍然拒绝；用户确认 allowWarnings 后放行。
+    await expect(assertExportReadiness([page])).rejects.toBeInstanceOf(
+      ExportReadinessError,
+    )
+    await expect(
+      assertExportReadiness([page], { allowWarnings: true }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('未知 issue code 默认硬阻断，allowWarnings 也不能放行', async () => {
+    const page = document.createElement('div')
+    page.dataset.layoutState = 'ready-with-warnings'
+    page.dataset.layoutIssueCount = '1'
+    page.dataset.layoutSnapshot = 'unknown-code-snapshot'
+    page.dataset.layoutSnapshotPhase = 'sealed'
+    page.dataset.layoutIssues = JSON.stringify([
+      {
+        code: 'future-unknown-check',
+        blockIndex: 0,
+        blockText: '未知问题段落',
+        message: '未来新增的检查失败',
+      },
+    ])
+
+    const issues = await checkExportReadiness([page])
+
+    expect(issues).toEqual([
+      expect.objectContaining({
+        kind: 'layout',
+        severity: 'blocking',
+      }),
+    ])
+    await expect(
+      assertExportReadiness([page], { allowWarnings: true }),
+    ).rejects.toBeInstanceOf(ExportReadinessError)
+  })
+
+  it('warning 状态但快照未封存时仍是硬阻断', async () => {
+    const page = document.createElement('div')
+    page.dataset.layoutState = 'ready-with-warnings'
+    page.dataset.layoutIssueCount = '1'
+    page.dataset.layoutSnapshot = 'unsealed-warning-snapshot'
+    page.dataset.layoutSnapshotPhase = 'layout'
+    page.dataset.layoutIssues = JSON.stringify([
+      {
+        code: 'unsatisfied-line',
+        blockIndex: 0,
+        blockText: '段落',
+        message: '第 1 行在字距/标点上限内无法排入版心',
+      },
+    ])
+
+    const issues = await checkExportReadiness([page])
+
+    expect(issues).toEqual([
+      expect.objectContaining({ kind: 'layout', severity: 'blocking' }),
+    ])
   })
 })

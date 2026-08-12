@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   ExportReadinessError,
+  isBlockingExportIssue,
   type ExportResourceIssue,
 } from '@/lib/exportReadiness'
 import {
@@ -62,7 +63,7 @@ interface Props {
   onExport: (
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
-    options?: { skipReadiness?: boolean },
+    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
   ) => Promise<void>
 }
 
@@ -134,8 +135,16 @@ export function ExportDialog({
     pages.length > 0 &&
     pageCount > 0 &&
     !exporting
+  const layoutWarnings = readinessIssues.filter(
+    (issue) => !isBlockingExportIssue(issue),
+  )
   const hasBlockingReadinessIssue = readinessIssues.some(
-    (issue) => issue.kind === 'font' || issue.kind === 'layout',
+    (issue) =>
+      (issue.kind === 'font' || issue.kind === 'layout') &&
+      isBlockingExportIssue(issue),
+  )
+  const hasImageReadinessIssue = readinessIssues.some(
+    (issue) => issue.kind === 'image',
   )
   const topic = cleanDocumentName(trimmedFilename || defaultFilename)
   const exampleFirstPage = pages[0] ?? 1
@@ -230,10 +239,11 @@ export function ExportDialog({
     skipReadiness = false,
     resume: DirectoryExportResumeToken | null = null,
     bypassAllConfirmation = false,
+    allowLayoutWarnings = false,
   ) {
     if (!canExport && !resume) return
-    if (skipReadiness && !resume && hasBlockingReadinessIssue) {
-      setExportError('字体或确定性排版未通过预检，修复后才能导出 PNG。')
+    if ((skipReadiness || allowLayoutWarnings) && !resume && hasBlockingReadinessIssue) {
+      setExportError('字体或确定性排版存在硬阻断问题，修复后才能导出 PNG。')
       return
     }
     if (
@@ -278,7 +288,7 @@ export function ExportDialog({
           resumeToken: resume ?? undefined,
         },
         (current, total) => setProgress({ current, total }),
-        { skipReadiness },
+        { skipReadiness, allowLayoutWarnings },
       )
       collisionByTopicRef.current.set(topic, collisionIndex + 1)
       directoryParentRef.current = null
@@ -528,7 +538,9 @@ export function ExportDialog({
                     <strong>
                       {hasBlockingReadinessIssue
                         ? '字体或排版预检未通过，已阻止导出'
-                        : '部分图片资源尚未就绪'}
+                        : layoutWarnings.length > 0
+                          ? '排版预检发现轻微超限，需要你确认'
+                          : '部分图片资源尚未就绪'}
                     </strong>
                     <ul className="mt-1.5 list-disc space-y-1 pl-4">
                       {readinessIssues.map((issue, index) => (
@@ -537,6 +549,13 @@ export function ExportDialog({
                         </li>
                       ))}
                     </ul>
+                    {!hasBlockingReadinessIssue && layoutWarnings.length > 0 ? (
+                      <p className="mt-2 leading-5">
+                        中央画布显示的就是强制导出的实际效果，差异通常只有几像素的字距。
+                        你可以返回修改（取消该段的「短语不拆」、调整整体字号或排版间距、微调该句文字），
+                        也可以按当前预览强制导出；强制导出会记录进《导出清单.json》。
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {exportError ? (
@@ -566,7 +585,13 @@ export function ExportDialog({
             )}
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={exporting}>
-            取消
+            {!exporting &&
+            !resumeToken &&
+            readinessIssues.length > 0 &&
+            !hasBlockingReadinessIssue &&
+            layoutWarnings.length > 0
+              ? '返回修改'
+              : '取消'}
           </Button>
           {resumeToken ? (
             <Button
@@ -580,12 +605,32 @@ export function ExportDialog({
             </Button>
           ) : readinessIssues.length > 0 ? (
             <>
-              {!hasBlockingReadinessIssue ? (
+              {!hasBlockingReadinessIssue && layoutWarnings.length === 0 ? (
                 <Button variant="outline" onClick={() => void handleExport(true)} disabled={!canExport}>
                   仍然导出
                 </Button>
               ) : null}
-              <Button onClick={() => void handleExport(false)} disabled={!canExport}>
+              {!hasBlockingReadinessIssue && layoutWarnings.length > 0 ? (
+                <Button
+                  onClick={() =>
+                    // 与图片问题混合时沿用其既有的 skip 语义；warning 白名单
+                    // 单独走 allowLayoutWarnings，不放宽任何硬阻断检查。
+                    void handleExport(hasImageReadinessIssue, null, false, true)
+                  }
+                  disabled={!canExport}
+                >
+                  按当前预览强制导出
+                </Button>
+              ) : null}
+              <Button
+                variant={
+                  !hasBlockingReadinessIssue && layoutWarnings.length > 0
+                    ? 'outline'
+                    : 'default'
+                }
+                onClick={() => void handleExport(false)}
+                disabled={!canExport}
+              >
                 重新检查
               </Button>
             </>

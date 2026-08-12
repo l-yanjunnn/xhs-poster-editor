@@ -172,11 +172,14 @@
   display: none;
 }
 .theme-public-exam-landscape:not(.page--first) .page-tag {
-  top: 112px;
-  right: 96px;
-  bottom: auto;
-  left: auto;
-  transform: none;
+  /* v1.7.3 用户目检右下角/下方居中两版 demo 后定稿：下方居中、
+     离底 96px（比 v1.5.0 挪走前的 70px 更高，减轻压山）。
+     历史回退值：顶线下方右侧 top: 112px / right: 96px。 */
+  top: auto;
+  right: auto;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
   color: var(--c-accent);
   letter-spacing: 0.08em;
 }

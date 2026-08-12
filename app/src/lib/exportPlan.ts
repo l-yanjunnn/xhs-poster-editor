@@ -58,6 +58,15 @@ export interface ExportPageFile {
   fileName: string
 }
 
+export interface ManifestPreflightWarning {
+  pageNumber: number
+  code: string
+  blockText: string
+  message: string
+  snapshotId: string
+  confirmedAt: string
+}
+
 export interface ExportManifest {
   schemaVersion: typeof EXPORT_MANIFEST_SCHEMA_VERSION
   documentTopic: string
@@ -74,6 +83,8 @@ export interface ExportManifest {
   folderName: string
   releaseCopyIncluded: false
   files: ExportPageFile[]
+  /** 用户确认强制导出的 warning 记录；无警告导出不含该字段。 */
+  preflightWarnings?: ManifestPreflightWarning[]
 }
 
 export interface FolderExportPlan {
@@ -100,6 +111,8 @@ export interface CreateFolderExportPlanOptions {
   collisionIndex?: number
   ordinaryPostImageLimit?: number
   deliveryMode?: ExportDeliveryMode
+  /** 用户确认强制导出的 warning；confirmedAt 由本函数统一按导出时间落章。 */
+  preflightWarnings?: ReadonlyArray<Omit<ManifestPreflightWarning, 'confirmedAt'>>
 }
 
 export interface ExportDeliveryPlan {
@@ -280,6 +293,7 @@ export function createFolderExportPlan({
   collisionIndex = 1,
   ordinaryPostImageLimit = ORDINARY_POST_IMAGE_LIMIT,
   deliveryMode = EXPORT_DELIVERY_MODE.DIRECTORY,
+  preflightWarnings,
 }: CreateFolderExportPlanOptions): FolderExportPlan {
   assertPositiveInteger(pageCount, '原稿总页数')
   assertPositiveInteger(collisionIndex, '文件夹冲突序号')
@@ -325,6 +339,15 @@ export function createFolderExportPlan({
     folderName,
     releaseCopyIncluded: false,
     files: files.map((file) => ({ ...file })),
+    // 普通无警告导出保持既有 schema，不新增空字段。
+    ...(preflightWarnings && preflightWarnings.length > 0
+      ? {
+          preflightWarnings: preflightWarnings.map((warning) => ({
+            ...warning,
+            confirmedAt: formatBeijingIso(exportedAt),
+          })),
+        }
+      : {}),
   }
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`
 
