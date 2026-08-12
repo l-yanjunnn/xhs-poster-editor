@@ -1949,6 +1949,17 @@ function App() {
         }
       }
       const domIssues = await checkExportReadiness(selectedElements)
+      // Canvas 探针：隐私扩展/企业策略可禁用 Canvas 2D，此时字形墨迹测量
+      // 走近似 fallback、几何不可信。引擎层为兼容 jsdom 单测保持宽容，
+      // fail-closed 必须在导出闸门执行（无 severity=硬阻断，不可覆盖）。
+      const canvasProbeIssues = document.createElement('canvas').getContext('2d')
+        ? []
+        : [{
+            kind: 'font' as const,
+            label: '字形测量',
+            message:
+              '浏览器的 Canvas 2D 功能被禁用（常见于隐私保护扩展或企业策略），无法测量真实字形，导出结果不可信；请解除限制后重试',
+          }]
       const knownIssues = resourceIssues
         .filter((issue) => {
           if (issue.scope === 'library') return false
@@ -1974,6 +1985,7 @@ function App() {
         }))
       const issueMap = new Map(
         [
+          ...canvasProbeIssues,
           ...knownIssues,
           ...failedSelectedFonts,
           ...(fontRestoreIssue ? [fontRestoreIssue] : []),

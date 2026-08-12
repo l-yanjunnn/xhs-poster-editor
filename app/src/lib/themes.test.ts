@@ -41,6 +41,19 @@ describe('normalizeTheme', () => {
     expect(normalizeTheme(theme)?.coverBgAssetId).toBe('')
   })
 
+  it('clamps fontSize into the 12-120 range the document store enforces', () => {
+    // documentStore 越界即抛：不 clamp 的坏主题应用后自动保存会永久失败。
+    expect(
+      normalizeTheme({ ...BUILTIN_THEMES[0], fontSize: 4 })?.fontSize,
+    ).toBe(12)
+    expect(
+      normalizeTheme({ ...BUILTIN_THEMES[0], fontSize: 500 })?.fontSize,
+    ).toBe(120)
+    expect(
+      normalizeTheme({ ...BUILTIN_THEMES[0], fontSize: 40 })?.fontSize,
+    ).toBe(40)
+  })
+
   it('canonicalizes valid lowercase colors and rejects CSS injection values', () => {
     const lowercase = normalizeTheme({
       ...BUILTIN_THEMES[0],

@@ -1,5 +1,5 @@
 export const TEXT_HIGHLIGHT_COLOR = '#7B3B8B'
-export const TEXT_HIGHLIGHT_DEFAULT_OPACITY = 0.5
+export const TEXT_HIGHLIGHT_DEFAULT_OPACITY = 0.25
 
 /**
  * V1.4 的荧光笔是单色语义标记。外部 HTML/旧草稿即使携带

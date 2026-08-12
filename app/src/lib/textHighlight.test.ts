@@ -4,6 +4,7 @@ import {
   normalizeHighlightColor,
   normalizeHighlightOpacity,
   TEXT_HIGHLIGHT_COLOR,
+  TEXT_HIGHLIGHT_DEFAULT_OPACITY,
 } from './textHighlight'
 
 describe('textHighlight', () => {
@@ -11,6 +12,11 @@ describe('textHighlight', () => {
     expect(normalizeHighlightOpacity(-1)).toBe(0)
     expect(normalizeHighlightOpacity(0.5)).toBe(0.5)
     expect(normalizeHighlightOpacity(2)).toBe(1)
+  })
+
+  it('defaults to 25% opacity (v1.8.1 product decision)', () => {
+    expect(TEXT_HIGHLIGHT_DEFAULT_OPACITY).toBe(0.25)
+    expect(normalizeHighlightOpacity('not-a-number')).toBe(0.25)
   })
 
   it('renders semantic color and opacity as a stable rgba value', () => {

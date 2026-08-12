@@ -91,7 +91,9 @@ export interface AnalyzeImportDocumentOptions {
 const COVER_MARKER = /^#\s+封面\s*$/
 const RELEASE_MARKER = /^#\s+正文\s*$/
 const FENCE_MARKER = /^\s{0,3}(```+|~~~+)/
-const PAGE_SEPARATOR = /^\s{0,3}---\s*$/
+// 3 个及以上连字符都是 CommonMark 合法 thematic break（---- 等），
+// 只认恰好 3 个会让多余的连字符以字面文字出现在成品图上。
+const PAGE_SEPARATOR = /^\s{0,3}-{3,}\s*$/
 
 export function validateImportFilename(name = ''): true {
   const normalized = name.trim().toLowerCase()

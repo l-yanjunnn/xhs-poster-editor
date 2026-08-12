@@ -212,8 +212,9 @@ export function normalizeChineseBoldBoundaryWhitespaceHtml(
 ): string {
   if (!html || !/[<>&]/.test(html)) return html
 
-  const host = document.createElement('div')
-  host.innerHTML = html
+  // DOMParser 产出的是惰性文档：脚本不执行、图片不加载。
+  // 不能用主文档的 div.innerHTML——粘贴的 <img onerror> 会在 Tiptap 消毒前执行。
+  const host = new DOMParser().parseFromString(html, 'text/html').body
   const blocks = Array.from(host.querySelectorAll(BLOCK_SELECTOR)).filter(
     (element) => !element.querySelector(BLOCK_SELECTOR),
   )

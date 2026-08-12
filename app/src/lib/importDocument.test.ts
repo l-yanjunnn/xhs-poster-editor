@@ -104,6 +104,17 @@ describe('importDocument', () => {
     expect(asDivider.contentHtml).not.toContain('class="page-break"')
   })
 
+  it('4 个及以上连字符同样按分隔线处理（CommonMark thematic break）', () => {
+    const pending = analyzeImportDocument('# 普通文稿\n\n第一段\n\n----\n\n第二段')
+
+    expect(pending.needsSeparatorDecision).toBe(true)
+    expect(pending.pageCount).toBe(2)
+
+    const asDivider = applySeparatorDecision(pending, 'divider')
+    expect(asDivider.contentHtml).toContain('<hr class="divider">')
+    expect(asDivider.contentHtml).not.toContain('----')
+  })
+
   it('代码块和引用中的 --- 不会被误判为分页', () => {
     const result = analyzeImportDocument(
       '# 示例\n\n```md\n---\n# 封面\n```\n\n> ---\n> # 正文\n\n结束',

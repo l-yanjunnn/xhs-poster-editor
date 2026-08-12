@@ -208,6 +208,9 @@ function measureText(
 ): TextMetricsLike {
   const context = context2d()
   if (!context) {
+    // 近似指标 fallback 是 jsdom 单测的排版基座（测试环境无 Canvas），
+    // 引擎层必须保持宽容。生产端 Canvas 被禁用的 fail-closed 由导出预检
+    // 的 Canvas 探针负责（App 的 handleExport），不在这里阻断。
     return {
       width: fallbackAdvance(text, runStyle.fontSize),
       actualBoundingBoxAscent: runStyle.fontSize * 0.82,

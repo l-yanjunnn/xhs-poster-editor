@@ -265,7 +265,9 @@ export function normalizeTheme(value: unknown): Theme | null {
     h1Bold: theme.h1Bold,
     h2Bold: theme.h2Bold,
     h3Bold: theme.h3Bold,
-    fontSize: theme.fontSize,
+    // documentStore 的 parseDocumentStyleV1 要求 12–120，越界即抛；
+    // 主题层必须 clamp 到同一区间，否则坏主题应用后自动保存会永久失败。
+    fontSize: Math.min(120, Math.max(12, theme.fontSize)),
     density: theme.density as DensityLevel,
     logoStrategy: theme.logoStrategy as LogoStrategy,
     bgAssetId: theme.bgAssetId,

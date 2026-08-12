@@ -302,8 +302,16 @@ export function ExportDialog({
         setResumeToken(cause.resumeToken)
         const remaining = cause.resumeToken.plan.pages.length -
           cause.resumeToken.completedPages.length
+        // 透出底层根因：持续性故障（磁盘满/权限被撤销）下用户
+        // 只看包装文案会陷入"继续→再失败"死循环且无从诊断。
+        const causeDetail =
+          cause.cause instanceof Error && cause.cause.message
+            ? `原因：${cause.cause.message}`
+            : ''
         setExportError(
-          remaining > 0 ? `${cause.message}剩余 ${remaining} 张。` : cause.message,
+          remaining > 0
+            ? `${cause.message}剩余 ${remaining} 张。${causeDetail}`
+            : `${cause.message}${causeDetail}`,
         )
       } else {
         console.error('导出失败', cause)

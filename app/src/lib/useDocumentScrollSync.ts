@@ -100,6 +100,9 @@ export function useDocumentScrollSync(options: UseDocumentScrollSyncOptions) {
     masterRef.current = null
     txRef.current = null
     window.cancelAnimationFrame(rafRef.current)
+    // 必须清零：scheduleProject 以 rafRef.current 非零判断"已排帧"，
+    // 幽灵 id 会让联动永久卡死。
+    rafRef.current = 0
   }, [documentIdentity])
 
   useEffect(() => {
@@ -107,6 +110,7 @@ export function useDocumentScrollSync(options: UseDocumentScrollSyncOptions) {
       masterRef.current = null
       txRef.current = null
       window.cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
       return
     }
     const getters = gettersRef.current
