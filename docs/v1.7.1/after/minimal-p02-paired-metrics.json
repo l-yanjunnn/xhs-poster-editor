@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "coordinateSystem": "1080x1800 preview CSS pixels",
+  "preview": {
+    "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/minimal-p02-preview-1080.jpg",
+    "sourceWidth": 1080,
+    "sourceHeight": 1800,
+    "analysisWidth": 1080,
+    "analysisHeight": 1800,
+    "estimatedBackgroundRgb": [
+      255,
+      255,
+      255
+    ],
+    "ink": {
+      "threshold": 24,
+      "pixelCount": 128106,
+      "bbox": {
+        "left": 96,
+        "top": 178,
+        "rightExclusive": 984,
+        "bottomExclusive": 1159,
+        "width": 888,
+        "height": 981
+      }
+    },
+    "h2Bar": {
+      "found": true,
+      "method": "accent-color connected component nearest the 12px H2 bar width",
+      "targetRgb": [
+        138,
+        75,
+        124
+      ],
+      "maxChannelColorTolerance": 45,
+      "candidateCount": 1,
+      "bbox": {
+        "left": 96,
+        "top": 178,
+        "rightExclusive": 108,
+        "bottomExclusive": 322,
+        "width": 12,
+        "height": 144,
+        "area": 1722,
+        "fillRatio": 0.996528
+      }
+    }
+  },
+  "exportHalf": {
+    "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/minimal-p02-export-2160.png",
+    "sourceWidth": 2160,
+    "sourceHeight": 3600,
+    "analysisWidth": 1080,
+    "analysisHeight": 1800,
+    "estimatedBackgroundRgb": [
+      255,
+      255,
+      255
+    ],
+    "ink": {
+      "threshold": 24,
+      "pixelCount": 121362,
+      "bbox": {
+        "left": 96,
+        "top": 178,
+        "rightExclusive": 984,
+        "bottomExclusive": 1159,
+        "width": 888,
+        "height": 981
+      }
+    },
+    "h2Bar": {
+      "found": true,
+      "method": "accent-color connected component nearest the 12px H2 bar width",
+      "targetRgb": [
+        138,
+        75,
+        124
+      ],
+      "maxChannelColorTolerance": 45,
+      "candidateCount": 1,
+      "bbox": {
+        "left": 96,
+        "top": 178,
+        "rightExclusive": 108,
+        "bottomExclusive": 323,
+        "width": 12,
+        "height": 145,
+        "area": 1734,
+        "fillRatio": 0.996552
+      }
+    },
+    "reduction": {
+      "factor": 2,
+      "method": "Pillow BOX (exact 2x2 pixel-area reduction)"
+    }
+  },
+  "comparison": {
+    "pass": true,
+    "failures": [],
+    "checks": {
+      "nonEmptyContent": {
+        "pass": true,
+        "minimumInkPixels": 64,
+        "previewPass": true,
+        "exportHalfPass": true
+      },
+      "inkBoundingBox": {
+        "pass": true,
+        "toleranceCssPx": 2,
+        "deltas": {
+          "left": 0,
+          "top": 0,
+          "rightExclusive": 0,
+          "bottomExclusive": 0
+        },
+        "maxAbsDelta": 0
+      },
+      "rowProjection": {
+        "lag": 0,
+        "definition": "positive means export-half ink is lower/right of preview",
+        "score": 0.996877,
+        "normalizedAbsoluteError": 0.061181,
+        "lagToleranceCssPx": 1,
+        "minimumScore": 0.75,
+        "pass": true
+      },
+      "columnProjection": {
+        "lag": 0,
+        "definition": "positive means export-half ink is lower/right of preview",
+        "score": 0.999105,
+        "normalizedAbsoluteError": 0.027299,
+        "lagToleranceCssPx": 1,
+        "minimumScore": 0.75,
+        "pass": true
+      },
+      "h2BarBoundingBox": {
+        "status": "compared",
+        "pass": true,
+        "required": true,
+        "toleranceCssPx": 2,
+        "deltas": {
+          "left": 0,
+          "top": 0,
+          "rightExclusive": 0,
+          "bottomExclusive": 1
+        },
+        "maxAbsBboxDelta": 1
+      }
+    },
+    "phaseCorrelation": {
+      "available": true,
+      "definition": "positive means export-half ink is right/lower than preview",
+      "shiftX": 0.038446,
+      "shiftY": -0.258548,
+      "response": 1.009619
+    }
+  },
+  "strict": {
+    "enabled": true,
+    "pass": true,
+    "exitPolicy": "all comparison checks are enforced"
+  }
+}

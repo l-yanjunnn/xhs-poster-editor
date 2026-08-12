@@ -1,4 +1,10 @@
-export type ExportResourceIssueKind = 'image' | 'font'
+import {
+  collectLayoutFontRequests,
+  DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+  validateLayoutFontRequests,
+} from './deterministicFontReadiness'
+
+export type ExportResourceIssueKind = 'image' | 'font' | 'layout'
 
 export interface ExportResourceIssue {
   kind: ExportResourceIssueKind
@@ -95,6 +101,54 @@ export async function checkExportReadiness(
   ).filter((issue): issue is ExportResourceIssue => issue !== null)
 
   const issues = [...imageIssues]
+
+  for (const [index, page] of pages.entries()) {
+    const state = page.dataset.layoutState
+    const issueCount = Number(page.dataset.layoutIssueCount ?? '0')
+    const hasSnapshot = Boolean(page.dataset.layoutSnapshot)
+    const sealed = page.dataset.layoutSnapshotPhase === 'sealed'
+    if (state === 'ready' && issueCount === 0 && hasSnapshot && sealed) continue
+    let detail = ''
+    try {
+      const parsed = JSON.parse(page.dataset.layoutIssues ?? '[]') as Array<{
+        message?: string
+      }>
+      detail = parsed.find((item) => item.message)?.message ?? ''
+    } catch {
+      // 历史页面没有结构化 issue 时使用下方状态文案。
+    }
+    let fontDetail = ''
+    if (state === 'font-error') {
+      try {
+        const parsed = JSON.parse(
+          page.dataset.layoutFontIssues ?? '[]',
+        ) as Array<{ message?: string }>
+        fontDetail = parsed.find((item) => item.message)?.message ?? ''
+      } catch {
+        // 旧页面没有结构化字体错误时使用明确的兜底文案。
+      }
+    }
+    const explicitPageNumber = Number(page.dataset.pageNumber)
+    const pageNumber =
+      Number.isSafeInteger(explicitPageNumber) && explicitPageNumber > 0
+        ? explicitPageNumber
+        : index + 1
+    issues.push({
+      kind: 'layout',
+      label: `第 ${pageNumber} 页排版`,
+      message:
+        fontDetail ||
+        detail ||
+        (state === 'font-error'
+          ? '页面字体未能完成精确校验'
+          : !state || !hasSnapshot || !sealed
+            ? '确定性行布局快照尚未生成'
+            : state === 'pending'
+              ? '确定性行布局仍在生成，请稍候重试'
+              : '行级布局无法在字距和标点约束内求解'),
+    })
+  }
+
   if (document.fonts) {
     const fontResult = await Promise.race([
       document.fonts.ready.then(() => 'ready' as const),
@@ -108,6 +162,32 @@ export async function checkExportReadiness(
       })
     }
   }
+
+  const collected = pages.map((page) => collectLayoutFontRequests(page))
+  issues.push(
+    ...collected.flatMap(({ issues: fontIssues }) =>
+      fontIssues.map((issue) => ({
+        kind: 'font' as const,
+        label: issue.label,
+        message: issue.message,
+      })),
+    ),
+  )
+  const exactFonts = await validateLayoutFontRequests(
+    collected.flatMap(({ requests }) => requests),
+    {
+      ownerDocument: document,
+      timeoutMs: fontTimeoutMs,
+      allowlistedFamilies: DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+    },
+  )
+  issues.push(
+    ...exactFonts.issues.map((issue) => ({
+      kind: 'font' as const,
+      label: issue.label,
+      message: issue.message,
+    })),
+  )
   return issues
 }
 

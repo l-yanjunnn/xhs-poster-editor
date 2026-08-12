@@ -2,7 +2,11 @@ import html2canvas from 'html2canvas-pro'
 import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 import { getUserFontFaceCss } from './fontRegistry'
-import { calibratePageTypography } from './opticalTypography'
+import {
+  checkDeterministicFontReadiness,
+  DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+} from './deterministicFontReadiness'
+import { calibrateDeterministicGlyphBaselinesForHtml2Canvas } from './deterministicTypography'
 
 // v8 架构（2026-05-30）：离屏渲染 + CSS 注入
 //
@@ -43,6 +47,44 @@ function collectAllCss(): string {
   return parts.join('\n')
 }
 
+function stableRenderHash(value: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+function exportRenderStateHash(
+  page: HTMLElement,
+  sourceSnapshot: string,
+): string {
+  const h2 = Array.from(
+    page.querySelectorAll<HTMLElement>('.content h2'),
+    (heading) => ({
+      center: heading.style.getPropertyValue('--h2-optical-center-y'),
+      height: heading.style.getPropertyValue('--h2-optical-bar-height'),
+      state: heading.dataset.opticalH2 ?? '',
+    }),
+  )
+  const markers = Array.from(
+    page.querySelectorAll<HTMLElement>('[data-optical-list-marker]'),
+    (marker) => ({
+      text: marker.textContent ?? '',
+      style: marker.getAttribute('style') ?? '',
+    }),
+  )
+  return stableRenderHash(
+    JSON.stringify({
+      sourceSnapshot,
+      baseline: page.dataset.layoutExportBaselineHash ?? '',
+      h2,
+      markers,
+    }),
+  )
+}
+
 // 所有只用于编辑预览的覆盖层统一从导出副本中剥离。
 // 保留 `.guide` 兼容 v1.2.0 之前没有 data 属性的旧参考线节点。
 export function removePreviewOnlyElements(root: HTMLElement): void {
@@ -53,6 +95,17 @@ export function removePreviewOnlyElements(root: HTMLElement): void {
 
 // export 仅为 E2E 测试直取 canvas 用（跳过下载管线做像素断言），业务方走 exportPages
 export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElement> {
+  const sourceSnapshot = page.dataset.layoutSnapshot
+  if (!sourceSnapshot) {
+    throw new Error('页面的确定性排版快照尚未生成')
+  }
+  if (
+    page.dataset.layoutState !== 'ready' ||
+    Number(page.dataset.layoutIssueCount ?? '0') > 0 ||
+    page.dataset.layoutSnapshotPhase !== 'sealed'
+  ) {
+    throw new Error('页面的确定性排版尚未通过字体与几何预检')
+  }
   // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
   const stage = document.createElement('div')
   stage.setAttribute('data-export-stage', '')
@@ -76,6 +129,9 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
     cloned.style.width = `${CANVAS_WIDTH}px`
     cloned.style.height = `${CANVAS_HEIGHT}px`
     removePreviewOnlyElements(cloned)
+    if (cloned.dataset.layoutSnapshot !== sourceSnapshot) {
+      throw new Error('导出副本与预览的排版快照不一致')
+    }
     stage.appendChild(cloned)
 
     // 3. 等 img 解码
@@ -92,16 +148,38 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
       }),
     )
 
-    // 只校准离屏 stage 内的 deep clone，绝不碰 React 正在显示的
-    // source `.page`。H2 使用 ::before，html2canvas 可能在 onclone
-    // 之前就物化伪元素，所以真实字形中线必须在此时完成并跟随
-    // inline CSS vars / marker spans 一起进入后续 iframe clone。
-    await calibratePageTypography(cloned, {
-      fontTimeoutMs: 5_000,
-      recalibrateOnLateFonts: false,
-      renderTarget: 'html2canvas',
-    })
+    // 先把 html2canvas 的 Range.top + fontSize baseline 修正回
+    // 行级快照记录的真实 baseline。只移动离屏 deep clone，绝不
+    // 改写 React 正在显示的 source `.page`。
+    const baselineTargets = Array.from(
+      cloned.querySelectorAll<HTMLElement>('.dtl-atom'),
+    ).filter((atom) => Boolean(atom.textContent)).length
+    const calibratedBaselines =
+      calibrateDeterministicGlyphBaselinesForHtml2Canvas(cloned)
+    if (calibratedBaselines !== baselineTargets) {
+      const baselineErrors = Array.from(
+        cloned.querySelectorAll<HTMLElement>(
+          '.dtl-atom[data-layout-export-baseline-error]',
+        ),
+        (atom) =>
+          `${atom.textContent ?? ''}: ${atom.dataset.layoutExportBaselineError}`,
+      )
+      throw new Error(
+        `导出字形基线校准失败：${calibratedBaselines}/${baselineTargets}${baselineErrors.length > 0 ? `；${baselineErrors.slice(0, 3).join('；')}` : ''}`,
+      )
+    }
+    const baselineHash = cloned.dataset.layoutExportBaselineHash
+    if (!baselineHash) {
+      throw new Error('导出字形基线校准未生成可验证哈希')
+    }
+
+    // H2 竖条、列表列宽和 marker 位移属于预览已经封存的行级快照。
+    // 导出若再按 html2canvas 的另一套测量重算这些值，就会出现“文字
+    // 对了但装饰条错位”的第二份布局。这里唯一允许的 renderer 适配是
+    // 上面的 atom-local baseline 位移；其余光学状态原样克隆。
     void cloned.offsetHeight
+    const renderHash = exportRenderStateHash(cloned, sourceSnapshot)
+    cloned.dataset.layoutRenderHash = renderHash
 
     // 4. 在 onclone 钩子里注入完整 CSS + 拷贝 :root 的 inline CSS vars
     // 这两步缺一不可：CSS 文件提供 .theme-* 类的样式定义，:root inline vars 提供
@@ -111,7 +189,7 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
     const cssText = `${collectAllCss()}\n${getUserFontFaceCss()}`
     const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
 
-    return await html2canvas(cloned, {
+    const canvas = await html2canvas(cloned, {
       scale: EXPORT_SCALE,
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
@@ -131,30 +209,45 @@ export async function pageToPngCanvas(page: HTMLElement): Promise<HTMLCanvasElem
             current ? `${current};${rootInlineStyle}` : rootInlineStyle,
           )
         }
+        if (clonedPage.dataset.layoutSnapshot !== sourceSnapshot) {
+          throw new Error('导出 iframe 丢失了预览排版快照')
+        }
+        if (
+          clonedPage.dataset.layoutExportBaselineHash !== baselineHash ||
+          clonedPage.dataset.layoutRenderHash !== renderHash
+        ) {
+          throw new Error('导出 iframe 的字形/装饰渲染哈希不一致')
+        }
         // 先强制请求副本的精确 H2/body 字体，再让 html2canvas
         // 解析文字 bounds。仅 await fonts.ready 不够：新 @font-face 刚注入
         // 但尚未触发布局时，ready 可能立即解析，随后的 Range bounds
         // 仍会用 fallback，导致导出文字相对竖线上移。
-        try {
-          // html2canvas 会把本次 referenceElement 作为第二参传入。
-          // 不查询 clonedDoc 的“第一个 stage”，否则并行导出 A/B 时
-          // B 的 iframe 可能误校准 A，导致 unicode-range 字体漏载。
-          void clonedPage.offsetHeight
-          await calibratePageTypography(clonedPage, {
-            fontTimeoutMs: 3_000,
-            recalibrateOnLateFonts: false,
-            renderTarget: 'html2canvas',
-          })
-          void clonedPage.offsetHeight
-          await Promise.race([
-            clonedDoc.fonts.ready,
-            new Promise((r) => setTimeout(r, 3000)),
-          ])
-        } catch {
-          // fonts.ready 异常不阻塞导出
+        // html2canvas 会把本次 referenceElement 作为第二参传入。
+        // 不查询 clonedDoc 的“第一个 stage”，否则并行导出 A/B 时
+        // B 的 iframe 可能误校准 A，导致 unicode-range 字体漏载。
+        void clonedPage.offsetHeight
+        const fontResult = await checkDeterministicFontReadiness(
+          clonedPage,
+          {
+            ownerDocument: clonedDoc,
+            timeoutMs: 3_000,
+            allowlistedFamilies: DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+          },
+        )
+        if (!fontResult.ok) {
+          throw new Error(
+            `导出副本字体校验失败：${fontResult.issues
+              .map((issue) => `${issue.label} ${issue.message}`)
+              .join('；')}`,
+          )
         }
+        void clonedPage.offsetHeight
       },
     })
+    canvas.dataset.layoutSnapshot = sourceSnapshot
+    canvas.dataset.layoutRenderHash = renderHash
+    canvas.dataset.layoutExportBaselineHash = baselineHash
+    return canvas
   } finally {
     if (stage.parentNode) stage.parentNode.removeChild(stage)
   }

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>V1.7.1 确定性排版验收</title>
+    <script type="module" src="/src/v171TypographyHarness.ts"></script>
+  </head>
+  <body>
+    <main class="harness-shell">
+      <header class="harness-toolbar">
+        <div>
+          <h1>V1.7.1 确定性排版验收</h1>
+          <p>同一份行级快照：左侧预览，右侧 2160×3600 PNG 缩略。</p>
+        </div>
+        <button id="render-export" type="button">生成导出画布</button>
+        <output id="harness-status" role="status">等待字体与行级快照</output>
+      </header>
+      <section class="harness-real-source">
+        <h2>真实文稿回归</h2>
+        <p>粘贴本地 Markdown 后，在浏览器内解析并替换当前验收页；内容不会上传。</p>
+        <textarea
+          id="real-source"
+          aria-label="真实 19 页 Markdown"
+          placeholder="粘贴 # 封面 / # 正文 结构的完整 Markdown"
+        ></textarea>
+        <button id="load-real" type="button">载入真实 19 页</button>
+      </section>
+      <section>
+        <h2>预览快照</h2>
+        <div id="preview-pages" class="harness-grid"></div>
+      </section>
+      <section>
+        <h2>PNG 画布</h2>
+        <div id="export-canvases" class="harness-grid"></div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,231 @@
+{
+  "capturedAt": "2026-08-12T04:30:50.104Z",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+  "sourceSha256": "93a9a2747b78353f4cd0756eac3c7e20fa07a365fd76540fee4bf652eb0f418a",
+  "sourceCharacters": 4832,
+  "pageCount": 19,
+  "passedCount": 19,
+  "records": [
+    {
+      "page": 1,
+      "sourceSnapshot": "a0657a4b",
+      "canvasSnapshot": "a0657a4b",
+      "snapshotMatch": true,
+      "baselineHash": "95dff341",
+      "renderHash": "5311765a",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 2,
+      "sourceSnapshot": "fe13b1a1",
+      "canvasSnapshot": "fe13b1a1",
+      "snapshotMatch": true,
+      "baselineHash": "1f13b55c",
+      "renderHash": "917ec398",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 3,
+      "sourceSnapshot": "c6627f87",
+      "canvasSnapshot": "c6627f87",
+      "snapshotMatch": true,
+      "baselineHash": "c8bdd471",
+      "renderHash": "39c290f4",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 4,
+      "sourceSnapshot": "13077bee",
+      "canvasSnapshot": "13077bee",
+      "snapshotMatch": true,
+      "baselineHash": "402b3b72",
+      "renderHash": "c8af8822",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 5,
+      "sourceSnapshot": "89f50513",
+      "canvasSnapshot": "89f50513",
+      "snapshotMatch": true,
+      "baselineHash": "296ef611",
+      "renderHash": "82cf9e49",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 6,
+      "sourceSnapshot": "cef5ceed",
+      "canvasSnapshot": "cef5ceed",
+      "snapshotMatch": true,
+      "baselineHash": "b6759574",
+      "renderHash": "7ca624fa",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 7,
+      "sourceSnapshot": "3a903800",
+      "canvasSnapshot": "3a903800",
+      "snapshotMatch": true,
+      "baselineHash": "f868bca0",
+      "renderHash": "c143bc70",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 8,
+      "sourceSnapshot": "e42d85e0",
+      "canvasSnapshot": "e42d85e0",
+      "snapshotMatch": true,
+      "baselineHash": "647558f8",
+      "renderHash": "409aa91f",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 9,
+      "sourceSnapshot": "50349d8e",
+      "canvasSnapshot": "50349d8e",
+      "snapshotMatch": true,
+      "baselineHash": "6fe498c5",
+      "renderHash": "2a78c754",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 10,
+      "sourceSnapshot": "dc93c6e3",
+      "canvasSnapshot": "dc93c6e3",
+      "snapshotMatch": true,
+      "baselineHash": "641c3982",
+      "renderHash": "34bba1db",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 11,
+      "sourceSnapshot": "61cbdb14",
+      "canvasSnapshot": "61cbdb14",
+      "snapshotMatch": true,
+      "baselineHash": "ce032fec",
+      "renderHash": "9ea83149",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 12,
+      "sourceSnapshot": "deeaef6b",
+      "canvasSnapshot": "deeaef6b",
+      "snapshotMatch": true,
+      "baselineHash": "5629786a",
+      "renderHash": "4928959a",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 13,
+      "sourceSnapshot": "b11178ae",
+      "canvasSnapshot": "b11178ae",
+      "snapshotMatch": true,
+      "baselineHash": "f4eff7f8",
+      "renderHash": "457d15b5",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 14,
+      "sourceSnapshot": "cd543976",
+      "canvasSnapshot": "cd543976",
+      "snapshotMatch": true,
+      "baselineHash": "e2681107",
+      "renderHash": "4677d463",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 15,
+      "sourceSnapshot": "d282606c",
+      "canvasSnapshot": "d282606c",
+      "snapshotMatch": true,
+      "baselineHash": "e043dd8d",
+      "renderHash": "dec4ba2b",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 16,
+      "sourceSnapshot": "e45edbb2",
+      "canvasSnapshot": "e45edbb2",
+      "snapshotMatch": true,
+      "baselineHash": "9924912c",
+      "renderHash": "946ea0cc",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 17,
+      "sourceSnapshot": "5e364731",
+      "canvasSnapshot": "5e364731",
+      "snapshotMatch": true,
+      "baselineHash": "5ba4ef2e",
+      "renderHash": "90fb7a19",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 18,
+      "sourceSnapshot": "4a144654",
+      "canvasSnapshot": "4a144654",
+      "snapshotMatch": true,
+      "baselineHash": "869dd2c2",
+      "renderHash": "aaff9f63",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    },
+    {
+      "page": 19,
+      "sourceSnapshot": "3a875c7e",
+      "canvasSnapshot": "3a875c7e",
+      "snapshotMatch": true,
+      "baselineHash": "7e11d010",
+      "renderHash": "4694380a",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    }
+  ],
+  "input": {
+    "path": "/Users/a0000/Downloads/标题：申论还原型概括题：材料什么结构，答案就什么结构.md",
+    "originalSha256": "35bea5f30c6d9f6c9e185b83c0e402f3324ccadaf030b22efdd4280ef3d3c16e",
+    "boundaryRestoredBefore": "可在作答上，对比前面的作答"
+  },
+  "retainedPages": [
+    1,
+    2,
+    3,
+    5,
+    19
+  ]
+}

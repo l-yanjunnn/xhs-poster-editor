@@ -1,0 +1,3636 @@
+{
+  "schemaVersion": 1,
+  "inputs": {
+    "layout": "/private/tmp/v171-optics-final2/minimal-p01-layout.json",
+    "png": "/private/tmp/v171-optics-final2/minimal-p01-export-2160.png"
+  },
+  "layout": {
+    "page": {
+      "state": "ready",
+      "phase": "sealed",
+      "snapshot": "85a43558",
+      "issues": 0
+    },
+    "viewport": {
+      "width": 1080,
+      "height": 1800
+    },
+    "counts": {
+      "atoms": 170,
+      "lines": 12,
+      "justifiedLines": 3,
+      "underlines": 3
+    },
+    "rightEdge": {
+      "scope": "justified non-terminal lines only",
+      "lineCount": 3,
+      "tolerance": 0.01,
+      "maxError": 0.0,
+      "pass": true,
+      "lines": [
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        }
+      ]
+    },
+    "hanHanSpacing": {
+      "definition": "outgoing gap on adjacent Han-to-Han atom pairs, evaluated per line",
+      "allLines": {
+        "lineCount": 11,
+        "pairCount": 106,
+        "maxLineVariance": 0.0,
+        "maxLineDeviation": 0.0,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "justifiedLines": {
+        "lineCount": 3,
+        "pairCount": 41,
+        "maxLineVariance": 0.0,
+        "maxLineDeviation": 0.0,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "lines": [
+        {
+          "block": "26a0a49b",
+          "line": "0",
+          "justified": false,
+          "count": 5,
+          "min": 0.9,
+          "max": 0.9,
+          "mean": 0.9,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "26a0a49b",
+          "line": "1",
+          "justified": false,
+          "count": 1,
+          "min": 0.9,
+          "max": 0.9,
+          "mean": 0.9,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "justified": true,
+          "count": 18,
+          "min": 0.684,
+          "max": 0.684,
+          "mean": 0.684,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "justified": false,
+          "count": 7,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c6088dbf",
+          "line": "0",
+          "justified": false,
+          "count": 11,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c6088dbf",
+          "line": "1",
+          "justified": false,
+          "count": 14,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "justified": false,
+          "count": 8,
+          "min": 0.84,
+          "max": 0.84,
+          "mean": 0.84,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c64f1738",
+          "line": "1",
+          "justified": false,
+          "count": 14,
+          "min": 0.84,
+          "max": 0.84,
+          "mean": 0.84,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "justified": true,
+          "count": 12,
+          "min": 3.507,
+          "max": 3.507,
+          "mean": 3.507,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "justified": true,
+          "count": 11,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "justified": false,
+          "count": 5,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        }
+      ]
+    },
+    "punctuationWidth": {
+      "definition": "diagnostic logical-box envelope plus hard visible-ink coverage; the authoritative spacing gate is punctuationOpticalClearance, and middle punctuation may exceed 1em when measured ink requires it",
+      "hardSafetyRule": "box >= max(0, inkLeft + inkRight); adjacent visible corridors are validated separately by punctuationOpticalClearance",
+      "diagnosticNote": "boxToEmRatio is not a visual-safety minimum: compact punctuation clusters may use a small logical box when ink coverage and every adjacent visible-clearance corridor pass",
+      "inkCoverageTolerance": 0.01,
+      "allowedRange": {
+        "ordinary": {
+          "min": 0.3,
+          "max": 1.0
+        },
+        "middle": {
+          "min": 0.3,
+          "max": 1.25
+        }
+      },
+      "count": 20,
+      "minRatio": 0.32875,
+      "maxRatio": 1.091,
+      "ordinary": {
+        "count": 18,
+        "minRatio": 0.32875,
+        "maxRatio": 0.714
+      },
+      "middle": {
+        "count": 2,
+        "minRatio": 0.988475,
+        "maxRatio": 1.091
+      },
+      "pass": true,
+      "items": [
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "index": 14,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 21.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 0.5,
+          "inkLeft": -5.67,
+          "inkRight": 13.86,
+          "inkWidth": 8.19,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "index": 19,
+          "text": "“",
+          "kind": "opening-punctuation",
+          "box": 22.974,
+          "fontSize": 42.0,
+          "boxToEmRatio": 0.547,
+          "inkLeft": -26.208,
+          "inkRight": 40.446,
+          "inkWidth": 14.238,
+          "inkToEmRatio": 0.339,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "index": 22,
+          "text": "”",
+          "kind": "closing-punctuation",
+          "box": 22.722,
+          "fontSize": 42.0,
+          "boxToEmRatio": 0.541,
+          "inkLeft": -1.554,
+          "inkRight": 15.792,
+          "inkWidth": 14.238,
+          "inkToEmRatio": 0.339,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "index": 25,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 21.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 0.5,
+          "inkLeft": -5.67,
+          "inkRight": 13.86,
+          "inkWidth": 8.19,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "index": 48,
+          "text": "：",
+          "kind": "closing-punctuation",
+          "box": 28.56,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.714,
+          "inkLeft": -6.96,
+          "inkRight": 13.04,
+          "inkWidth": 6.08,
+          "inkToEmRatio": 0.152,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "index": 60,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 26.92,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.673,
+          "inkLeft": -5.4,
+          "inkRight": 13.2,
+          "inkWidth": 7.8,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "index": 63,
+          "text": "—",
+          "kind": "middle-punctuation",
+          "box": 43.64,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.091,
+          "inkLeft": -1.84,
+          "inkRight": 33.88,
+          "inkWidth": 32.04,
+          "inkToEmRatio": 0.801,
+          "inkCoveragePass": true,
+          "widthClass": "middle",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.25
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "index": 68,
+          "text": "、",
+          "kind": "closing-punctuation",
+          "box": 22.141,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.553525,
+          "inkLeft": -2.08,
+          "inkRight": 13.64,
+          "inkWidth": 11.56,
+          "inkToEmRatio": 0.289,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "index": 72,
+          "text": "—",
+          "kind": "middle-punctuation",
+          "box": 39.539,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.988475,
+          "inkLeft": -1.84,
+          "inkRight": 33.88,
+          "inkWidth": 32.04,
+          "inkToEmRatio": 0.801,
+          "inkCoveragePass": true,
+          "widthClass": "middle",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.25
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "index": 83,
+          "text": "；",
+          "kind": "closing-punctuation",
+          "box": 13.15,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.32875,
+          "inkLeft": -5.84,
+          "inkRight": 13.68,
+          "inkWidth": 7.84,
+          "inkToEmRatio": 0.196,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "index": 84,
+          "text": "“",
+          "kind": "opening-punctuation",
+          "box": 18.774,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.46935,
+          "inkLeft": -24.96,
+          "inkRight": 38.52,
+          "inkWidth": 13.56,
+          "inkToEmRatio": 0.339,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "index": 88,
+          "text": "”",
+          "kind": "closing-punctuation",
+          "box": 21.477,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.536925,
+          "inkLeft": -1.48,
+          "inkRight": 15.04,
+          "inkWidth": 13.56,
+          "inkToEmRatio": 0.339,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "index": 93,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 15.04,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.376,
+          "inkLeft": -5.4,
+          "inkRight": 13.2,
+          "inkWidth": 7.8,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "index": 94,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 22.88,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.572,
+          "inkLeft": -1.68,
+          "inkRight": 13.88,
+          "inkWidth": 12.2,
+          "inkToEmRatio": 0.305,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "index": 107,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 24.52,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.613,
+          "inkLeft": -1.68,
+          "inkRight": 13.88,
+          "inkWidth": 12.2,
+          "inkToEmRatio": 0.305,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "index": 124,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 27.68,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.692,
+          "inkLeft": -5.4,
+          "inkRight": 13.2,
+          "inkWidth": 7.8,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "index": 131,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 20.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.5,
+          "inkLeft": -5.4,
+          "inkRight": 13.2,
+          "inkWidth": 7.8,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "index": 136,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 20.76,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.519,
+          "inkLeft": -5.4,
+          "inkRight": 13.2,
+          "inkWidth": 7.8,
+          "inkToEmRatio": 0.195,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "index": 141,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 24.6,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.615,
+          "inkLeft": -1.68,
+          "inkRight": 13.88,
+          "inkWidth": 12.2,
+          "inkToEmRatio": 0.305,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c6088dbf",
+          "line": "1",
+          "index": 169,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 24.24,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.606,
+          "inkLeft": -1.68,
+          "inkRight": 13.88,
+          "inkWidth": 12.2,
+          "inkToEmRatio": 0.305,
+          "inkCoveragePass": true,
+          "widthClass": "ordinary",
+          "allowedRange": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "failures": [],
+          "pass": true
+        }
+      ]
+    },
+    "punctuationOpticalClearance": {
+      "definition": "reader-visible clearance between adjacent glyph ink edges; punctuation placement may adjust both logical side bearings",
+      "coordinateModel": {
+        "leftTrailingClearance": "left.box - left.glyphOffset - left.inkRight",
+        "rightLeadingClearance": "right.glyphOffset - right.inkLeft",
+        "visibleGap": "leftTrailingClearance + left.gap + rightLeadingClearance",
+        "visibleGapEm": "visibleGap / punctuation fontSize"
+      },
+      "toleranceEm": 0.01,
+      "profiles": {
+        "colon": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "comma-leading": {
+          "min": 0.15,
+          "preferred": 0.18,
+          "max": 0.28
+        },
+        "comma-trailing": {
+          "min": 0.16,
+          "preferred": 0.22,
+          "max": 0.3
+        },
+        "full-stop-leading": {
+          "min": 0.15,
+          "preferred": 0.18,
+          "max": 0.26
+        },
+        "full-stop-trailing": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "strong-leading": {
+          "min": 0.15,
+          "preferred": 0.2,
+          "max": 0.3
+        },
+        "strong-trailing": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "quote-inner": {
+          "min": 0.14,
+          "preferred": 0.18,
+          "max": 0.24
+        },
+        "quote-outer": {
+          "min": 0.16,
+          "preferred": 0.22,
+          "max": 0.28
+        },
+        "closing-opening-cluster": {
+          "min": 0.08,
+          "preferred": 0.12,
+          "max": 0.16
+        },
+        "punctuation-cluster": {
+          "min": 0.06,
+          "preferred": 0.1,
+          "max": 0.14
+        },
+        "generic": {
+          "min": 0.1,
+          "preferred": 0.2,
+          "max": 0.32
+        }
+      },
+      "colonBalanceLimitEm": 0.04,
+      "candidateCount": 30,
+      "measurableCount": 30,
+      "semanticSpaceBoundaryCount": 0,
+      "characters": [
+        "“",
+        "”",
+        "、",
+        "。",
+        "，",
+        "：",
+        "；"
+      ],
+      "visibleGapEm": {
+        "count": 30,
+        "min": 0.08,
+        "max": 0.32,
+        "mean": 0.202085,
+        "variance": 0.003599,
+        "standardDeviation": 0.059995
+      },
+      "maxAbsPreferredDeviationEm": 0.1,
+      "colonBalanceCount": 1,
+      "maxColonSideDifferenceEm": 0.0,
+      "colonBalances": [
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "index": "48",
+          "leadingGapEm": 0.32,
+          "trailingGapEm": 0.32,
+          "absoluteDifferenceEm": 0.0,
+          "limitEm": 0.04,
+          "pass": true
+        }
+      ],
+      "clusterCount": 2,
+      "clusters": [
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "text": "；“",
+          "size": 2,
+          "indexes": [
+            83,
+            84
+          ]
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "text": "，。",
+          "size": 2,
+          "indexes": [
+            93,
+            94
+          ]
+        }
+      ],
+      "pass": true,
+      "items": [
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 13,
+            "text": "题",
+            "kind": "han"
+          },
+          "right": {
+            "index": 14,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "题→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 1.554,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 5.481,
+          "visibleGap": 7.875,
+          "visibleGapEm": 0.1875,
+          "coordinateVisibleGap": 7.875,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 14,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 15,
+            "text": "拆",
+            "kind": "han"
+          },
+          "pair": "，→拆",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 7.329,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 1.386,
+          "visibleGap": 9.555,
+          "visibleGapEm": 0.2275,
+          "coordinateVisibleGap": 9.555,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 18,
+            "text": "种",
+            "kind": "han"
+          },
+          "right": {
+            "index": 19,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "pair": "种→“",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 2.562,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 5.838,
+          "visibleGap": 9.24,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 9.24,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 19,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "right": {
+            "index": 20,
+            "text": "归",
+            "kind": "han"
+          },
+          "pair": "“→归",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 2.898,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.822,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 21,
+            "text": "纳",
+            "kind": "han"
+          },
+          "right": {
+            "index": 22,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "pair": "纳→”",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 3.318,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.402,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 22,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 23,
+            "text": "陷",
+            "kind": "han"
+          },
+          "pair": "”→陷",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 5.082,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.318,
+          "visibleGap": 9.24,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 9.24,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 24,
+            "text": "阱",
+            "kind": "han"
+          },
+          "right": {
+            "index": 25,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "阱→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 1.764,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 4.956,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 47,
+            "text": "排",
+            "kind": "han"
+          },
+          "right": {
+            "index": 48,
+            "text": "：",
+            "kind": "closing-punctuation"
+          },
+          "pair": "排→：",
+          "profile": "colon",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.52,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 11.28,
+          "visibleGap": 12.8,
+          "visibleGapEm": 0.32,
+          "coordinateVisibleGap": 12.8,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 48,
+            "text": "：",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 49,
+            "text": "2",
+            "kind": "digit"
+          },
+          "pair": "：→2",
+          "profile": "colon",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 11.2,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.6,
+          "visibleGap": 12.8,
+          "visibleGapEm": 0.32,
+          "coordinateVisibleGap": 12.8,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 59,
+            "text": "伸",
+            "kind": "han"
+          },
+          "right": {
+            "index": 60,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "伸→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.4,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 8.8,
+          "visibleGap": 11.2,
+          "visibleGapEm": 0.28,
+          "coordinateVisibleGap": 11.2,
+          "deviationFromPreferredEm": 0.1,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 60,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 61,
+            "text": "汉",
+            "kind": "han"
+          },
+          "pair": "，→汉",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 10.32,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.68,
+          "visibleGap": 12.0,
+          "visibleGapEm": 0.3,
+          "coordinateVisibleGap": 12.0,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 67,
+            "text": "6",
+            "kind": "digit"
+          },
+          "right": {
+            "index": 68,
+            "text": "、",
+            "kind": "closing-punctuation"
+          },
+          "pair": "6→、",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.8,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 4.2,
+          "visibleGap": 6.0,
+          "visibleGapEm": 0.15,
+          "coordinateVisibleGap": 6.0,
+          "deviationFromPreferredEm": -0.03,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 68,
+            "text": "、",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 69,
+            "text": "A",
+            "kind": "latin"
+          },
+          "pair": "、→A",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 6.381,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 0.16,
+          "visibleGap": 6.541,
+          "visibleGapEm": 0.163525,
+          "coordinateVisibleGap": 6.541,
+          "deviationFromPreferredEm": -0.056475,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 82,
+            "text": "差",
+            "kind": "han"
+          },
+          "right": {
+            "index": 83,
+            "text": "；",
+            "kind": "closing-punctuation"
+          },
+          "pair": "差→；",
+          "profile": "strong-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.2,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.4,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 3.71,
+          "visibleGap": 6.11,
+          "visibleGapEm": 0.15275,
+          "coordinateVisibleGap": 6.11,
+          "deviationFromPreferredEm": -0.04725,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 83,
+            "text": "；",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 84,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "pair": "；→“",
+          "profile": "closing-opening-cluster",
+          "allowedRangeEm": {
+            "min": 0.08,
+            "preferred": 0.12,
+            "max": 0.16
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.6,
+          "visibleGap": 3.2,
+          "visibleGapEm": 0.08,
+          "coordinateVisibleGap": 3.2,
+          "deviationFromPreferredEm": -0.04,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 84,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "right": {
+            "index": 85,
+            "text": "开",
+            "kind": "han"
+          },
+          "pair": "“→开",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 3.614,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.08,
+          "visibleGap": 5.694,
+          "visibleGapEm": 0.14235,
+          "coordinateVisibleGap": 5.693,
+          "deviationFromPreferredEm": -0.03765,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 87,
+            "text": "点",
+            "kind": "han"
+          },
+          "right": {
+            "index": 88,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "pair": "点→”",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 3.64,
+          "visibleGap": 5.6,
+          "visibleGapEm": 0.14,
+          "coordinateVisibleGap": 5.6,
+          "deviationFromPreferredEm": -0.04,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 88,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 89,
+            "text": "与",
+            "kind": "han"
+          },
+          "pair": "”→与",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 4.277,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.28,
+          "visibleGap": 6.557,
+          "visibleGapEm": 0.163925,
+          "coordinateVisibleGap": 6.557,
+          "deviationFromPreferredEm": -0.056075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 92,
+            "text": "点",
+            "kind": "han"
+          },
+          "right": {
+            "index": 93,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "点→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.24,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 93,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 94,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "，→。",
+          "profile": "punctuation-cluster",
+          "allowedRangeEm": {
+            "min": 0.06,
+            "preferred": 0.1,
+            "max": 0.14
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.0,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.0,
+          "visibleGap": 4.0,
+          "visibleGapEm": 0.1,
+          "coordinateVisibleGap": 4.0,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 94,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 95,
+            "text": "保",
+            "kind": "han"
+          },
+          "pair": "。→保",
+          "profile": "full-stop-trailing",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 8.68,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 0.92,
+          "visibleGap": 9.6,
+          "visibleGapEm": 0.24,
+          "coordinateVisibleGap": 9.6,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 106,
+            "text": "e",
+            "kind": "latin"
+          },
+          "right": {
+            "index": 107,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "e→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.68,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.52,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "left": {
+            "index": 123,
+            "text": "失",
+            "kind": "han"
+          },
+          "right": {
+            "index": 124,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "失→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.16,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 10.04,
+          "visibleGap": 11.2,
+          "visibleGapEm": 0.28,
+          "coordinateVisibleGap": 11.2,
+          "deviationFromPreferredEm": 0.1,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "left": {
+            "index": 124,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 125,
+            "text": "而",
+            "kind": "han"
+          },
+          "pair": "，→而",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 9.84,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.16,
+          "visibleGap": 12.0,
+          "visibleGapEm": 0.3,
+          "coordinateVisibleGap": 12.0,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 130,
+            "text": "确",
+            "kind": "han"
+          },
+          "right": {
+            "index": 131,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "确→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.92,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 4.58,
+          "visibleGap": 7.5,
+          "visibleGapEm": 0.1875,
+          "coordinateVisibleGap": 7.5,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 131,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 132,
+            "text": "短",
+            "kind": "han"
+          },
+          "pair": "，→短",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 7.62,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.48,
+          "visibleGap": 9.1,
+          "visibleGapEm": 0.2275,
+          "coordinateVisibleGap": 9.1,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 135,
+            "text": "拆",
+            "kind": "han"
+          },
+          "right": {
+            "index": 136,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "拆→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.84,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.36,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 136,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 137,
+            "text": "结",
+            "kind": "han"
+          },
+          "pair": "，→结",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 7.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.2,
+          "visibleGap": 8.8,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 8.8,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 140,
+            "text": "然",
+            "kind": "han"
+          },
+          "right": {
+            "index": 141,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "然→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.6,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c6088dbf",
+          "line": "1",
+          "left": {
+            "index": 168,
+            "text": "序",
+            "kind": "han"
+          },
+          "right": {
+            "index": 169,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "序→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.24,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        }
+      ]
+    },
+    "closingPunctuationTrim": {
+      "definition": "reader-visible clearance between adjacent glyph ink edges; punctuation placement may adjust both logical side bearings",
+      "coordinateModel": {
+        "leftTrailingClearance": "left.box - left.glyphOffset - left.inkRight",
+        "rightLeadingClearance": "right.glyphOffset - right.inkLeft",
+        "visibleGap": "leftTrailingClearance + left.gap + rightLeadingClearance",
+        "visibleGapEm": "visibleGap / punctuation fontSize"
+      },
+      "toleranceEm": 0.01,
+      "profiles": {
+        "colon": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "comma-leading": {
+          "min": 0.15,
+          "preferred": 0.18,
+          "max": 0.28
+        },
+        "comma-trailing": {
+          "min": 0.16,
+          "preferred": 0.22,
+          "max": 0.3
+        },
+        "full-stop-leading": {
+          "min": 0.15,
+          "preferred": 0.18,
+          "max": 0.26
+        },
+        "full-stop-trailing": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "strong-leading": {
+          "min": 0.15,
+          "preferred": 0.2,
+          "max": 0.3
+        },
+        "strong-trailing": {
+          "min": 0.18,
+          "preferred": 0.24,
+          "max": 0.32
+        },
+        "quote-inner": {
+          "min": 0.14,
+          "preferred": 0.18,
+          "max": 0.24
+        },
+        "quote-outer": {
+          "min": 0.16,
+          "preferred": 0.22,
+          "max": 0.28
+        },
+        "closing-opening-cluster": {
+          "min": 0.08,
+          "preferred": 0.12,
+          "max": 0.16
+        },
+        "punctuation-cluster": {
+          "min": 0.06,
+          "preferred": 0.1,
+          "max": 0.14
+        },
+        "generic": {
+          "min": 0.1,
+          "preferred": 0.2,
+          "max": 0.32
+        }
+      },
+      "colonBalanceLimitEm": 0.04,
+      "candidateCount": 30,
+      "measurableCount": 30,
+      "semanticSpaceBoundaryCount": 0,
+      "characters": [
+        "“",
+        "”",
+        "、",
+        "。",
+        "，",
+        "：",
+        "；"
+      ],
+      "visibleGapEm": {
+        "count": 30,
+        "min": 0.08,
+        "max": 0.32,
+        "mean": 0.202085,
+        "variance": 0.003599,
+        "standardDeviation": 0.059995
+      },
+      "maxAbsPreferredDeviationEm": 0.1,
+      "colonBalanceCount": 1,
+      "maxColonSideDifferenceEm": 0.0,
+      "colonBalances": [
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "index": "48",
+          "leadingGapEm": 0.32,
+          "trailingGapEm": 0.32,
+          "absoluteDifferenceEm": 0.0,
+          "limitEm": 0.04,
+          "pass": true
+        }
+      ],
+      "clusterCount": 2,
+      "clusters": [
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "text": "；“",
+          "size": 2,
+          "indexes": [
+            83,
+            84
+          ]
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "text": "，。",
+          "size": 2,
+          "indexes": [
+            93,
+            94
+          ]
+        }
+      ],
+      "pass": true,
+      "items": [
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 13,
+            "text": "题",
+            "kind": "han"
+          },
+          "right": {
+            "index": 14,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "题→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 1.554,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 5.481,
+          "visibleGap": 7.875,
+          "visibleGapEm": 0.1875,
+          "coordinateVisibleGap": 7.875,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 14,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 15,
+            "text": "拆",
+            "kind": "han"
+          },
+          "pair": "，→拆",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 7.329,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 1.386,
+          "visibleGap": 9.555,
+          "visibleGapEm": 0.2275,
+          "coordinateVisibleGap": 9.555,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 18,
+            "text": "种",
+            "kind": "han"
+          },
+          "right": {
+            "index": 19,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "pair": "种→“",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 2.562,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 5.838,
+          "visibleGap": 9.24,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 9.24,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 19,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "right": {
+            "index": 20,
+            "text": "归",
+            "kind": "han"
+          },
+          "pair": "“→归",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 2.898,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.822,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 21,
+            "text": "纳",
+            "kind": "han"
+          },
+          "right": {
+            "index": 22,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "pair": "纳→”",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 3.318,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.402,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 22,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 23,
+            "text": "陷",
+            "kind": "han"
+          },
+          "pair": "”→陷",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 5.082,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 3.318,
+          "visibleGap": 9.24,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 9.24,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "left": {
+            "index": 24,
+            "text": "阱",
+            "kind": "han"
+          },
+          "right": {
+            "index": 25,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "阱→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 42.0,
+          "leftTrailingClearance": 1.764,
+          "interAtomGap": 0.84,
+          "rightLeadingClearance": 4.956,
+          "visibleGap": 7.56,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.56,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 47,
+            "text": "排",
+            "kind": "han"
+          },
+          "right": {
+            "index": 48,
+            "text": "：",
+            "kind": "closing-punctuation"
+          },
+          "pair": "排→：",
+          "profile": "colon",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.52,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 11.28,
+          "visibleGap": 12.8,
+          "visibleGapEm": 0.32,
+          "coordinateVisibleGap": 12.8,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 48,
+            "text": "：",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 49,
+            "text": "2",
+            "kind": "digit"
+          },
+          "pair": "：→2",
+          "profile": "colon",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 11.2,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.6,
+          "visibleGap": 12.8,
+          "visibleGapEm": 0.32,
+          "coordinateVisibleGap": 12.8,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 59,
+            "text": "伸",
+            "kind": "han"
+          },
+          "right": {
+            "index": 60,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "伸→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.4,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 8.8,
+          "visibleGap": 11.2,
+          "visibleGapEm": 0.28,
+          "coordinateVisibleGap": 11.2,
+          "deviationFromPreferredEm": 0.1,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "left": {
+            "index": 60,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 61,
+            "text": "汉",
+            "kind": "han"
+          },
+          "pair": "，→汉",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 10.32,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.68,
+          "visibleGap": 12.0,
+          "visibleGapEm": 0.3,
+          "coordinateVisibleGap": 12.0,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 67,
+            "text": "6",
+            "kind": "digit"
+          },
+          "right": {
+            "index": 68,
+            "text": "、",
+            "kind": "closing-punctuation"
+          },
+          "pair": "6→、",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.8,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 4.2,
+          "visibleGap": 6.0,
+          "visibleGapEm": 0.15,
+          "coordinateVisibleGap": 6.0,
+          "deviationFromPreferredEm": -0.03,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 68,
+            "text": "、",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 69,
+            "text": "A",
+            "kind": "latin"
+          },
+          "pair": "、→A",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 6.381,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 0.16,
+          "visibleGap": 6.541,
+          "visibleGapEm": 0.163525,
+          "coordinateVisibleGap": 6.541,
+          "deviationFromPreferredEm": -0.056475,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 82,
+            "text": "差",
+            "kind": "han"
+          },
+          "right": {
+            "index": 83,
+            "text": "；",
+            "kind": "closing-punctuation"
+          },
+          "pair": "差→；",
+          "profile": "strong-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.2,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.4,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 3.71,
+          "visibleGap": 6.11,
+          "visibleGapEm": 0.15275,
+          "coordinateVisibleGap": 6.11,
+          "deviationFromPreferredEm": -0.04725,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 83,
+            "text": "；",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 84,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "pair": "；→“",
+          "profile": "closing-opening-cluster",
+          "allowedRangeEm": {
+            "min": 0.08,
+            "preferred": 0.12,
+            "max": 0.16
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.6,
+          "visibleGap": 3.2,
+          "visibleGapEm": 0.08,
+          "coordinateVisibleGap": 3.2,
+          "deviationFromPreferredEm": -0.04,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 84,
+            "text": "“",
+            "kind": "opening-punctuation"
+          },
+          "right": {
+            "index": 85,
+            "text": "开",
+            "kind": "han"
+          },
+          "pair": "“→开",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 3.614,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.08,
+          "visibleGap": 5.694,
+          "visibleGapEm": 0.14235,
+          "coordinateVisibleGap": 5.693,
+          "deviationFromPreferredEm": -0.03765,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 87,
+            "text": "点",
+            "kind": "han"
+          },
+          "right": {
+            "index": 88,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "pair": "点→”",
+          "profile": "quote-inner",
+          "allowedRangeEm": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 3.64,
+          "visibleGap": 5.6,
+          "visibleGapEm": 0.14,
+          "coordinateVisibleGap": 5.6,
+          "deviationFromPreferredEm": -0.04,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "left": {
+            "index": 88,
+            "text": "”",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 89,
+            "text": "与",
+            "kind": "han"
+          },
+          "pair": "”→与",
+          "profile": "quote-outer",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 4.277,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.28,
+          "visibleGap": 6.557,
+          "visibleGapEm": 0.163925,
+          "coordinateVisibleGap": 6.557,
+          "deviationFromPreferredEm": -0.056075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 92,
+            "text": "点",
+            "kind": "han"
+          },
+          "right": {
+            "index": 93,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "点→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.24,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 93,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 94,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "，→。",
+          "profile": "punctuation-cluster",
+          "allowedRangeEm": {
+            "min": 0.06,
+            "preferred": 0.1,
+            "max": 0.14
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.0,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.0,
+          "visibleGap": 4.0,
+          "visibleGapEm": 0.1,
+          "coordinateVisibleGap": 4.0,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 94,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 95,
+            "text": "保",
+            "kind": "han"
+          },
+          "pair": "。→保",
+          "profile": "full-stop-trailing",
+          "allowedRangeEm": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 8.68,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 0.92,
+          "visibleGap": 9.6,
+          "visibleGapEm": 0.24,
+          "coordinateVisibleGap": 9.6,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "left": {
+            "index": 106,
+            "text": "e",
+            "kind": "latin"
+          },
+          "right": {
+            "index": 107,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "e→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.68,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.52,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "left": {
+            "index": 123,
+            "text": "失",
+            "kind": "han"
+          },
+          "right": {
+            "index": 124,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "失→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.16,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 10.04,
+          "visibleGap": 11.2,
+          "visibleGapEm": 0.28,
+          "coordinateVisibleGap": 11.2,
+          "deviationFromPreferredEm": 0.1,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "left": {
+            "index": 124,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 125,
+            "text": "而",
+            "kind": "han"
+          },
+          "pair": "，→而",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 9.84,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 2.16,
+          "visibleGap": 12.0,
+          "visibleGapEm": 0.3,
+          "coordinateVisibleGap": 12.0,
+          "deviationFromPreferredEm": 0.08,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 130,
+            "text": "确",
+            "kind": "han"
+          },
+          "right": {
+            "index": 131,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "确→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 2.92,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 4.58,
+          "visibleGap": 7.5,
+          "visibleGapEm": 0.1875,
+          "coordinateVisibleGap": 7.5,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 131,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 132,
+            "text": "短",
+            "kind": "han"
+          },
+          "pair": "，→短",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 7.62,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.48,
+          "visibleGap": 9.1,
+          "visibleGapEm": 0.2275,
+          "coordinateVisibleGap": 9.1,
+          "deviationFromPreferredEm": 0.0075,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 135,
+            "text": "拆",
+            "kind": "han"
+          },
+          "right": {
+            "index": 136,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "pair": "拆→，",
+          "profile": "comma-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.84,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.36,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 136,
+            "text": "，",
+            "kind": "closing-punctuation"
+          },
+          "right": {
+            "index": 137,
+            "text": "结",
+            "kind": "han"
+          },
+          "pair": "，→结",
+          "profile": "comma-trailing",
+          "allowedRangeEm": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 7.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 1.2,
+          "visibleGap": 8.8,
+          "visibleGapEm": 0.22,
+          "coordinateVisibleGap": 8.8,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "left": {
+            "index": 140,
+            "text": "然",
+            "kind": "han"
+          },
+          "right": {
+            "index": 141,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "然→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.6,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.6,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        },
+        {
+          "block": "c6088dbf",
+          "line": "1",
+          "left": {
+            "index": 168,
+            "text": "序",
+            "kind": "han"
+          },
+          "right": {
+            "index": 169,
+            "text": "。",
+            "kind": "closing-punctuation"
+          },
+          "pair": "序→。",
+          "profile": "full-stop-leading",
+          "allowedRangeEm": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "missingFields": [],
+          "metricsComplete": true,
+          "em": 40.0,
+          "leftTrailingClearance": 1.96,
+          "interAtomGap": 0.0,
+          "rightLeadingClearance": 5.24,
+          "visibleGap": 7.2,
+          "visibleGapEm": 0.18,
+          "coordinateVisibleGap": 7.2,
+          "deviationFromPreferredEm": 0.0,
+          "failures": [],
+          "pass": true
+        }
+      ]
+    },
+    "lineEndClosingHanging": {
+      "definition": "justified wrap line-end closing punctuation covers its complete visible ink, preserves an acceptable incoming visible clearance, and aligns its visible ink right edge to target; logical box/em is diagnostic only",
+      "hardSafetyRule": "the painted interval [glyphOffset - inkLeft, glyphOffset + inkRight] must stay inside the logical box; incoming visible clearance must fit the character profile; visible ink right must align to target",
+      "tolerance": 0.01,
+      "candidateCount": 0,
+      "maxAbsGlyphOffset": null,
+      "maxVisibleRightError": null,
+      "pass": true,
+      "items": []
+    },
+    "baselines": {
+      "definition": "max minus min stored baseline among non-space glyphs on a line",
+      "lineCount": 11,
+      "mixedHanAlnumLineCount": 4,
+      "tolerance": 0.01,
+      "maxSpread": 0.0,
+      "mixedHanAlnumMaxSpread": 0.0,
+      "pass": true,
+      "lines": [
+        {
+          "block": "26a0a49b",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 6,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 93.0,
+          "max": 93.0,
+          "spread": 0.0
+        },
+        {
+          "block": "26a0a49b",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 2,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 93.0,
+          "max": 93.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "0",
+          "justified": true,
+          "glyphCount": 21,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c1c1ed27",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 13,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c6088dbf",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 12,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c6088dbf",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 16,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 18,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "opening-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 53.0,
+          "max": 53.0,
+          "spread": 0.0
+        },
+        {
+          "block": "c64f1738",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 15,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 53.0,
+          "max": 53.0,
+          "spread": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "0",
+          "justified": true,
+          "glyphCount": 22,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "middle-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "1",
+          "justified": true,
+          "glyphCount": 26,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "latin",
+            "middle-punctuation",
+            "opening-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        },
+        {
+          "block": "e4d79d26",
+          "line": "2",
+          "justified": false,
+          "glyphCount": 17,
+          "kinds": [
+            "closing-punctuation",
+            "han",
+            "latin"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.0,
+          "max": 54.0,
+          "spread": 0.0
+        }
+      ]
+    },
+    "underlines": {
+      "count": 3,
+      "blockCounts": {
+        "c64f1738": 3
+      },
+      "multiLineBlocks": [
+        "c64f1738"
+      ],
+      "invalidGeometryCount": 0,
+      "thickness": {
+        "count": 3,
+        "min": 2.515625,
+        "max": 2.515625,
+        "mean": 2.515625,
+        "variance": 0.0,
+        "standardDeviation": 0.0
+      },
+      "width": {
+        "count": 3,
+        "min": 42.0,
+        "max": 671.28125,
+        "mean": 451.677083,
+        "variance": 84063.005425,
+        "standardDeviation": 289.936209
+      },
+      "pass": true,
+      "items": [
+        {
+          "block": "c64f1738",
+          "line": "0",
+          "index": 0,
+          "rect": {
+            "x": 120.0,
+            "y": 641.625,
+            "width": 671.28125,
+            "height": 2.515625,
+            "right": 791.28125,
+            "bottom": 644.140625
+          },
+          "validGeometry": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "1",
+          "index": 1,
+          "rect": {
+            "x": 120.0,
+            "y": 710.5,
+            "width": 641.75,
+            "height": 2.515625,
+            "right": 761.75,
+            "bottom": 713.015625
+          },
+          "validGeometry": true
+        },
+        {
+          "block": "c64f1738",
+          "line": "2",
+          "index": 2,
+          "rect": {
+            "x": 120.0,
+            "y": 779.5,
+            "width": 42.0,
+            "height": 2.515625,
+            "right": 162.0,
+            "bottom": 782.015625
+          },
+          "validGeometry": true
+        }
+      ]
+    },
+    "checks": [
+      {
+        "name": "sealed-ready-snapshot",
+        "pass": true,
+        "measured": {
+          "state": "ready",
+          "phase": "sealed",
+          "snapshot": "85a43558",
+          "issues": 0
+        },
+        "limit": {
+          "state": "ready",
+          "phase": "sealed",
+          "snapshot": "non-empty"
+        }
+      },
+      {
+        "name": "required-regression-coverage",
+        "pass": true,
+        "measured": {
+          "atoms": 170,
+          "lines": 12,
+          "justifiedLines": 3,
+          "punctuation": 20,
+          "punctuationOpticalBoundaries": 30,
+          "interiorClosingPunctuation": 30,
+          "lineEndClosingPunctuation": 0,
+          "mixedHanAlnumLines": 4,
+          "underlines": 3
+        },
+        "limit": "all base counts > 0; line-end closing count > 0 when explicitly required"
+      },
+      {
+        "name": "justified-right-edge",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "han-han-gap-uniformity",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "punctuation-optical-width",
+        "pass": true,
+        "measured": {
+          "min": 0.32875,
+          "max": 1.091,
+          "ordinary": {
+            "count": 18,
+            "minRatio": 0.32875,
+            "maxRatio": 0.714
+          },
+          "middle": {
+            "count": 2,
+            "minRatio": 0.988475,
+            "maxRatio": 1.091
+          }
+        },
+        "limit": {
+          "ordinary": {
+            "min": 0.3,
+            "max": 1.0
+          },
+          "middle": {
+            "min": 0.3,
+            "max": 1.25
+          }
+        }
+      },
+      {
+        "name": "punctuation-visible-clearance",
+        "pass": true,
+        "measured": {
+          "candidates": 30,
+          "measurable": 30,
+          "minimumVisibleGapEm": 0.08,
+          "maximumVisibleGapEm": 0.32,
+          "maxAbsPreferredDeviationEm": 0.1,
+          "maxColonSideDifferenceEm": 0.0,
+          "clusters": 2
+        },
+        "limit": {
+          "profiles": {
+            "colon": {
+              "min": 0.18,
+              "preferred": 0.24,
+              "max": 0.32
+            },
+            "comma-leading": {
+              "min": 0.15,
+              "preferred": 0.18,
+              "max": 0.28
+            },
+            "comma-trailing": {
+              "min": 0.16,
+              "preferred": 0.22,
+              "max": 0.3
+            },
+            "full-stop-leading": {
+              "min": 0.15,
+              "preferred": 0.18,
+              "max": 0.26
+            },
+            "full-stop-trailing": {
+              "min": 0.18,
+              "preferred": 0.24,
+              "max": 0.32
+            },
+            "strong-leading": {
+              "min": 0.15,
+              "preferred": 0.2,
+              "max": 0.3
+            },
+            "strong-trailing": {
+              "min": 0.18,
+              "preferred": 0.24,
+              "max": 0.32
+            },
+            "quote-inner": {
+              "min": 0.14,
+              "preferred": 0.18,
+              "max": 0.24
+            },
+            "quote-outer": {
+              "min": 0.16,
+              "preferred": 0.22,
+              "max": 0.28
+            },
+            "closing-opening-cluster": {
+              "min": 0.08,
+              "preferred": 0.12,
+              "max": 0.16
+            },
+            "punctuation-cluster": {
+              "min": 0.06,
+              "preferred": 0.1,
+              "max": 0.14
+            },
+            "generic": {
+              "min": 0.1,
+              "preferred": 0.2,
+              "max": 0.32
+            }
+          },
+          "colonSideDifferenceEm": 0.04,
+          "toleranceEm": 0.01
+        }
+      },
+      {
+        "name": "closing-punctuation-trim-direction",
+        "deprecated": true,
+        "replacement": "punctuation-visible-clearance",
+        "pass": true,
+        "measured": {
+          "candidates": 30,
+          "measurable": 30,
+          "maxColonSideDifferenceEm": 0.0
+        },
+        "limit": "same as punctuation-visible-clearance"
+      },
+      {
+        "name": "line-end-closing-hanging",
+        "pass": true,
+        "measured": {
+          "candidates": 0,
+          "maxAbsGlyphOffset": null,
+          "maxVisibleRightError": null
+        },
+        "limit": {
+          "visibleRightError": 0.01,
+          "incomingClearance": "character-specific visible-gap profile",
+          "glyphOffset": "reported only; no fixed-origin requirement"
+        }
+      },
+      {
+        "name": "same-line-baseline",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "underline-positive-geometry",
+        "pass": true,
+        "measured": 0,
+        "limit": 0
+      }
+    ],
+    "pass": true,
+    "warnings": []
+  },
+  "image": {
+    "path": "/private/tmp/v171-optics-final2/minimal-p01-export-2160.png",
+    "format": "PNG",
+    "mode": "RGBA",
+    "width": 2160,
+    "height": 3600,
+    "expected": {
+      "width": 2160,
+      "height": 3600
+    },
+    "sizeMatches": true,
+    "topBottomRepeat": {
+      "bandHeight": 780,
+      "meanAbsoluteErrorRaw": 7.660778,
+      "meanAbsoluteErrorNormalized": 0.030042,
+      "rootMeanSquareErrorRaw": 39.821848,
+      "topSignalStddevRaw": 39.078026,
+      "exactMatch": false,
+      "thresholdRaw": 1.0,
+      "detected": false,
+      "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+    },
+    "checks": [
+      {
+        "name": "png-dimensions",
+        "pass": true,
+        "measured": {
+          "width": 2160,
+          "height": 3600
+        },
+        "limit": {
+          "width": 2160,
+          "height": 3600
+        }
+      },
+      {
+        "name": "no-top-bottom-repeat",
+        "pass": true,
+        "measured": 7.660778,
+        "limit": "> 1.0 raw RGB levels when top has signal"
+      }
+    ],
+    "pass": true
+  },
+  "checks": [
+    {
+      "name": "sealed-ready-snapshot",
+      "pass": true,
+      "measured": {
+        "state": "ready",
+        "phase": "sealed",
+        "snapshot": "85a43558",
+        "issues": 0
+      },
+      "limit": {
+        "state": "ready",
+        "phase": "sealed",
+        "snapshot": "non-empty"
+      }
+    },
+    {
+      "name": "required-regression-coverage",
+      "pass": true,
+      "measured": {
+        "atoms": 170,
+        "lines": 12,
+        "justifiedLines": 3,
+        "punctuation": 20,
+        "punctuationOpticalBoundaries": 30,
+        "interiorClosingPunctuation": 30,
+        "lineEndClosingPunctuation": 0,
+        "mixedHanAlnumLines": 4,
+        "underlines": 3
+      },
+      "limit": "all base counts > 0; line-end closing count > 0 when explicitly required"
+    },
+    {
+      "name": "justified-right-edge",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "han-han-gap-uniformity",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "punctuation-optical-width",
+      "pass": true,
+      "measured": {
+        "min": 0.32875,
+        "max": 1.091,
+        "ordinary": {
+          "count": 18,
+          "minRatio": 0.32875,
+          "maxRatio": 0.714
+        },
+        "middle": {
+          "count": 2,
+          "minRatio": 0.988475,
+          "maxRatio": 1.091
+        }
+      },
+      "limit": {
+        "ordinary": {
+          "min": 0.3,
+          "max": 1.0
+        },
+        "middle": {
+          "min": 0.3,
+          "max": 1.25
+        }
+      }
+    },
+    {
+      "name": "punctuation-visible-clearance",
+      "pass": true,
+      "measured": {
+        "candidates": 30,
+        "measurable": 30,
+        "minimumVisibleGapEm": 0.08,
+        "maximumVisibleGapEm": 0.32,
+        "maxAbsPreferredDeviationEm": 0.1,
+        "maxColonSideDifferenceEm": 0.0,
+        "clusters": 2
+      },
+      "limit": {
+        "profiles": {
+          "colon": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "comma-leading": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.28
+          },
+          "comma-trailing": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.3
+          },
+          "full-stop-leading": {
+            "min": 0.15,
+            "preferred": 0.18,
+            "max": 0.26
+          },
+          "full-stop-trailing": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "strong-leading": {
+            "min": 0.15,
+            "preferred": 0.2,
+            "max": 0.3
+          },
+          "strong-trailing": {
+            "min": 0.18,
+            "preferred": 0.24,
+            "max": 0.32
+          },
+          "quote-inner": {
+            "min": 0.14,
+            "preferred": 0.18,
+            "max": 0.24
+          },
+          "quote-outer": {
+            "min": 0.16,
+            "preferred": 0.22,
+            "max": 0.28
+          },
+          "closing-opening-cluster": {
+            "min": 0.08,
+            "preferred": 0.12,
+            "max": 0.16
+          },
+          "punctuation-cluster": {
+            "min": 0.06,
+            "preferred": 0.1,
+            "max": 0.14
+          },
+          "generic": {
+            "min": 0.1,
+            "preferred": 0.2,
+            "max": 0.32
+          }
+        },
+        "colonSideDifferenceEm": 0.04,
+        "toleranceEm": 0.01
+      }
+    },
+    {
+      "name": "closing-punctuation-trim-direction",
+      "deprecated": true,
+      "replacement": "punctuation-visible-clearance",
+      "pass": true,
+      "measured": {
+        "candidates": 30,
+        "measurable": 30,
+        "maxColonSideDifferenceEm": 0.0
+      },
+      "limit": "same as punctuation-visible-clearance"
+    },
+    {
+      "name": "line-end-closing-hanging",
+      "pass": true,
+      "measured": {
+        "candidates": 0,
+        "maxAbsGlyphOffset": null,
+        "maxVisibleRightError": null
+      },
+      "limit": {
+        "visibleRightError": 0.01,
+        "incomingClearance": "character-specific visible-gap profile",
+        "glyphOffset": "reported only; no fixed-origin requirement"
+      }
+    },
+    {
+      "name": "same-line-baseline",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "underline-positive-geometry",
+      "pass": true,
+      "measured": 0,
+      "limit": 0
+    },
+    {
+      "name": "png-dimensions",
+      "pass": true,
+      "measured": {
+        "width": 2160,
+        "height": 3600
+      },
+      "limit": {
+        "width": 2160,
+        "height": 3600
+      }
+    },
+    {
+      "name": "no-top-bottom-repeat",
+      "pass": true,
+      "measured": 7.660778,
+      "limit": "> 1.0 raw RGB levels when top has signal"
+    }
+  ],
+  "pass": true
+}

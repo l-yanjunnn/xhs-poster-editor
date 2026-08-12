@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-12T08:59:17.316052+00:00",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36",
+  "harnessStatus": "导出完成：19/19 张，快照逐页一致；页面 1、2、3、5、19 保留可视样本",
+  "input": {
+    "mode": "harness-textarea-ui",
+    "repositoryPublicSourceRetained": false,
+    "originalPath": "/Users/a0000/Downloads/标题：申论还原型概括题：材料什么结构，答案就什么结构.md",
+    "originalSha256": "35bea5f30c6d9f6c9e185b83c0e402f3324ccadaf030b22efdd4280ef3d3c16e",
+    "originalCharacters": 4274,
+    "originalSeparatorCount": 17,
+    "injectedSha256": "dee138407085e8c93463487d828df39836f321895320e5a2f2ea4251acdce7b6",
+    "injectedCharacters": 4279,
+    "injectedSeparatorCount": 18,
+    "boundaryMarker": "可在作答上，对比前面的作答",
+    "boundaryRestored": true
+  },
+  "retainedPages": [
+    1,
+    2,
+    3,
+    5,
+    19
+  ],
+  "evidence": {
+    "capturedAt": "2026-08-12T08:59:16.845Z",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36",
+    "sourceSha256": "93a9a2747b78353f4cd0756eac3c7e20fa07a365fd76540fee4bf652eb0f418a",
+    "sourceCharacters": 4832,
+    "pageCount": 19,
+    "passedCount": 19,
+    "records": [
+      {
+        "page": 1,
+        "sourceSnapshot": "19d294ff",
+        "canvasSnapshot": "19d294ff",
+        "snapshotMatch": true,
+        "baselineHash": "e26cd536",
+        "renderHash": "aba279d1",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 2,
+        "sourceSnapshot": "8754a1e9",
+        "canvasSnapshot": "8754a1e9",
+        "snapshotMatch": true,
+        "baselineHash": "6ef3a0df",
+        "renderHash": "a4835cef",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 3,
+        "sourceSnapshot": "c1da489c",
+        "canvasSnapshot": "c1da489c",
+        "snapshotMatch": true,
+        "baselineHash": "1eb7ddf1",
+        "renderHash": "00c31d89",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 4,
+        "sourceSnapshot": "36e6c01d",
+        "canvasSnapshot": "36e6c01d",
+        "snapshotMatch": true,
+        "baselineHash": "7d7364f6",
+        "renderHash": "42ce4f7d",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 5,
+        "sourceSnapshot": "582ba672",
+        "canvasSnapshot": "582ba672",
+        "snapshotMatch": true,
+        "baselineHash": "357680fe",
+        "renderHash": "25cb67c9",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 6,
+        "sourceSnapshot": "36c4b1d3",
+        "canvasSnapshot": "36c4b1d3",
+        "snapshotMatch": true,
+        "baselineHash": "6493b415",
+        "renderHash": "d7599788",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 7,
+        "sourceSnapshot": "844588a1",
+        "canvasSnapshot": "844588a1",
+        "snapshotMatch": true,
+        "baselineHash": "447024fd",
+        "renderHash": "a6c1d3ae",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 8,
+        "sourceSnapshot": "bd2d857b",
+        "canvasSnapshot": "bd2d857b",
+        "snapshotMatch": true,
+        "baselineHash": "135558cd",
+        "renderHash": "9252a99e",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 9,
+        "sourceSnapshot": "3beb4ac5",
+        "canvasSnapshot": "3beb4ac5",
+        "snapshotMatch": true,
+        "baselineHash": "b2466d78",
+        "renderHash": "91cb6112",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 10,
+        "sourceSnapshot": "589a319e",
+        "canvasSnapshot": "589a319e",
+        "snapshotMatch": true,
+        "baselineHash": "6d8b291f",
+        "renderHash": "cd6e526f",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 11,
+        "sourceSnapshot": "7d557459",
+        "canvasSnapshot": "7d557459",
+        "snapshotMatch": true,
+        "baselineHash": "150b67b6",
+        "renderHash": "72d1c3bb",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 12,
+        "sourceSnapshot": "ceae678a",
+        "canvasSnapshot": "ceae678a",
+        "snapshotMatch": true,
+        "baselineHash": "364a3c06",
+        "renderHash": "aa7d3e80",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 13,
+        "sourceSnapshot": "c555a58a",
+        "canvasSnapshot": "c555a58a",
+        "snapshotMatch": true,
+        "baselineHash": "089585de",
+        "renderHash": "0b2ce5d9",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 14,
+        "sourceSnapshot": "9fc856d4",
+        "canvasSnapshot": "9fc856d4",
+        "snapshotMatch": true,
+        "baselineHash": "cf859bf3",
+        "renderHash": "0e610d5f",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 15,
+        "sourceSnapshot": "c836abe1",
+        "canvasSnapshot": "c836abe1",
+        "snapshotMatch": true,
+        "baselineHash": "8b457b47",
+        "renderHash": "9e216a7e",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 16,
+        "sourceSnapshot": "12396dcb",
+        "canvasSnapshot": "12396dcb",
+        "snapshotMatch": true,
+        "baselineHash": "625259b3",
+        "renderHash": "2e2c71e6",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 17,
+        "sourceSnapshot": "be23acf7",
+        "canvasSnapshot": "be23acf7",
+        "snapshotMatch": true,
+        "baselineHash": "fd240531",
+        "renderHash": "676ab106",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 18,
+        "sourceSnapshot": "9c671b21",
+        "canvasSnapshot": "9c671b21",
+        "snapshotMatch": true,
+        "baselineHash": "27145f42",
+        "renderHash": "de7dc11e",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      },
+      {
+        "page": 19,
+        "sourceSnapshot": "c7021971",
+        "canvasSnapshot": "c7021971",
+        "snapshotMatch": true,
+        "baselineHash": "1ecef80e",
+        "renderHash": "32d46827",
+        "width": 2160,
+        "height": 3600,
+        "status": "passed"
+      }
+    ]
+  },
+  "checks": {
+    "pageCount": true,
+    "passedCount": true,
+    "recordCount": true,
+    "dimensions": true,
+    "snapshots": true,
+    "baselineHashes": true,
+    "renderHashes": true,
+    "retainedPngs": true
+  },
+  "pass": true
+}

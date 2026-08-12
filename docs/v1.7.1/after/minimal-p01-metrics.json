@@ -1,0 +1,917 @@
+{
+  "schemaVersion": 1,
+  "inputs": {
+    "layout": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/minimal-p01-layout.json",
+    "png": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/minimal-p01-export-2160.png"
+  },
+  "layout": {
+    "page": {
+      "issues": 0,
+      "phase": "sealed",
+      "snapshot": "1d2f5040",
+      "state": "ready"
+    },
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    },
+    "counts": {
+      "atoms": 170,
+      "lines": 12,
+      "justifiedLines": 3,
+      "underlines": 3
+    },
+    "rightEdge": {
+      "scope": "justified non-terminal lines only",
+      "lineCount": 3,
+      "tolerance": 0.01,
+      "maxError": 0.0,
+      "pass": true,
+      "lines": [
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "0",
+          "end": "wrap",
+          "right": 840.0,
+          "target": 840.0,
+          "rightEdgeError": 0.0,
+          "solverResidual": 0.0,
+          "effectiveError": 0.0,
+          "pass": true
+        }
+      ]
+    },
+    "hanHanSpacing": {
+      "definition": "outgoing gap on adjacent Han-to-Han atom pairs, evaluated per line",
+      "allLines": {
+        "lineCount": 12,
+        "pairCount": 106,
+        "maxLineVariance": 0.0,
+        "maxLineDeviation": 0.0,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "justifiedLines": {
+        "lineCount": 3,
+        "pairCount": 41,
+        "maxLineVariance": 0.0,
+        "maxLineDeviation": 0.0,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "lines": [
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "justified": true,
+          "count": 12,
+          "min": 2.12,
+          "max": 2.12,
+          "mean": 2.12,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "justified": true,
+          "count": 11,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "1eb84c01",
+          "line": "2",
+          "justified": false,
+          "count": 6,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "0",
+          "justified": true,
+          "count": 18,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "1",
+          "justified": false,
+          "count": 7,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "61d824c2",
+          "line": "0",
+          "justified": false,
+          "count": 11,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "61d824c2",
+          "line": "1",
+          "justified": false,
+          "count": 14,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "justified": false,
+          "count": 7,
+          "min": 0.84,
+          "max": 0.84,
+          "mean": 0.84,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "1",
+          "justified": false,
+          "count": 12,
+          "min": 0.84,
+          "max": 0.84,
+          "mean": 0.84,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "2",
+          "justified": false,
+          "count": 2,
+          "min": 0.84,
+          "max": 0.84,
+          "mean": 0.84,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c61fd310",
+          "line": "0",
+          "justified": false,
+          "count": 5,
+          "min": 0.9,
+          "max": 0.9,
+          "mean": 0.9,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        },
+        {
+          "block": "c61fd310",
+          "line": "1",
+          "justified": false,
+          "count": 1,
+          "min": 0.9,
+          "max": 0.9,
+          "mean": 0.9,
+          "variance": 0.0,
+          "standardDeviation": 0.0,
+          "maxDeviationFromLineMean": 0.0
+        }
+      ]
+    },
+    "punctuationWidth": {
+      "definition": "logical punctuation box width divided by font size",
+      "allowedRange": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "count": 20,
+      "minRatio": 0.689,
+      "maxRatio": 1.0,
+      "pass": true,
+      "items": [
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "index": 14,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 42.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "index": 19,
+          "text": "“",
+          "kind": "opening-punctuation",
+          "box": 42.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "index": 22,
+          "text": "”",
+          "kind": "closing-punctuation",
+          "box": 42.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "82d5937a",
+          "line": "1",
+          "index": 25,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 42.0,
+          "fontSize": 42.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "index": 48,
+          "text": "：",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "index": 60,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "index": 63,
+          "text": "—",
+          "kind": "middle-punctuation",
+          "box": 35.76,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.894,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "index": 68,
+          "text": "、",
+          "kind": "closing-punctuation",
+          "box": 27.56,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.689,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "index": 72,
+          "text": "—",
+          "kind": "middle-punctuation",
+          "box": 33.88,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.847,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "index": 83,
+          "text": "；",
+          "kind": "closing-punctuation",
+          "box": 27.56,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.689,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "index": 84,
+          "text": "“",
+          "kind": "opening-punctuation",
+          "box": 38.52,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.963,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "index": 88,
+          "text": "”",
+          "kind": "closing-punctuation",
+          "box": 27.56,
+          "fontSize": 40.0,
+          "boxToEmRatio": 0.689,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "2",
+          "index": 93,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "2",
+          "index": 94,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "1eb84c01",
+          "line": "2",
+          "index": 107,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "0",
+          "index": 124,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "1",
+          "index": 131,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "1",
+          "index": 136,
+          "text": "，",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "1",
+          "index": 141,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        },
+        {
+          "block": "61d824c2",
+          "line": "1",
+          "index": 169,
+          "text": "。",
+          "kind": "closing-punctuation",
+          "box": 40.0,
+          "fontSize": 40.0,
+          "boxToEmRatio": 1.0,
+          "pass": true
+        }
+      ]
+    },
+    "baselines": {
+      "definition": "max minus min stored baseline among non-space glyphs on a line",
+      "lineCount": 12,
+      "mixedHanAlnumLineCount": 4,
+      "tolerance": 0.01,
+      "maxSpread": 0.0,
+      "mixedHanAlnumMaxSpread": 0.0,
+      "pass": true,
+      "lines": [
+        {
+          "block": "1eb84c01",
+          "line": "0",
+          "justified": true,
+          "glyphCount": 22,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "middle-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "1eb84c01",
+          "line": "1",
+          "justified": true,
+          "glyphCount": 25,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "latin",
+            "middle-punctuation",
+            "opening-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "1eb84c01",
+          "line": "2",
+          "justified": false,
+          "glyphCount": 18,
+          "kinds": [
+            "closing-punctuation",
+            "han",
+            "latin"
+          ],
+          "mixedHanAlnum": true,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "0",
+          "justified": true,
+          "glyphCount": 21,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "3c6ce9c1",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 13,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "61d824c2",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 12,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "61d824c2",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 16,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 54.5,
+          "max": 54.5,
+          "spread": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 16,
+          "kinds": [
+            "closing-punctuation",
+            "digit",
+            "han",
+            "opening-punctuation"
+          ],
+          "mixedHanAlnum": true,
+          "min": 52.5,
+          "max": 52.5,
+          "spread": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 15,
+          "kinds": [
+            "closing-punctuation",
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 52.5,
+          "max": 52.5,
+          "spread": 0.0
+        },
+        {
+          "block": "82d5937a",
+          "line": "2",
+          "justified": false,
+          "glyphCount": 3,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 52.5,
+          "max": 52.5,
+          "spread": 0.0
+        },
+        {
+          "block": "c61fd310",
+          "line": "0",
+          "justified": false,
+          "glyphCount": 6,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 93.5,
+          "max": 93.5,
+          "spread": 0.0
+        },
+        {
+          "block": "c61fd310",
+          "line": "1",
+          "justified": false,
+          "glyphCount": 2,
+          "kinds": [
+            "han"
+          ],
+          "mixedHanAlnum": false,
+          "min": 93.5,
+          "max": 93.5,
+          "spread": 0.0
+        }
+      ]
+    },
+    "underlines": {
+      "count": 3,
+      "blockCounts": {
+        "82d5937a": 3
+      },
+      "multiLineBlocks": [
+        "82d5937a"
+      ],
+      "invalidGeometryCount": 0,
+      "thickness": {
+        "count": 3,
+        "min": 2.515625,
+        "max": 2.515625,
+        "mean": 2.515625,
+        "variance": 0.0,
+        "standardDeviation": 0.0
+      },
+      "width": {
+        "count": 3,
+        "min": 127.679688,
+        "max": 665.90625,
+        "mean": 478.447917,
+        "variance": 61616.366469,
+        "standardDeviation": 248.226442
+      },
+      "pass": true,
+      "items": [
+        {
+          "block": "82d5937a",
+          "line": "0",
+          "index": 0,
+          "rect": {
+            "x": 120.0,
+            "y": 641.132812,
+            "width": 665.90625,
+            "height": 2.515625,
+            "right": 785.90625,
+            "bottom": 643.648438
+          },
+          "validGeometry": true
+        },
+        {
+          "block": "82d5937a",
+          "line": "1",
+          "index": 1,
+          "rect": {
+            "x": 120.0,
+            "y": 710.429688,
+            "width": 641.757812,
+            "height": 2.515625,
+            "right": 761.757812,
+            "bottom": 712.945312
+          },
+          "validGeometry": true
+        },
+        {
+          "block": "82d5937a",
+          "line": "2",
+          "index": 2,
+          "rect": {
+            "x": 120.0,
+            "y": 779.054688,
+            "width": 127.679688,
+            "height": 2.515625,
+            "right": 247.679688,
+            "bottom": 781.570312
+          },
+          "validGeometry": true
+        }
+      ]
+    },
+    "checks": [
+      {
+        "name": "sealed-ready-snapshot",
+        "pass": true,
+        "measured": {
+          "issues": 0,
+          "phase": "sealed",
+          "snapshot": "1d2f5040",
+          "state": "ready"
+        },
+        "limit": {
+          "state": "ready",
+          "phase": "sealed",
+          "snapshot": "non-empty"
+        }
+      },
+      {
+        "name": "required-regression-coverage",
+        "pass": true,
+        "measured": {
+          "atoms": 170,
+          "lines": 12,
+          "justifiedLines": 3,
+          "punctuation": 20,
+          "mixedHanAlnumLines": 4,
+          "underlines": 3
+        },
+        "limit": "all counts > 0"
+      },
+      {
+        "name": "justified-right-edge",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "han-han-gap-uniformity",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "punctuation-optical-width",
+        "pass": true,
+        "measured": {
+          "min": 0.689,
+          "max": 1.0
+        },
+        "limit": {
+          "min": 0.5,
+          "max": 1.0
+        }
+      },
+      {
+        "name": "same-line-baseline",
+        "pass": true,
+        "measured": 0.0,
+        "limit": 0.01
+      },
+      {
+        "name": "underline-positive-geometry",
+        "pass": true,
+        "measured": 0,
+        "limit": 0
+      }
+    ],
+    "pass": true,
+    "warnings": []
+  },
+  "image": {
+    "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/minimal-p01-export-2160.png",
+    "format": "PNG",
+    "mode": "RGBA",
+    "width": 2160,
+    "height": 3600,
+    "expected": {
+      "width": 2160,
+      "height": 3600
+    },
+    "sizeMatches": true,
+    "topBottomRepeat": {
+      "bandHeight": 780,
+      "meanAbsoluteErrorRaw": 7.631894,
+      "meanAbsoluteErrorNormalized": 0.029929,
+      "rootMeanSquareErrorRaw": 39.685055,
+      "topSignalStddevRaw": 38.944291,
+      "exactMatch": false,
+      "thresholdRaw": 1.0,
+      "detected": false,
+      "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+    },
+    "checks": [
+      {
+        "name": "png-dimensions",
+        "pass": true,
+        "measured": {
+          "width": 2160,
+          "height": 3600
+        },
+        "limit": {
+          "width": 2160,
+          "height": 3600
+        }
+      },
+      {
+        "name": "no-top-bottom-repeat",
+        "pass": true,
+        "measured": 7.631894,
+        "limit": "> 1.0 raw RGB levels when top has signal"
+      }
+    ],
+    "pass": true
+  },
+  "checks": [
+    {
+      "name": "sealed-ready-snapshot",
+      "pass": true,
+      "measured": {
+        "issues": 0,
+        "phase": "sealed",
+        "snapshot": "1d2f5040",
+        "state": "ready"
+      },
+      "limit": {
+        "state": "ready",
+        "phase": "sealed",
+        "snapshot": "non-empty"
+      }
+    },
+    {
+      "name": "required-regression-coverage",
+      "pass": true,
+      "measured": {
+        "atoms": 170,
+        "lines": 12,
+        "justifiedLines": 3,
+        "punctuation": 20,
+        "mixedHanAlnumLines": 4,
+        "underlines": 3
+      },
+      "limit": "all counts > 0"
+    },
+    {
+      "name": "justified-right-edge",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "han-han-gap-uniformity",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "punctuation-optical-width",
+      "pass": true,
+      "measured": {
+        "min": 0.689,
+        "max": 1.0
+      },
+      "limit": {
+        "min": 0.5,
+        "max": 1.0
+      }
+    },
+    {
+      "name": "same-line-baseline",
+      "pass": true,
+      "measured": 0.0,
+      "limit": 0.01
+    },
+    {
+      "name": "underline-positive-geometry",
+      "pass": true,
+      "measured": 0,
+      "limit": 0
+    },
+    {
+      "name": "png-dimensions",
+      "pass": true,
+      "measured": {
+        "width": 2160,
+        "height": 3600
+      },
+      "limit": {
+        "width": 2160,
+        "height": 3600
+      }
+    },
+    {
+      "name": "no-top-bottom-repeat",
+      "pass": true,
+      "measured": 7.631894,
+      "limit": "> 1.0 raw RGB levels when top has signal"
+    }
+  ],
+  "pass": true
+}

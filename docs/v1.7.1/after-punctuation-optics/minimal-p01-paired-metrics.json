@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "coordinateSystem": "1080x1800 preview CSS pixels",
+  "preview": {
+    "path": "/private/tmp/v171-optics-final2/minimal-p01-preview-1080.png",
+    "sourceWidth": 1080,
+    "sourceHeight": 1800,
+    "analysisWidth": 1080,
+    "analysisHeight": 1800,
+    "estimatedBackgroundRgb": [
+      255,
+      255,
+      255
+    ],
+    "ink": {
+      "threshold": 24,
+      "pixelCount": 137576,
+      "bbox": {
+        "left": 120,
+        "top": 315,
+        "rightExclusive": 960,
+        "bottomExclusive": 1389,
+        "width": 840,
+        "height": 1074
+      }
+    },
+    "h2Bar": {
+      "found": false,
+      "method": "accent-color connected component nearest the 12px H2 bar width",
+      "targetRgb": [
+        138,
+        75,
+        124
+      ],
+      "maxChannelColorTolerance": 45,
+      "candidateCount": 0,
+      "bbox": null
+    }
+  },
+  "exportHalf": {
+    "path": "/private/tmp/v171-optics-final2/minimal-p01-export-2160.png",
+    "sourceWidth": 2160,
+    "sourceHeight": 3600,
+    "analysisWidth": 1080,
+    "analysisHeight": 1800,
+    "estimatedBackgroundRgb": [
+      255,
+      255,
+      255
+    ],
+    "ink": {
+      "threshold": 24,
+      "pixelCount": 135137,
+      "bbox": {
+        "left": 120,
+        "top": 316,
+        "rightExclusive": 960,
+        "bottomExclusive": 1389,
+        "width": 840,
+        "height": 1073
+      }
+    },
+    "h2Bar": {
+      "found": false,
+      "method": "accent-color connected component nearest the 12px H2 bar width",
+      "targetRgb": [
+        138,
+        75,
+        124
+      ],
+      "maxChannelColorTolerance": 45,
+      "candidateCount": 0,
+      "bbox": null
+    },
+    "reduction": {
+      "factor": 2,
+      "method": "Pillow BOX (exact 2x2 pixel-area reduction)"
+    }
+  },
+  "comparison": {
+    "pass": true,
+    "failures": [],
+    "checks": {
+      "nonEmptyContent": {
+        "pass": true,
+        "minimumInkPixels": 64,
+        "previewPass": true,
+        "exportHalfPass": true
+      },
+      "inkBoundingBox": {
+        "pass": true,
+        "toleranceCssPx": 2,
+        "deltas": {
+          "left": 0,
+          "top": 1,
+          "rightExclusive": 0,
+          "bottomExclusive": 0
+        },
+        "maxAbsDelta": 1
+      },
+      "rowProjection": {
+        "lag": 0,
+        "definition": "positive means export-half ink is lower/right of preview",
+        "score": 0.98424,
+        "normalizedAbsoluteError": 0.075072,
+        "lagToleranceCssPx": 1,
+        "minimumScore": 0.75,
+        "pass": true
+      },
+      "columnProjection": {
+        "lag": 0,
+        "definition": "positive means export-half ink is lower/right of preview",
+        "score": 0.999293,
+        "normalizedAbsoluteError": 0.023513,
+        "lagToleranceCssPx": 1,
+        "minimumScore": 0.75,
+        "pass": true
+      },
+      "h2BarBoundingBox": {
+        "status": "absent-in-both",
+        "pass": true,
+        "required": false,
+        "toleranceCssPx": 2,
+        "deltas": null,
+        "maxAbsBboxDelta": null
+      }
+    },
+    "phaseCorrelation": {
+      "available": true,
+      "definition": "positive means export-half ink is right/lower than preview",
+      "shiftX": 0.005166,
+      "shiftY": 0.277993,
+      "response": 1.00452
+    }
+  },
+  "strict": {
+    "enabled": true,
+    "pass": true,
+    "exitPolicy": "all comparison checks are enforced"
+  }
+}

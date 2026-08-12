@@ -1,0 +1,13 @@
+{
+  "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after/real-p02-export-2160.png",
+  "width": 2160,
+  "height": 3600,
+  "sizeMatches": true,
+  "topBottomRepeat": {
+    "bandHeight": 780,
+    "meanAbsoluteErrorRaw": 21.06669733301678,
+    "topSignalStddevRaw": 43.19542763701916,
+    "detected": false
+  },
+  "pass": true
+}

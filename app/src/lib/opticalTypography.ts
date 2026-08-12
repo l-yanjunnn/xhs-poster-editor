@@ -18,6 +18,7 @@ import {
 const H2_CENTER_PROPERTY = '--h2-optical-center-y'
 const H2_HEIGHT_PROPERTY = '--h2-optical-bar-height'
 const MARKER_SHIFT_PROPERTY = '--optical-list-marker-shift-y'
+const MARKER_WIDTH_PROPERTY = '--optical-list-marker-column-width'
 const BASELINE_PROBE_ATTRIBUTE = 'data-optical-baseline-probe'
 const DEFAULT_FONT_TIMEOUT_MS = 3_000
 // 与 html2canvas-pro TextRenderer.hasCJKCharacters 保持同一字符范围。
@@ -589,13 +590,43 @@ function markerAdvanceWidth(marker: HTMLSpanElement, label: string): number | nu
   return finitePositive(metrics.advanceWidth) ? metrics.advanceWidth : null
 }
 
-function calibrateLists(root: HTMLElement): number {
+/**
+ * 在行级求解前注入最终序号 marker，并用它自身实际继承的
+ * family/weight/style 冻结列宽。返回的签名只包含会改变列表版心的
+ * 几何；垂直光学 shift 会在 seal 时另行记入页面快照。
+ */
+export function freezeOpticalListMarkerGeometry(root: HTMLElement): string {
   const widthOptions = {
     measureMarkerWidth: (marker: HTMLSpanElement, context: { label: string }) =>
       markerAdvanceWidth(marker, context.label),
   }
   decorateOpticalOrderedListMarkers(root, widthOptions)
   refreshOpticalOrderedListMarkerColumns(root, widthOptions)
+
+  const signature = JSON.stringify(
+    Array.from(
+      root.querySelectorAll<HTMLOListElement>(
+        'ol[data-optical-list-marker-columns]',
+      ),
+      (list) => ({
+        columns: list.dataset.opticalListMarkerColumns ?? '',
+        maxLabel: list.dataset.opticalListMarkerMaxLabel ?? '',
+        width: list.style.getPropertyValue(MARKER_WIDTH_PROPERTY),
+        labels: Array.from(list.children).flatMap((item) => {
+          const marker = Array.from(item.children).find((child) =>
+            child.hasAttribute('data-optical-list-marker'),
+          )
+          return marker ? [marker.textContent ?? ''] : []
+        }),
+      }),
+    ),
+  )
+  root.dataset.layoutListMarkerGeometry = signature
+  return signature
+}
+
+function calibrateLists(root: HTMLElement): number {
+  freezeOpticalListMarkerGeometry(root)
 
   const markers = Array.from(
     root.querySelectorAll<HTMLSpanElement>(

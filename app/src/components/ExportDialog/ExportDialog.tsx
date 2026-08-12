@@ -134,6 +134,9 @@ export function ExportDialog({
     pages.length > 0 &&
     pageCount > 0 &&
     !exporting
+  const hasBlockingReadinessIssue = readinessIssues.some(
+    (issue) => issue.kind === 'font' || issue.kind === 'layout',
+  )
   const topic = cleanDocumentName(trimmedFilename || defaultFilename)
   const exampleFirstPage = pages[0] ?? 1
   const exampleLastPage = pages.at(-1) ?? Math.max(1, pageCount)
@@ -229,6 +232,10 @@ export function ExportDialog({
     bypassAllConfirmation = false,
   ) {
     if (!canExport && !resume) return
+    if (skipReadiness && !resume && hasBlockingReadinessIssue) {
+      setExportError('字体或确定性排版未通过预检，修复后才能导出 PNG。')
+      return
+    }
     if (
       !resume &&
       pages.length === pageCount &&
@@ -518,7 +525,11 @@ export function ExportDialog({
 
                 {readinessIssues.length > 0 ? (
                   <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950" role="alert">
-                    <strong>部分资源尚未就绪</strong>
+                    <strong>
+                      {hasBlockingReadinessIssue
+                        ? '字体或排版预检未通过，已阻止导出'
+                        : '部分图片资源尚未就绪'}
+                    </strong>
                     <ul className="mt-1.5 list-disc space-y-1 pl-4">
                       {readinessIssues.map((issue, index) => (
                         <li key={`${issue.kind}-${issue.label}-${index}`}>
@@ -569,9 +580,11 @@ export function ExportDialog({
             </Button>
           ) : readinessIssues.length > 0 ? (
             <>
-              <Button variant="outline" onClick={() => void handleExport(true)} disabled={!canExport}>
-                仍然导出
-              </Button>
+              {!hasBlockingReadinessIssue ? (
+                <Button variant="outline" onClick={() => void handleExport(true)} disabled={!canExport}>
+                  仍然导出
+                </Button>
+              ) : null}
               <Button onClick={() => void handleExport(false)} disabled={!canExport}>
                 重新检查
               </Button>

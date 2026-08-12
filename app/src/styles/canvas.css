@@ -23,7 +23,7 @@
   --font-h3: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif;
   --font-body: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
-  --font-en: "Inter", "Helvetica Neue", sans-serif;
+  --font-en: "Geist Variable", "Helvetica Neue", sans-serif;
 
   /* 字号（基准：正文 40px） */
   --fs-h1: 90px;
@@ -507,6 +507,89 @@
   text-decoration: underline;
   text-underline-offset: 0.18em;
   text-decoration-thickness: 0.06em;
+}
+
+/* V1.7.1 共享行级快照：求解器已把断行、标点光学占宽和字缝
+ * 物化为绝对 x/width。预览与 html2canvas 因此只负责画同一棵 DOM，
+ * 不再各自执行 justify 或非零 letter-spacing 的字素重排。 */
+.content .deterministic-text-layout {
+  position: relative;
+  text-align: left !important;
+  text-align-last: left !important;
+  letter-spacing: 0 !important;
+}
+
+.content .deterministic-text-layout .dtl-line {
+  position: absolute;
+  left: 0;
+  display: block;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  white-space: nowrap;
+  text-align: left;
+  letter-spacing: 0;
+}
+
+.content .deterministic-text-layout .dtl-atom {
+  position: absolute;
+  top: 0;
+  display: inline-block;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  white-space: pre;
+  text-align: left;
+  letter-spacing: 0 !important;
+  z-index: 1;
+}
+
+.content .deterministic-text-layout .dtl-atom *,
+.content .deterministic-text-layout .dtl-glyph {
+  white-space: pre;
+  letter-spacing: 0 !important;
+}
+
+/* 保留 u/荧光笔语义节点，视觉装饰由每个真实行的显式矩形绘制。 */
+.content .deterministic-text-layout u {
+  text-decoration: none !important;
+}
+
+.content
+  .deterministic-text-layout
+  [data-text-highlight] {
+  background-color: transparent !important;
+}
+
+.content .deterministic-text-layout .dtl-decoration {
+  position: absolute;
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+.content
+  .deterministic-text-layout
+  .dtl-decoration--highlight {
+  border-radius: 0.08em;
+  z-index: 0;
+}
+
+.content
+  .deterministic-text-layout
+  .dtl-decoration--underline {
+  border-radius: 999px;
+  z-index: 2;
+}
+
+.content .deterministic-text-layout .dtl-explicit-break {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 /* 插入到正文的图片：占满内容区宽度上限，等比缩放 */

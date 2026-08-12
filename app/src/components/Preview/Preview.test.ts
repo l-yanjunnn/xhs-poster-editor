@@ -4,6 +4,81 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas'
 import { Preview } from './Preview'
 
+type PreviewTypographyMockKey =
+  | 'fontReadiness'
+  | 'materialize'
+  | 'calibrate'
+  | 'calibrateNow'
+type PreviewTypographyMockDelegate = (...args: unknown[]) => unknown
+
+const previewTypographyMocks = vi.hoisted(() => {
+  const delegates = {} as Record<
+    PreviewTypographyMockKey,
+    PreviewTypographyMockDelegate
+  >
+  const defaults = {} as Record<
+    PreviewTypographyMockKey,
+    PreviewTypographyMockDelegate
+  >
+  const proxy = (key: PreviewTypographyMockKey) =>
+    vi.fn((...args: unknown[]) => {
+      const delegate = delegates[key]
+      if (!delegate) throw new Error(`Missing Preview typography mock: ${key}`)
+      return delegate(...args)
+    })
+  return {
+    delegates,
+    defaults,
+    fontReadiness: proxy('fontReadiness'),
+    materialize: proxy('materialize'),
+    calibrate: proxy('calibrate'),
+    calibrateNow: proxy('calibrateNow'),
+  }
+})
+
+vi.mock('@/lib/deterministicFontReadiness', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/deterministicFontReadiness')>()
+  const delegate: PreviewTypographyMockDelegate = (...args) =>
+    Reflect.apply(actual.checkDeterministicFontReadiness, undefined, args)
+  previewTypographyMocks.defaults.fontReadiness = delegate
+  previewTypographyMocks.delegates.fontReadiness = delegate
+  return {
+    ...actual,
+    checkDeterministicFontReadiness: previewTypographyMocks.fontReadiness,
+  }
+})
+
+vi.mock('@/lib/deterministicTypography', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/deterministicTypography')>()
+  const delegate: PreviewTypographyMockDelegate = (...args) =>
+    Reflect.apply(actual.materializeDeterministicTypography, undefined, args)
+  previewTypographyMocks.defaults.materialize = delegate
+  previewTypographyMocks.delegates.materialize = delegate
+  return {
+    ...actual,
+    materializeDeterministicTypography: previewTypographyMocks.materialize,
+  }
+})
+
+vi.mock('@/lib/opticalTypography', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/opticalTypography')>()
+  const calibrateDelegate: PreviewTypographyMockDelegate = (...args) =>
+    Reflect.apply(actual.calibratePageTypography, undefined, args)
+  const calibrateNowDelegate: PreviewTypographyMockDelegate = (...args) =>
+    Reflect.apply(actual.calibratePageTypographyNow, undefined, args)
+  previewTypographyMocks.defaults.calibrate = calibrateDelegate
+  previewTypographyMocks.defaults.calibrateNow = calibrateNowDelegate
+  previewTypographyMocks.delegates.calibrate = calibrateDelegate
+  previewTypographyMocks.delegates.calibrateNow = calibrateNowDelegate
+  return {
+    ...actual,
+    calibratePageTypography: previewTypographyMocks.calibrate,
+    calibratePageTypographyNow: previewTypographyMocks.calibrateNow,
+  }
+})
+
 type ReactActGlobal = typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean
 }
@@ -13,13 +88,56 @@ const PREVIEW_SCALE = 0.4
 const mounted: Array<{ host: HTMLDivElement; root: Root }> = []
 
 beforeEach(() => {
-  if (!document.fonts) {
-    Object.defineProperty(document, 'fonts', {
-      configurable: true,
-      value: { ready: Promise.resolve() },
-    })
+  for (const key of Object.keys(
+    previewTypographyMocks.defaults,
+  ) as PreviewTypographyMockKey[]) {
+    previewTypographyMocks.delegates[key] =
+      previewTypographyMocks.defaults[key]
   }
+  previewTypographyMocks.fontReadiness.mockClear()
+  previewTypographyMocks.materialize.mockClear()
+  previewTypographyMocks.calibrate.mockClear()
+  previewTypographyMocks.calibrateNow.mockClear()
+  installDocumentFonts(Promise.resolve())
 })
+
+function installDocumentFonts(ready: Promise<unknown>) {
+  const events = new EventTarget()
+  const fontSet = events as EventTarget & {
+    ready: Promise<FontFaceSet>
+    status: FontFaceSetLoadStatus
+    load: ReturnType<typeof vi.fn>
+  }
+  Object.defineProperties(fontSet, {
+    ready: {
+      configurable: true,
+      value: ready.then(() => fontSet as unknown as FontFaceSet),
+    },
+    status: { configurable: true, writable: true, value: 'loaded' },
+    load: {
+      configurable: true,
+      value: vi.fn(async () => [{}]),
+    },
+  })
+  Object.defineProperty(document, 'fonts', {
+    configurable: true,
+    value: fontSet,
+  })
+  return {
+    fontSet,
+    dispatchLoadingDone: () => events.dispatchEvent(new Event('loadingdone')),
+  }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
 
 function domRect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -397,8 +515,6 @@ describe('Preview optical list markers', () => {
         'aria-hidden',
       ),
     ).toBeNull()
-    const firstMarker = item.host.querySelector('[data-optical-list-marker]')
-
     await act(async () => {
       item.root.render(
         createElement(Preview, {
@@ -414,9 +530,7 @@ describe('Preview optical list markers', () => {
     expect(
       item.host.querySelectorAll('[data-optical-list-marker]'),
     ).toHaveLength(2)
-    expect(item.host.querySelector('[data-optical-list-marker]')).toBe(
-      firstMarker,
-    )
+    expect(labels()).toEqual(['9.', '10.'])
 
     await act(async () => {
       item.root.render(
@@ -432,5 +546,267 @@ describe('Preview optical list markers', () => {
     expect(labels()).toEqual(['2.', '7.'])
     expect(item.host.querySelector('.content')?.textContent).toContain('A')
     expect(item.host.querySelector('.content')?.textContent).toContain('B')
+  })
+})
+
+describe('Preview deterministic typography transaction', () => {
+  const readyFontResult = {
+    ok: true,
+    requests: [],
+    verified: [],
+    allowlisted: [],
+    issues: [],
+  }
+  const timeoutFontResult = {
+    ok: false,
+    requests: [],
+    verified: [],
+    allowlisted: [],
+    issues: [
+      {
+        kind: 'font',
+        reason: 'timeout',
+        family: 'Test Font',
+        weight: '400',
+        style: 'normal',
+        sample: '汉A0',
+        label: 'Test Font (400)',
+        message: '等待字体 Test Font (400) 超时',
+      },
+    ],
+  }
+  const loadErrorFontResult = {
+    ...timeoutFontResult,
+    issues: [
+      {
+        ...timeoutFontResult.issues[0],
+        reason: 'load-error',
+        message: '加载字体 Test Font (400) 失败',
+      },
+    ],
+  }
+  const readyCalibration = {
+    status: 'ready',
+    h2Count: 0,
+    markerCount: 0,
+    fontIssues: [],
+  }
+
+  beforeEach(() => {
+    let snapshotRevision = 0
+    previewTypographyMocks.delegates.materialize = (
+      pageValue,
+      optionsValue,
+    ) => {
+      const page = pageValue as HTMLElement
+      const options = optionsValue as {
+        sourceHtml: string
+        state?: 'pending' | 'ready'
+      }
+      const content = page.querySelector<HTMLElement>('.content')
+      if (!content) throw new Error('Preview test page is missing .content')
+      content.innerHTML = options.sourceHtml
+      snapshotRevision += 1
+      const snapshotId = `test-snapshot-${snapshotRevision}`
+      page.dataset.layoutSnapshot = snapshotId
+      page.dataset.layoutState = options.state ?? 'pending'
+      page.dataset.layoutIssueCount = '0'
+      page.dataset.layoutIssues = '[]'
+      page.dataset.layoutFontRequest = '[]'
+      return {
+        snapshotId,
+        blockCount: 1,
+        lineCount: 1,
+        fontRequests: [],
+        issues: [],
+      }
+    }
+    previewTypographyMocks.delegates.calibrateNow = () => ({
+      h2Count: 0,
+      markerCount: 0,
+    })
+    previewTypographyMocks.delegates.calibrate = () =>
+      Promise.resolve(readyCalibration)
+    previewTypographyMocks.delegates.fontReadiness = () =>
+      Promise.resolve(readyFontResult)
+  })
+
+  it('保持 pending，直到精确字体、重物化与校准全部成功才封存 ready', async () => {
+    const fontCheck = deferred<typeof readyFontResult>()
+    previewTypographyMocks.delegates.fontReadiness = () => fontCheck.promise
+    const { host } = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: '<p>中文2026</p>' },
+    )
+    const page = host.querySelector<HTMLElement>('.page')
+    expect(page?.dataset.layoutState).toBe('pending')
+
+    await act(async () => {
+      fontCheck.resolve(readyFontResult)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(page?.dataset.layoutState).toBe('ready')
+    expect(previewTypographyMocks.materialize).toHaveBeenCalledTimes(2)
+    expect(
+      previewTypographyMocks.materialize.mock.calls.map(
+        ([, options]) =>
+          (options as { state?: string }).state,
+      ),
+    ).toEqual(['pending', 'pending'])
+    expect(previewTypographyMocks.calibrate).toHaveBeenCalledWith(
+      page,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        recalibrateOnLateFonts: false,
+      }),
+    )
+  })
+
+  it('精确字体加载失败时保留明确 font-error 与结构化原因', async () => {
+    previewTypographyMocks.delegates.fontReadiness = () =>
+      Promise.resolve(loadErrorFontResult)
+    const { host } = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: '<p>字体失败</p>' },
+    )
+    const page = host.querySelector<HTMLElement>('.page')
+
+    expect(page?.dataset.layoutState).toBe('font-error')
+    expect(JSON.parse(page?.dataset.layoutFontIssues ?? '[]')).toEqual([
+      expect.objectContaining({
+        family: 'Test Font',
+        weight: '400',
+        message: expect.stringContaining('失败'),
+      }),
+    ])
+    expect(previewTypographyMocks.materialize).toHaveBeenCalledTimes(1)
+    expect(previewTypographyMocks.calibrate).not.toHaveBeenCalled()
+  })
+
+  it('校准 degraded 不封存 ready，而是降级为可见的 font-error', async () => {
+    previewTypographyMocks.delegates.calibrate = () =>
+      Promise.resolve({
+        status: 'degraded',
+        h2Count: 1,
+        markerCount: 0,
+        fontIssues: [
+          {
+            font: 'normal 400 40px "Test Font"',
+            reason: 'timeout',
+          },
+        ],
+      })
+    const { host } = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: '<h2>需要校准的标题</h2>' },
+    )
+    const page = host.querySelector<HTMLElement>('.page')
+
+    expect(page?.dataset.layoutState).toBe('font-error')
+    expect(page?.dataset.layoutFontIssues).toContain('Test Font')
+  })
+
+  it('字体超时后晚到时完整重跑字体检查、重物化和校准', async () => {
+    const fontsReady = deferred<void>()
+    installDocumentFonts(fontsReady.promise)
+    previewTypographyMocks.fontReadiness
+      .mockImplementationOnce(() => Promise.resolve(timeoutFontResult))
+      .mockImplementationOnce(() => Promise.resolve(readyFontResult))
+    const { host } = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: '<p>晚到字体</p>' },
+    )
+    const page = host.querySelector<HTMLElement>('.page')
+    expect(page?.dataset.layoutState).toBe('font-error')
+    expect(previewTypographyMocks.fontReadiness).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      fontsReady.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(previewTypographyMocks.fontReadiness).toHaveBeenCalledTimes(2)
+    expect(previewTypographyMocks.materialize).toHaveBeenCalledTimes(2)
+    expect(previewTypographyMocks.calibrate).toHaveBeenCalledTimes(1)
+    expect(page?.dataset.layoutState).toBe('ready')
+    expect(page?.hasAttribute('data-layout-font-issues')).toBe(false)
+  })
+
+  it('最终 marker 列宽变化时重物化后再校准才封存', async () => {
+    const materialize = previewTypographyMocks.delegates.materialize
+    let materializeCount = 0
+    let calibrationCount = 0
+    previewTypographyMocks.delegates.materialize = (...args) => {
+      const result = materialize(...args)
+      materializeCount += 1
+      const page = args[0] as HTMLElement
+      page.dataset.layoutListMarkerGeometry =
+        materializeCount >= 3 ? 'final-marker-width' : 'fallback-marker-width'
+      return result
+    }
+    previewTypographyMocks.delegates.calibrate = (pageValue) => {
+      calibrationCount += 1
+      const page = pageValue as HTMLElement
+      if (calibrationCount === 1) {
+        page.dataset.layoutListMarkerGeometry = 'final-marker-width'
+      }
+      return Promise.resolve(readyCalibration)
+    }
+
+    const { host } = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      {
+        html: '<ol start="8"><li>八</li><li>九</li><li>十</li></ol>',
+      },
+    )
+    const page = host.querySelector<HTMLElement>('.page')
+
+    expect(previewTypographyMocks.materialize).toHaveBeenCalledTimes(3)
+    expect(previewTypographyMocks.calibrate).toHaveBeenCalledTimes(2)
+    expect(page?.dataset.layoutListMarkerGeometry).toBe('final-marker-width')
+    expect(page?.dataset.layoutSnapshotPhase).toBe('sealed')
+    expect(page?.dataset.layoutState).toBe('ready')
+  })
+
+  it('新 revision 完成后忽略旧字体检查的晚到结果', async () => {
+    const staleCheck = deferred<typeof readyFontResult>()
+    previewTypographyMocks.fontReadiness
+      .mockImplementationOnce(() => staleCheck.promise)
+      .mockImplementationOnce(() => Promise.resolve(readyFontResult))
+    const item = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      { html: '<p>旧内容</p>', layoutRevision: 'old' },
+    )
+
+    await act(async () => {
+      item.root.render(
+        createElement(Preview, {
+          ref: pageRefWithPadding({ x: 96, top: 180, bottom: 300 }),
+          html: '<p>新内容</p>',
+          themeClass: '',
+          previewScale: PREVIEW_SCALE,
+          layoutRevision: 'new',
+        }),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const page = item.host.querySelector<HTMLElement>('.page')
+    expect(page?.dataset.layoutState).toBe('ready')
+    expect(page?.querySelector('.content')?.textContent).toBe('新内容')
+
+    await act(async () => {
+      staleCheck.resolve(readyFontResult)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(page?.dataset.layoutState).toBe('ready')
+    expect(page?.querySelector('.content')?.textContent).toBe('新内容')
+    expect(previewTypographyMocks.calibrate).toHaveBeenCalledTimes(1)
   })
 })

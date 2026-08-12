@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-11（v1.7.0「导入文稿与完整导出版」已完成用户确认、发布提交/tag、双轨部署、生产回归、不可覆盖归档与飞书公告；当前线上稳定版为 v1.7.0。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-12（本地 v1.7.1「确定性排版修复版」已完成实现、自动测试、最小回归与真实 19 页导出；尚未提交、推送、部署、打 tag、归档或发送公告。当前线上稳定版仍为 v1.7.0。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -10,10 +10,11 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.7.0**。发布提交/tag 为 `87a2d89` / `v1.7.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-BKYNhwYN.js` + `assets/index-BVsea9B1.css`。JS SHA-256 `fbfafa1ec17407fc9886b7d7e74977d7622324275106949219d9c3b202b60dfc`，CSS SHA-256 `39a1a1dbc10c2debdfb209ad5b68b42ee686a9bfb9cfa62563627fb3bcd71c13`，两入口与本地/归档完全一致 |
+| 线上版本 | **v1.7.0**。发布提交/tag 为 `87a2d89` / `v1.7.0`；Cloudflare 与 OSS/CDN 均加载 `assets/index-BKYNhwYN.js` + `assets/index-BVsea9B1.css`。JS SHA-256 `fbfafa1ec17407fc9886b7d7e74977d7622324275106949219d9c3b202b60dfc`，CSS SHA-256 `39a1a1dbc10c2debdfb209ad5b68b42ee686a9bfb9cfa62563627fb3bcd71c13`，两入口与 `archive/dist-v1.7.0/` 发布归档完全一致 |
+| 本地候选 | **v1.7.1，待用户验收，未发布**。已用共享行级快照替换浏览器/html2canvas 各自排版；非末行绝对对齐，标点按实际墨迹求解双侧净空、连续标点共享边界、行末按可见右缘悬挂，标点→汉数/拉丁边界→统一汉缝三阶段求解；逐字素真实 baseline、跨行下划线/荧光笔矩形、精确字体预检和导出硬门禁已接入。验证报告：`docs/v1.7.1/V1.7.1-VALIDATION.md` |
 | 本地归档 | 当前完整构建在 `app/dist/`；v1.7.0 不可覆盖核心快照在 `archive/dist-v1.7.0/`（9.5M，排除字体 3337 个，清单见 `FONTS-MANIFEST.txt`）；v1.5.1 / v1.5.0 / v1.4.1 / v1.4.0 归档继续保留，完整复原走对应 tag + `bash ci.sh` |
 | 状态 | **线上 v1.7.0 双轨稳定**。导入文稿、同一可编辑新草稿、独立发布文案、17/18/19+ 边界、一次完整目录/ZIP 导出、自选页码、同会话续写剩余页和中文正文两端对齐均已进入生产；精确 tag `v1.7.0` 固定在 `87a2d89` |
-| 当前迭代 | **v1.7.0 已全部闭环**。后续只响应真实线上反馈，应用修复使用新版本号且不移动既有 tag。原生长文、v1.6 字体本地化/减重/字重档位/结构化封面、37+ 上传分组整体重均衡与跨刷新目录续写继续延期 |
+| 当前迭代 | **本地 v1.7.1 已可供验收**。自动测试、类型检查、ESLint、构建、最小排版样例和真实 19 页完整导出均通过；抽查页 1/2/3/5/19 均为原生 2160×3600 PNG。未经用户再次明确同意，不提交、不推送、不部署、不打 tag、不归档、不发公告。原生长文、字体全集本地化/减重/字重档位/结构化封面、37+ 上传分组整体重均衡与跨刷新目录续写继续延期 |
 | v1.7.0 发布闭环 | **2026-08-11 全部完成**：Cloudflare + OSS/CDN 双轨加载同一构建；两入口 18/19 页导入、19 页真实 ZIP、1/2/5 页旧链、三旧主题、用户字体、撤销重做和 2160×3600 输出全绿；Cloudflare 另完成 5 页原生目录写入；`archive/dist-v1.7.0/` 已生成。旧企业租户 `default` 的「Claude聊天助手」已向刘彦君既有发布会话发送公告，消息 `om_x100b6887b2a35ca8b4a99575b534996` |
 | v1.5.1 发布闭环 | **2026-08-11 全部完成**：`main` 与精确 `v1.5.1` tag 已推送，Cloudflare + OSS/CDN 双轨加载同一构建；两入口的 1/2/5 页、公考 Cover/Inner、标题字形、旧三主题、用户字体、2160×3600 导出和不依赖 dev hook 的 WP1–WP4 生产 UI 冒烟全绿；归档已生成。19:04 CST 使用飞书旧企业租户 `default` 的「Claude聊天助手」机器人发送专业公告至刘彦君 1v1，消息 `om_x100b6884555fe8b4b16098c17098e27` 已回读确认 |
 | v1.5.0 发布闭环 | **2026-08-11 全部完成**：15:48 CST 完成 `main` / 精确 tag 推送、Cloudflare + OSS/CDN 双轨上线、两入口 1/2/5 页公考矩阵及旧三主题/用户字体深回归；16:10 CST 使用飞书旧企业租户的既有机器人将 `docs/RELEASE-v1.5.0.md` 专业公告发送至刘彦君 1v1 私聊并回读确认；Markdown 导入/自动编排继续顺延 |
@@ -22,6 +23,7 @@
 | 仓库 | https://github.com/l-yanjunnn/xhs-poster-editor （public，main） |
 | 本地 | `/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/`，React 工作目录在 `app/` |
 | 测试基线 | v1.7.0 正式版：Vitest **37 文件 / 292 测试**、`tsc -b`、ESLint、Vite build 全绿；新增解析、17/18/19+、范围归一、无丢页/重复页、单文件夹/单 ZIP、清单、目录中断/清单失败续写、超长 UTF-8 文件名、同名普通文件碰撞、发布文案兼容与两端对齐断言。两个生产入口分别通过 18/19 页导入与约 196 MB 的 19 页真实 ZIP，旧链 1/2/5 页、三旧主题、用户字体、撤销重做与标题边界回归全绿；Cloudflare 另完成 5 页真实目录写入，5 张 PNG 与清单完整；两入口 console/page error 均为 0 |
+| v1.7.1 本地门禁 | Vitest **40 文件 / 385 测试**、`tsc -b`、ESLint、Vite build 全绿；最小样例严格指标：行末误差 0、汉缝行内最大偏差 0、混排 baseline 差 0、标点墨迹完整覆盖、双侧可见净空逐边界合规、普通文字夹冒号左右差 0、行末连续标点联合求解与可见右缘误差 0、跨行下划线逐行存在；双引号内侧首选 0.18em（下限 0.14em）、外侧首选 0.22em（下限 0.16em），逗号/顿号文字前距下限 0.15em；预览/导出像素配对的行列 lag 均为 0，H2 竖条顶部差 0、bbox 最大差 1px。真实 19 页 19/19 导出，206 行 / 90 条两端对齐行全部通过 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
@@ -37,7 +39,7 @@
 3. **UI 组件库**：shadcn/ui（Nova preset，Radix 底层），base color = neutral
 4. **CSS**：Tailwind v4（@tailwindcss/vite 插件，配置在 `src/index.css` 的 `@theme` 块，无 tailwind.config.js）
 5. **富文本**：Tiptap 3.x，**不要换**
-6. **字体**：核心字体（思源黑/宋全档）走 fontsource npm 包（unicode-range 分片按需加载，大陆稳）；ZCOOL/Ma Shan Zheng/Long Cang/LXGW/Inter 走 CDN；用户自定义字体走 FontFace API + IndexedDB。苹方简因版权不能嵌
+6. **字体**：核心字体（思源黑/宋全档）走 fontsource npm 包（unicode-range 分片按需加载，大陆稳）；ZCOOL/Ma Shan Zheng/Long Cang/LXGW 走 CDN；用户自定义字体走 FontFace API + IndexedDB。苹方简因版权不能嵌
 7. **主题（原「模板」）**：可复用视觉方案继续统一叫主题；扁平 JSON schema；**只存 assetId 不存 blob URL**（blob URL session-bound，刷新失效，是老模板功能翻车根因）。v1.5 用户口中的「公考模板」按**内置页面角色主题**落地，`contentJSON: null`，套用时不覆盖正文；只有未来确定要携带正文骨架/字段槽位时，才拆独立 `PosterTemplate`
 8. **画布**：真实 9:15（1080×1800），导出 scale 2（2160×3600）；首图只在预览叠加中心 3:4 裁切参考，源图尺寸不变
 9. **分页**：手动 `<hr class="page-break">`（Tiptap HorizontalRule 全部配置为分页符）；装饰分隔线是独立 `Divider` 节点（`hr.divider`）
@@ -51,7 +53,7 @@
 17. **发布文案独立语义**：专用结构中 `# 正文` 以下内容写入草稿可选 `publication` 元数据，只在右栏独立卡片显示/编辑/复制，不混入成品页，不随选择页码复制，不自动添加“上篇 / 下篇”。沿用可选 V2 字段而非强升 V3，优先保证旧版能继续看到导入正文
 18. **普通图文兼容线不是编辑器上限**：高置信兼容线集中在 `productConfig.ts` 的 `ORDINARY_POST_IMAGE_LIMIT`，当前为 18；它只控制提示和全部超限确认。超过后仍完整生成一个草稿、允许手动调整和一次完整导出，不截断、不缩字、不改写、不默认拆草稿；原生长文是另一平台管线，本版不接入
 19. **v1.7 导出交付**：主路径为用户选择父目录后创建一个独立子文件夹，内部逐页生成/关闭文件，最后写 `导出清单.json`；不支持目录写入时回退为一个兼容 ZIP，ZIP 也只有一个顶层文件夹，不按 18 张拆包。范围输入与缩略图多选共用原稿页码；图片名为 `01_主题_cover.png` / `02_主题_inner.png`，重复导出追加 `-02` / `-03`。目录中断仅在同一页面会话内续写剩余页
-20. **中文正文两端对齐**：成品画布和左侧所见即所得正文使用 `text-align: justify`、`text-align-last: left`、`text-justify: inter-character`；H1/H2/H3 保持自然起始对齐。列表与引用仍保留自己的项目符号/竖线结构，必须在真实 1080×1800 画布目检标点、长英文/数字、粗体、软换行和段尾
+20. **中文正文两端对齐**：左侧 Tiptap 编辑区可保留 CSS `text-align: justify` 作为输入反馈；成品画布必须由 `deterministicTextLayout.ts` 生成行级 x/box/gap 并封印快照，预览与导出复用这一份几何，不再依赖浏览器/html2canvas 的 `text-justify` 行为。H1/H2/H3 保持自然起始对齐。列表与引用仍保留自己的项目符号/竖线结构，必须在真实 1080×1800 画布目检标点、长英文/数字、粗体、软换行和段尾
 
 ---
 
@@ -191,7 +193,7 @@ v1.7 在既有像素渲染基座上新增交付编排层，不改 html2canvas �
 
 1. **离屏渲染**（v7 引入）：deep clone `.page` 到 body 直接子节点的 fixed 屏外 stage（无 transform 祖先），bbox 由画布常量固定为 1080×1800。预览的 `transform: scale(0.4)` 与导出彻底解耦，源 DOM 零修改
 2. **onclone 注入全量 CSS**（v8 引入）：html2canvas-pro 把 cloned DOM 放进 about:blank iframe 截图，prod 上 iframe 跨域加载 `<link>` stylesheet 会被 CORS 拦掉 → cloned doc 裸渲染。修法：`collectAllCss()` 把 `document.styleSheets` 全部 cssRules 转 text 注入 cloned doc `<head>`，同时拷贝 `:root` 的 inline CSS vars。对未来新主题/新素材天然鲁棒（全量复制，不依赖具体类名）
-3. **真实字形中线校准**（v1.5.0）：`typographyMetrics.ts` 通过 canvas 的 `actualBoundingBoxAscent/Descent` 按实际字体、字号、字重和每个 grapheme 测量可见字形；`opticalTypography.ts` 只对渲染面校准 H2 前竖线与标题、列表首个可见行的序号与文字中线。预览在字体 revision 变化后异步重算；导出先校准屏外 stage，再在 `onclone` 中以第二个 reference element 复算 iframe 的真实字体，并始终保持源 React DOM 零修改
+3. **真实字形中线校准**（v1.5.0；v1.7.1 收敛为共享快照）：`typographyMetrics.ts` 通过 canvas 的 `actualBoundingBoxAscent/Descent` 按实际字体、字号、字重和每个 grapheme 测量可见字形；`opticalTypography.ts` 在预览事务中校准 H2 竖条与列表 marker，并在列表列宽变化时先重物化再封存。导出不再重算 H2/marker，只对离屏副本做逐 atom 的 html2canvas baseline 适配，然后原样克隆同一 sealed snapshot；源 React DOM 始终零修改
 
 辅助机制：img 解码等待（5s 兜底）、`document.fonts.ready`、字体注册表 revision/缓存失效、异步校准 abort guard、`hasRaceArtifact` 检测 + retry ×2（v5 遗留，v8 下基本不触发，留作兜底）、下载 60s 后才 revoke blob URL。
 
@@ -226,7 +228,7 @@ v1.7 在既有像素渲染基座上新增交付编排层，不改 html2canvas �
 
 ### ⚠️ 待验证疑点（v1.2.0 发现，未处理）
 
-- **CDN 字体（ZCOOL/马善政/Long Cang/LXGW/Inter）在 prod 导出里可能同样回退**：Google Fonts stylesheet 跨域读不到 `cssRules`，被 `collectAllCss()` 跳过；iframe 里 `<link>` 重新加载在 prod 是否成功未验证。验证方法：prod 上 H1 选 ZCOOL 快乐体导出，与预览对比。若坏，治本 = §8 的「其余字体本地化」（fontsource 化后进 styleSheets 自然被覆盖）
+- **CDN 字体（ZCOOL/马善政/Long Cang/LXGW）在 prod 导出里可能同样回退**：Google Fonts stylesheet 跨域读不到 `cssRules`，被 `collectAllCss()` 跳过；iframe 里 `<link>` 重新加载在 prod 是否成功未验证。V1.7.1 会在缺字时阻止导出并显示字体问题，但治本仍是 §8 的「其余字体本地化」（fontsource 化后进 styleSheets 自然被覆盖）
 - 这是下一窗口的 **Gate 0 诊断项**，目前只是疑点，不得写成已确认 bug：若只确认单一生产导出缺陷，优先评估 `v1.5.1`；若同时实施字体本地化、字重档位与性能优化，再正式立项 `v1.6.0`
 
 ---
@@ -571,7 +573,7 @@ v1.7 在既有像素渲染基座上新增交付编排层，不改 html2canvas �
 1. **封面与正文不得互相隔离**：继续使用同一编辑器、同一连续成品画布，用户始终能比较首图和内页的一致性。
 2. **暂不做自由文本框**：后续使用结构化主标题/副标题槽位，配左对齐叠排、居中海报、小字在上大字在下三套高质量版式，并只开放有限位置调整。
 3. **复杂网格已否决，参考线保持简洁**：完整收敛结论见 `docs/GRID-SYSTEM-DIAGNOSIS-2026-08-11.md`。只保留左/中/右/上/下五条线；封面左右继续 `x=120/960`，内页不动。用户已目检确认右侧 Demo 与最终成品：上下为 `y=300/1500`，等于在首图 3:4 可见区 `y=180…1620` 内上下各留 120px；现已随 v1.5.1 上线。不要再实施 6 栏、模块或可见基线网格。
-4. **字体名称已解释清楚**：UI 里的“思源黑体/思源宋体”就是 CSS 中的 `Noto Sans SC / Noto Serif SC`，不是消失了；两者是中日韩字体，不是只服务英文。`serif / sans-serif` 是通用回退类别，`Inter` 目前只作为西文字体/回退，并非独立可选项。main.tsx 现导入 Noto Sans 9 档 + Noto Serif 8 档，而 UI 标题只有二态字重，冗余清理与 CDN 本地化归 v1.6，不混进补丁。
+4. **字体名称已解释清楚**：UI 里的“思源黑体/思源宋体”就是 CSS 中的 `Noto Sans SC / Noto Serif SC`，不是消失了；两者是中日韩字体，不是只服务英文。`serif / sans-serif` 是通用回退类别。main.tsx 现导入 Noto Sans 9 档 + Noto Serif 8 档，而 UI 标题只有二态字重，冗余清理与 CDN 本地化归 v1.6，不混进补丁。
 
 ### v1.5.1 本地工作包
 

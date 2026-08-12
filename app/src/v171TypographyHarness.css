@@ -1,0 +1,235 @@
+body {
+  margin: 0;
+  background: #eef1f5;
+  color: #16181d;
+  font-family: system-ui, "PingFang SC", sans-serif;
+}
+
+.harness-shell {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 28px 0 80px;
+}
+
+.harness-toolbar {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px 24px;
+  align-items: center;
+  padding: 18px 22px;
+  border: 1px solid #d7dce5;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 10px 32px rgb(23 32 48 / 10%);
+  backdrop-filter: blur(12px);
+}
+
+.harness-toolbar h1,
+.harness-toolbar p,
+.harness-shell > section > h2 {
+  margin: 0;
+}
+
+.harness-toolbar p {
+  margin-top: 6px;
+  color: #687184;
+}
+
+.harness-toolbar button {
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.harness-real-source {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px 18px;
+  align-items: end;
+  padding: 18px 22px;
+  border: 1px solid #d7dce5;
+  border-radius: 14px;
+  background: white;
+}
+
+.harness-real-source h2,
+.harness-real-source p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.harness-real-source p {
+  color: #687184;
+}
+
+.harness-real-source textarea {
+  min-height: 96px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #cbd2de;
+  border-radius: 10px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.harness-real-source button {
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #334155;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.harness-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.harness-toolbar output {
+  grid-column: 1 / -1;
+  color: #475569;
+  font-size: 14px;
+}
+
+.harness-shell > section {
+  margin-top: 32px;
+}
+
+.harness-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 432px);
+  gap: 28px;
+  margin-top: 14px;
+}
+
+.harness-page-shell,
+.harness-export-canvas {
+  width: 432px;
+  height: 720px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 12px 30px rgb(22 29 42 / 16%);
+}
+
+.harness-export-item {
+  margin: 0;
+}
+
+.harness-export-item figcaption {
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.harness-save-png {
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.harness-save-png:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.harness-page-shell > .page {
+  transform: scale(0.4);
+  transform-origin: top left;
+}
+
+.harness-export-canvas {
+  display: block;
+  object-fit: contain;
+}
+
+body.harness-capture {
+  width: 2160px;
+  min-width: 2160px;
+  background: white;
+}
+
+.harness-capture .harness-shell {
+  width: 2160px;
+  margin: 0;
+  padding: 0;
+}
+
+.harness-capture .harness-toolbar,
+.harness-capture .harness-real-source,
+.harness-capture section > h2 {
+  display: none;
+}
+
+.harness-capture .harness-shell > section,
+.harness-capture .harness-grid {
+  margin: 0;
+}
+
+.harness-capture .harness-grid {
+  display: block;
+}
+
+.harness-capture .harness-page-shell,
+.harness-capture .harness-export-canvas {
+  width: 2160px !important;
+  height: 3600px !important;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.harness-capture--preview .harness-page-shell > .page {
+  transform: none;
+}
+
+body.harness-capture--preview,
+.harness-capture--preview .harness-shell,
+.harness-capture--preview .harness-page-shell {
+  width: 1080px !important;
+  min-width: 1080px;
+  height: 1800px !important;
+}
+
+.harness-capture--export .harness-page-shell > .page {
+  transform: none;
+}
+
+.harness-capture .harness-export-item,
+.harness-capture .harness-export-item figcaption {
+  margin: 0;
+}
+
+.harness-capture .harness-export-item figcaption {
+  display: none;
+}
+
+.harness-capture .harness-save-png {
+  display: none;
+}
+
+.harness-capture--preview #export-canvases {
+  display: none;
+}
+
+.harness-capture--export #preview-pages {
+  position: fixed;
+  top: 0;
+  left: -3000px;
+  visibility: hidden;
+  pointer-events: none;
+}

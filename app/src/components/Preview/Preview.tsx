@@ -29,6 +29,14 @@ import {
   calibratePageTypography,
   calibratePageTypographyNow,
 } from '@/lib/opticalTypography'
+import {
+  checkDeterministicFontReadiness,
+  DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+} from '@/lib/deterministicFontReadiness'
+import {
+  materializeDeterministicTypography,
+  sealDeterministicTypographySnapshot,
+} from '@/lib/deterministicTypography'
 import type { ThemeKey } from '@/lib/themes'
 
 interface Props {
@@ -305,13 +313,25 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   // 等内部状态更新时 React 重写整棵内容 DOM。只在实际排版输入变化时，
   // 于绘制前恢复图片语义、展示 marker 与光学变量。
   useLayoutEffect(() => {
+    const page = pageRef.current
+    if (!page) return
+    materializeDeterministicTypography(page, {
+      sourceHtml: html,
+      state: 'pending',
+    })
     if (contentRef.current) {
       makeContentImagesKeyboardAccessible(contentRef.current)
     }
-    if (pageRef.current) {
-      calibratePageTypographyNow(pageRef.current, true)
-    }
-  }, [html, isFirstPage, layoutRevision, previewScale, themeClass])
+    calibratePageTypographyNow(page, true)
+  }, [
+    html,
+    isFirstPage,
+    layoutRevision,
+    pageIndex,
+    pageTotal,
+    previewScale,
+    themeClass,
+  ])
 
   const findSelectedImage = useCallback(() => {
     if (!selectedImageId || !contentRef.current) return null
@@ -391,32 +411,199 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     [refreshCanvasGeometry],
   )
 
-  // H2 竖线和有序列表编号是字形伴随元素：首帧先同步
-  // 注入展示 marker，再等精确字体完成后复测。Abort + revision
-  // 防止快速 A→B 切字体时，A 的慢结果回写到 B 上。
+  // 行级快照首帧先同步物化为 pending；然后把“精确字体
+  // 检查 → 恢复 sourceHtml 重物化 → 关闭晚到突变的校准 → ready”
+  // 当成一个可重入事务。只有最后一步会封存 ready；超时后字体
+  // 真正到达时重跑整个事务，不在旧 fallback 快照上只做重测。
+  // effect revision + attempt Abort 同时防止 A→B 切换后 A 的慢结果回写。
   useLayoutEffect(() => {
-    const page = pageRef.current
-    if (!page) return
-    const controller = new AbortController()
+    const pageNode = pageRef.current
+    if (!pageNode) return
+    const page: HTMLDivElement = pageNode
     const revision = ++typographyRevisionRef.current
-    void calibratePageTypography(page, { signal: controller.signal }).then(
-      () => {
-        if (
-          controller.signal.aborted ||
-          revision !== typographyRevisionRef.current
-        ) {
+    const fontSet = page.ownerDocument.fonts
+    let disposed = false
+    let attemptRevision = 0
+    let activeAttempt: AbortController | null = null
+    let awaitingLateFonts = false
+    let lateRetryQueued = false
+    let readyRetryWatched = false
+
+    const effectIsCurrent = () =>
+      !disposed &&
+      revision === typographyRevisionRef.current &&
+      pageRef.current === page &&
+      page.isConnected
+
+    const refreshAfterTypography = () => {
+      if (!effectIsCurrent()) return
+      const geometry = refreshCanvasGeometry()
+      measureSelection(geometry)
+      measureOverflow(geometry)
+    }
+
+    const sealFontError = (
+      issues: Array<{ family: string; weight: string; message: string }>,
+      watchReady: boolean,
+    ) => {
+      if (!effectIsCurrent()) return
+      page.dataset.layoutState = 'font-error'
+      page.dataset.layoutFontIssues = JSON.stringify(
+        issues.length > 0
+          ? issues
+          : [
+              {
+                family: '页面字体',
+                weight: '',
+                message: '字体校准未能完成',
+              },
+            ],
+      )
+      awaitingLateFonts = true
+      if (watchReady && !readyRetryWatched) {
+        readyRetryWatched = true
+        void fontSet.ready.then(
+          () => scheduleLateRetry(),
+          () => undefined,
+        )
+      }
+    }
+
+    const scheduleLateRetry = () => {
+      if (!effectIsCurrent() || !awaitingLateFonts || lateRetryQueued) return
+      lateRetryQueued = true
+      queueMicrotask(() => {
+        lateRetryQueued = false
+        if (!effectIsCurrent() || !awaitingLateFonts) return
+        void runTypographyTransaction()
+      })
+    }
+
+    async function runTypographyTransaction() {
+      if (!effectIsCurrent()) return
+      awaitingLateFonts = false
+      activeAttempt?.abort()
+      const controller = new AbortController()
+      activeAttempt = controller
+      const attempt = ++attemptRevision
+      const attemptIsCurrent = () =>
+        effectIsCurrent() &&
+        !controller.signal.aborted &&
+        attempt === attemptRevision
+
+      if (page.dataset.layoutState === 'font-error') {
+        page.dataset.layoutState = 'pending'
+      }
+
+      try {
+        const fontResult = await checkDeterministicFontReadiness(page, {
+          timeoutMs: 5_000,
+          allowlistedFamilies: DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
+        })
+        if (!attemptIsCurrent()) return
+        if (!fontResult.ok) {
+          sealFontError(
+            fontResult.issues.map((issue) => ({
+              family: issue.family,
+              weight: issue.weight,
+              message: issue.message,
+            })),
+            fontResult.issues.some((issue) => issue.reason === 'timeout'),
+          )
+          refreshAfterTypography()
           return
         }
-        const geometry = refreshCanvasGeometry()
-        measureSelection(geometry)
-        measureOverflow(geometry)
-      },
-    )
-    return () => controller.abort()
+
+        page.removeAttribute('data-layout-font-issues')
+        let markerGeometryStable = false
+        // 字体最终就绪后，序号“9. → 10.”可能让列宽改变。
+        // 一旦校准改了列表版心，必须在同一事务内用新列宽重做
+        // 行级求解与校准；绝不封存旧 line width。
+        for (let pass = 0; pass < 2; pass += 1) {
+          const layoutResult = materializeDeterministicTypography(page, {
+            sourceHtml: html,
+            state: 'pending',
+          })
+          if (!attemptIsCurrent()) return
+          if (contentRef.current) {
+            makeContentImagesKeyboardAccessible(contentRef.current)
+          }
+          const markerGeometryBefore =
+            page.dataset.layoutListMarkerGeometry ?? '[]'
+
+          const calibration = await calibratePageTypography(page, {
+            signal: controller.signal,
+            recalibrateOnLateFonts: false,
+          })
+          if (!attemptIsCurrent() || calibration.status === 'aborted') return
+          if (calibration.status !== 'ready') {
+            sealFontError(
+              calibration.fontIssues.map((issue) => ({
+                family: issue.font,
+                weight: '',
+                message:
+                  issue.reason === 'timeout'
+                    ? `字体校准等待超时：${issue.font}`
+                    : `字体校准加载失败：${issue.font}`,
+              })),
+              calibration.fontIssues.some(
+                (issue) => issue.reason === 'timeout',
+              ),
+            )
+            refreshAfterTypography()
+            return
+          }
+          if (layoutResult.issues.length > 0) {
+            refreshAfterTypography()
+            return
+          }
+
+          markerGeometryStable =
+            (page.dataset.layoutListMarkerGeometry ?? '[]') ===
+            markerGeometryBefore
+          if (markerGeometryStable) break
+        }
+        if (!markerGeometryStable) {
+          throw new Error('列表序号字体就绪后列宽仍不稳定')
+        }
+
+        sealDeterministicTypographySnapshot(page)
+        page.removeAttribute('data-layout-font-issues')
+        page.dataset.layoutState = 'ready'
+        awaitingLateFonts = false
+        refreshAfterTypography()
+      } catch (error: unknown) {
+        if (!attemptIsCurrent()) return
+        sealFontError(
+          [
+            {
+              family: '页面字体',
+              weight: '',
+              message:
+                error instanceof Error ? error.message : String(error),
+            },
+          ],
+          fontSet.status === 'loading',
+        )
+        refreshAfterTypography()
+      }
+    }
+
+    const handleFontsLoaded = () => scheduleLateRetry()
+    fontSet.addEventListener('loadingdone', handleFontsLoaded)
+    void runTypographyTransaction()
+    return () => {
+      disposed = true
+      awaitingLateFonts = false
+      activeAttempt?.abort()
+      fontSet.removeEventListener('loadingdone', handleFontsLoaded)
+    }
   }, [
     html,
     isFirstPage,
     layoutRevision,
+    pageIndex,
+    pageTotal,
     measureOverflow,
     measureSelection,
     previewScale,
@@ -451,9 +638,6 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
     const geometry = refreshCanvasGeometry()
     measureSelection(geometry)
     measureOverflow(geometry)
-    void document.fonts.ready.then(() => {
-      if (!disposed) remeasure()
-    })
     return () => {
       disposed = true
       window.cancelAnimationFrame(animationFrame)
@@ -759,6 +943,7 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
           <div
             ref={setPageNode}
             className={cn('page', themeClass, isFirstPage && 'page--first')}
+            data-page-number={pageIndex + 1}
             onClick={handlePageClick}
             onKeyDown={handlePageKeyDown}
           >

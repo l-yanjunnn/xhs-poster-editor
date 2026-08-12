@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-12T09:03:09.154951Z",
+  "capturedAtBeijing": "2026-08-12T17:03:09+08:00",
+  "exportCapturedAt": "2026-08-12T08:59:17.316052+00:00",
+  "input": {
+    "mode": "harness-textarea-ui",
+    "injectedSha256": "dee138407085e8c93463487d828df39836f321895320e5a2f2ea4251acdce7b6",
+    "injectedCharacters": 4279,
+    "separatorCount": 18,
+    "pageCount": 19,
+    "repositoryPublicSourceRetained": false
+  },
+  "implementationFingerprint": {
+    "app/src/lib/deterministicTextLayout.ts": "81056049d38909c7b7433d3ba0579c01011714016ab0e9ae8253ecafcdaa3c82",
+    "app/src/lib/deterministicTypography.ts": "d64f2967037fff2dedc6c5bdbda06c141211227d2d2de5448a42163dc2a86b8f",
+    "app/src/v171TypographyHarness.ts": "87c166f7c3d0acdee4a7c99326c9ab3b9d8c8e3f67b5976f8ac5394a178c07da",
+    "tools/export-race-repro/analyze-v171-captures.py": "bcce19a115a7a25190e286c964b2f85a79205ec7645daaa61bb3d8bf3de90052"
+  },
+  "analysis": {
+    "expectedWidth": 2160,
+    "expectedHeight": 3600,
+    "topBottomBandHeight": 780,
+    "repeatMaeThresholdRaw": 1,
+    "detector": "tools/export-race-repro/analyze-v171-captures.py::analyze_image"
+  },
+  "aggregate": {
+    "requestedPages": [
+      1,
+      2,
+      3,
+      5,
+      19
+    ],
+    "pngCount": 5,
+    "dimensionPassCount": 5,
+    "snapshotMatchCount": 5,
+    "repeatDetectedCount": 0,
+    "exactTopBottomMatchCount": 0,
+    "passedCount": 5
+  },
+  "pages": [
+    {
+      "page": 1,
+      "snapshot": "19d294ff",
+      "canvasSnapshot": "19d294ff",
+      "snapshotMatch": true,
+      "baselineHash": "e26cd536",
+      "renderHash": "aba279d1",
+      "exportStatus": "passed",
+      "file": {
+        "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after-punctuation-optics/real-p01-export-2160.png",
+        "sha256": "9a3b9e27cbc61f1245800358bc253b4146135fc63a5ed31eb8f41df07fc8c021",
+        "bytes": 461006,
+        "format": "PNG",
+        "mode": "RGBA",
+        "width": 2160,
+        "height": 3600,
+        "sizeMatches": true
+      },
+      "topBottomRepeat": {
+        "bandHeight": 780,
+        "meanAbsoluteErrorRaw": 5.312439,
+        "meanAbsoluteErrorNormalized": 0.020833,
+        "rootMeanSquareErrorRaw": 33.193968,
+        "topSignalStddevRaw": 32.766103,
+        "exactMatch": false,
+        "thresholdRaw": 1.0,
+        "detected": false,
+        "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+      },
+      "checks": [
+        {
+          "name": "png-dimensions",
+          "pass": true,
+          "measured": {
+            "width": 2160,
+            "height": 3600
+          },
+          "limit": {
+            "width": 2160,
+            "height": 3600
+          }
+        },
+        {
+          "name": "no-top-bottom-repeat",
+          "pass": true,
+          "measured": 5.312439,
+          "limit": "> 1.0 raw RGB levels when top has signal"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "page": 2,
+      "snapshot": "8754a1e9",
+      "canvasSnapshot": "8754a1e9",
+      "snapshotMatch": true,
+      "baselineHash": "6ef3a0df",
+      "renderHash": "a4835cef",
+      "exportStatus": "passed",
+      "file": {
+        "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after-punctuation-optics/real-p02-export-2160.png",
+        "sha256": "325ea968aea8dfcd8aa934bb88a81a22037c48094bb0ddff4ceac27d9ca30318",
+        "bytes": 863548,
+        "format": "PNG",
+        "mode": "RGBA",
+        "width": 2160,
+        "height": 3600,
+        "sizeMatches": true
+      },
+      "topBottomRepeat": {
+        "bandHeight": 780,
+        "meanAbsoluteErrorRaw": 21.14701,
+        "meanAbsoluteErrorNormalized": 0.082929,
+        "rootMeanSquareErrorRaw": 65.10587,
+        "topSignalStddevRaw": 43.335664,
+        "exactMatch": false,
+        "thresholdRaw": 1.0,
+        "detected": false,
+        "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+      },
+      "checks": [
+        {
+          "name": "png-dimensions",
+          "pass": true,
+          "measured": {
+            "width": 2160,
+            "height": 3600
+          },
+          "limit": {
+            "width": 2160,
+            "height": 3600
+          }
+        },
+        {
+          "name": "no-top-bottom-repeat",
+          "pass": true,
+          "measured": 21.14701,
+          "limit": "> 1.0 raw RGB levels when top has signal"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "page": 3,
+      "snapshot": "c1da489c",
+      "canvasSnapshot": "c1da489c",
+      "snapshotMatch": true,
+      "baselineHash": "1eb7ddf1",
+      "renderHash": "00c31d89",
+      "exportStatus": "passed",
+      "file": {
+        "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after-punctuation-optics/real-p03-export-2160.png",
+        "sha256": "56099b78654b645383d885f61512d184e236a5ca970ee682c185b7c53d8110c9",
+        "bytes": 645292,
+        "format": "PNG",
+        "mode": "RGBA",
+        "width": 2160,
+        "height": 3600,
+        "sizeMatches": true
+      },
+      "topBottomRepeat": {
+        "bandHeight": 780,
+        "meanAbsoluteErrorRaw": 15.48145,
+        "meanAbsoluteErrorNormalized": 0.060712,
+        "rootMeanSquareErrorRaw": 55.751823,
+        "topSignalStddevRaw": 53.559224,
+        "exactMatch": false,
+        "thresholdRaw": 1.0,
+        "detected": false,
+        "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+      },
+      "checks": [
+        {
+          "name": "png-dimensions",
+          "pass": true,
+          "measured": {
+            "width": 2160,
+            "height": 3600
+          },
+          "limit": {
+            "width": 2160,
+            "height": 3600
+          }
+        },
+        {
+          "name": "no-top-bottom-repeat",
+          "pass": true,
+          "measured": 15.48145,
+          "limit": "> 1.0 raw RGB levels when top has signal"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "page": 5,
+      "snapshot": "582ba672",
+      "canvasSnapshot": "582ba672",
+      "snapshotMatch": true,
+      "baselineHash": "357680fe",
+      "renderHash": "25cb67c9",
+      "exportStatus": "passed",
+      "file": {
+        "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after-punctuation-optics/real-p05-export-2160.png",
+        "sha256": "e61b9611a70396fc76a35bb326da11e9c2d56cbbeead2d571102ad20535801d3",
+        "bytes": 646689,
+        "format": "PNG",
+        "mode": "RGBA",
+        "width": 2160,
+        "height": 3600,
+        "sizeMatches": true
+      },
+      "topBottomRepeat": {
+        "bandHeight": 780,
+        "meanAbsoluteErrorRaw": 11.524389,
+        "meanAbsoluteErrorNormalized": 0.045194,
+        "rootMeanSquareErrorRaw": 48.110874,
+        "topSignalStddevRaw": 46.71022,
+        "exactMatch": false,
+        "thresholdRaw": 1.0,
+        "detected": false,
+        "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+      },
+      "checks": [
+        {
+          "name": "png-dimensions",
+          "pass": true,
+          "measured": {
+            "width": 2160,
+            "height": 3600
+          },
+          "limit": {
+            "width": 2160,
+            "height": 3600
+          }
+        },
+        {
+          "name": "no-top-bottom-repeat",
+          "pass": true,
+          "measured": 11.524389,
+          "limit": "> 1.0 raw RGB levels when top has signal"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "page": 19,
+      "snapshot": "c7021971",
+      "canvasSnapshot": "c7021971",
+      "snapshotMatch": true,
+      "baselineHash": "1ecef80e",
+      "renderHash": "32d46827",
+      "exportStatus": "passed",
+      "file": {
+        "path": "/Users/a0000/Nutstore Files/Claude_YJ/xhs-poster-小红书排版/docs/v1.7.1/after-punctuation-optics/real-p19-export-2160.png",
+        "sha256": "49b75db035fda89bc41e1acb62ce5c516e1fab529fdd36e8c058940bba85090c",
+        "bytes": 473668,
+        "format": "PNG",
+        "mode": "RGBA",
+        "width": 2160,
+        "height": 3600,
+        "sizeMatches": true
+      },
+      "topBottomRepeat": {
+        "bandHeight": 780,
+        "meanAbsoluteErrorRaw": 8.535711,
+        "meanAbsoluteErrorNormalized": 0.033473,
+        "rootMeanSquareErrorRaw": 41.396816,
+        "topSignalStddevRaw": 40.507259,
+        "exactMatch": false,
+        "thresholdRaw": 1.0,
+        "detected": false,
+        "note": "A low-error match is only flagged when the top band contains visible signal; an exact match is always flagged."
+      },
+      "checks": [
+        {
+          "name": "png-dimensions",
+          "pass": true,
+          "measured": {
+            "width": 2160,
+            "height": 3600
+          },
+          "limit": {
+            "width": 2160,
+            "height": 3600
+          }
+        },
+        {
+          "name": "no-top-bottom-repeat",
+          "pass": true,
+          "measured": 8.535711,
+          "limit": "> 1.0 raw RGB levels when top has signal"
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}

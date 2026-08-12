@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-08-12T08:58:18.696Z",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36",
+  "sourceSha256": "7f0ab2ec71ed1e245f7d2fd3b948f9bac9f36a5e25c29792a5fccd6c43d7d764",
+  "sourceCharacters": 439,
+  "pageCount": 1,
+  "passedCount": 1,
+  "records": [
+    {
+      "page": 1,
+      "sourceSnapshot": "85a43558",
+      "canvasSnapshot": "85a43558",
+      "snapshotMatch": true,
+      "baselineHash": "989c9c74",
+      "renderHash": "1d4b48ff",
+      "width": 2160,
+      "height": 3600,
+      "status": "passed"
+    }
+  ]
+}

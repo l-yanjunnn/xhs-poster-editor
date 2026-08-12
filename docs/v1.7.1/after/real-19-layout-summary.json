@@ -1,0 +1,21 @@
+{
+  "atoms": 3516,
+  "baselineSpread": 0,
+  "issues": 0,
+  "justified": 92,
+  "lines": 208,
+  "maxHanDev": 8.881784197001252e-16,
+  "maxRightError": 0,
+  "pages": 19,
+  "punctuationMax": 1,
+  "punctuationMin": 0.5,
+  "ready": 19,
+  "sealed": 19,
+  "snapshots": 19,
+  "underlines": 0,
+  "input": {
+    "path": "/Users/a0000/Downloads/标题：申论还原型概括题：材料什么结构，答案就什么结构.md",
+    "sha256": "35bea5f30c6d9f6c9e185b83c0e402f3324ccadaf030b22efdd4280ef3d3c16e",
+    "boundaryRestoredBefore": "可在作答上，对比前面的作答"
+  }
+}
