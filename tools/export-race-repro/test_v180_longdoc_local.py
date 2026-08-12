@@ -9,6 +9,8 @@ import sys
 from playwright.async_api import async_playwright, expect
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:4173/"
+# Playwright 默认直连不走系统代理；Cloudflare 入口必须显式代理（对齐 test_prod_deep）
+USE_PROXY = "workers.dev" in URL
 EDITOR = ".editor-scroll-area"
 CANVAS = ".workspace-canvas-panel"
 FIXTURE_19 = "超限19页导出演示.md"
@@ -68,15 +70,18 @@ async def main():
     problems = []
     console_errors = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            proxy={"server": "http://127.0.0.1:7897"} if USE_PROXY else None,
+        )
         page = await browser.new_page(viewport={"width": 1440, "height": 900})
         page.on(
             "console",
             lambda m: console_errors.append(m.text) if m.type == "error" else None,
         )
         page.on("pageerror", lambda e: console_errors.append(str(e)))
-        await page.goto(URL, wait_until="domcontentloaded")
-        await page.wait_for_selector(".page")
+        await page.goto(URL, wait_until="domcontentloaded", timeout=120_000)
+        await page.wait_for_selector(".page", timeout=60_000)
         await page.wait_for_timeout(2000)
 
         # ---- 导入 19 页 fixture ----
