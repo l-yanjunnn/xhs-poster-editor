@@ -65,21 +65,21 @@
 
 ### P2 光标每移动一格整棵 App 树重渲染
 - 位置：`components/Editor/Editor.tsx:236-276`（`reportEditorState` 每次新对象字面量）+ `App.tsx:2215-2217`（裸 setState）。
-- 修法：上报前浅比较 bail out（ref 持有上次值），或 App 端函数式 setState 比较。**→ v1.8.2 已实现待发版**：Editor 侧 `lastReportedRef` 持有上次三态，`sameImageState/sameTextSelectionState/sameHistoryState` 逐字段比较，值未变不回调 App（`Editor.tsx` reportEditorState）。
+- 修法：上报前浅比较 bail out（ref 持有上次值），或 App 端函数式 setState 比较。**→ v1.8.2 已实现并发版**：Editor 侧 `lastReportedRef` 持有上次三态，`sameImageState/sameTextSelectionState/sameHistoryState` 逐字段比较，值未变不回调 App（`Editor.tsx` reportEditorState）。
 
 ### P3 每次击键全部 Preview 页重渲染 + ref 回调每帧脱挂重挂
 - 位置：`App.tsx:2249-2272`（内联 ref/回调）+ `Preview.tsx:276`（无 memo）。
-- 修法：`memo(Preview)` + 回调/ref 工厂稳定化。与 P2 合并做收益最大。**→ v1.8.2 已实现待发版**：`memo(forwardRef(Preview))`；App 侧 `getPageRefCallback` 按页序缓存 ref 回调、`handleSelectCanvasImage/handleClearCanvasSelection/handleCommitCanvasImage/recordRecentAction` 全部 useCallback 固定。真实浏览器回归双向滚动联动/开关/图片选择全过。
+- 修法：`memo(Preview)` + 回调/ref 工厂稳定化。与 P2 合并做收益最大。**→ v1.8.2 已实现并发版**：`memo(forwardRef(Preview))`；App 侧 `getPageRefCallback` 按页序缓存 ref 回调、`handleSelectCanvasImage/handleClearCanvasSelection/handleCommitCanvasImage/recordRecentAction` 全部 useCallback 固定。真实浏览器回归双向滚动联动/开关/图片选择全过。
 
 ### P4 每次击键同步全文 stringify + 写 localStorage WAL（两个维度独立发现）
 - 位置：`App.tsx:929-940` + `lib/documentStore.ts:560-582`。
-- 修法：WAL 写入纳入短防抖（如 200ms），保留 visibilitychange/pagehide 同步兜底——崩溃保护窗口几乎不变，按键路径成本归零。**→ v1.8.2 已实现待发版**：`WAL_DEBOUNCE_MS=200` + `walTimerRef`，定时器带 recoveryId 守卫防复活已清除 WAL；`clearAutosaveTimer` 同步清 WAL 计时器；visibilitychange/pagehide 同步兜底原样保留。真实浏览器验证：防抖后 WAL 真实写入、900ms 自动保存清 WAL 路径不变、编辑后立即刷新内容不丢。
+- 修法：WAL 写入纳入短防抖（如 200ms），保留 visibilitychange/pagehide 同步兜底——崩溃保护窗口几乎不变，按键路径成本归零。**→ v1.8.2 已实现并发版**：`WAL_DEBOUNCE_MS=200` + `walTimerRef`，定时器带 recoveryId 守卫防复活已清除 WAL；`clearAutosaveTimer` 同步清 WAL 计时器；visibilitychange/pagehide 同步兜底原样保留。真实浏览器验证：防抖后 WAL 真实写入、900ms 自动保存清 WAL 路径不变、编辑后立即刷新内容不丢。
 
 ### P5 导出基线校准逐 atom 写读交替，强制逐字素 reflow
 - 位置：`lib/deterministicTypography.ts:872-885`。同文件 `:783-786` 已有"批量写后统一读"的正确范式可沿用。**→ v1.9.0**
 
 ### P6 `collectAllCss()` + `getUserFontFaceCss()` 每页每次尝试全量重算
-- 位置：`lib/exportPng.ts:223`。数百 KB 字符串 × 30 页 × 最多 3 次 retry；导出批内 CSS 不可能变。批开头算一次经 options 透传。**→ v1.8.2 已实现待发版**：新增 `buildExportBatchCss()`（collectAllCss + 用户字体 @font-face），`RenderPageOptions.cssText` 透传；`exportDelivery` 的 `writeDirectoryPlan`/`executeZipExport` 批开头各算一次。onclone 注入策略不变，缺省单页路径自行现算语义一致。
+- 位置：`lib/exportPng.ts:223`。数百 KB 字符串 × 30 页 × 最多 3 次 retry；导出批内 CSS 不可能变。批开头算一次经 options 透传。**→ v1.8.2 已实现并发版**：新增 `buildExportBatchCss()`（collectAllCss + 用户字体 @font-face），`RenderPageOptions.cssText` 透传；`exportDelivery` 的 `writeDirectoryPlan`/`executeZipExport` 批开头各算一次。onclone 注入策略不变，缺省单页路径自行现算语义一致。
 
 ### P7 基线 probe 未按 (font, lineHeight) 去重
 - 位置：`lib/deterministicTypography.ts:749-808`（每字素一个 probe；同 font+lineHeight 基线必然相同，去重后每块 1–3 个）；`lineBaseline`（`:696-742`）同理可缓存。**→ v1.9.0**
@@ -98,9 +98,9 @@
 ## 三、可维护性 / 死代码
 
 ### M1 `exportPages` 遗留管线（约 50 行）——保障降级的平行路径
-- 位置：`lib/exportPng.ts:1-2,133,342-390`。零调用；无清单、无 warning 白名单、文件名规则与现行相悖，误接上会静默不一致。连带：JSZip 导入仅它使用、`triggerDownload` 与 `exportDelivery.ts:340` 逐字重复、`:133` 与 `:365-369` 注释失实。`suggestFilename` 仍在用须保留。**→ v1.8.2 已实现待发版**：`exportPages`/`triggerDownload`/JSZip 导入已删，`:133` 失实注释改为指向 renderPagePngBlob 交付层；`suggestFilename` 保留；exportPng.test 本就未引用 exportPages，无测试改动。
+- 位置：`lib/exportPng.ts:1-2,133,342-390`。零调用；无清单、无 warning 白名单、文件名规则与现行相悖，误接上会静默不一致。连带：JSZip 导入仅它使用、`triggerDownload` 与 `exportDelivery.ts:340` 逐字重复、`:133` 与 `:365-369` 注释失实。`suggestFilename` 仍在用须保留。**→ v1.8.2 已实现并发版**：`exportPages`/`triggerDownload`/JSZip 导入已删，`:133` 失实注释改为指向 renderPagePngBlob 交付层；`suggestFilename` 保留；exportPng.test 本就未引用 exportPages，无测试改动。
 ### M2 预检门控逻辑两处分叉
-- `lib/exportReadiness.ts:237-248` `assertExportReadiness` 生产已死（仅自身测试引用）；`App.tsx:1984-1990` 内联复制同一套 blocking/warning 规则。让 App 复用或删除死版本并把测试对准真实路径。**→ v1.8.2 已实现待发版**：死版本 `assertExportReadiness` 删除，改为纯门控 `assertNoBlockingExportIssues(issues, { allowWarnings })`；App 导出闸门把 Canvas 探针/已知资源/字体恢复问题 concat 进 issues 后调用同一实现；测试改走真实路径（checkExportReadiness + 门控组合），语义完全不变。
+- `lib/exportReadiness.ts:237-248` `assertExportReadiness` 生产已死（仅自身测试引用）；`App.tsx:1984-1990` 内联复制同一套 blocking/warning 规则。让 App 复用或删除死版本并把测试对准真实路径。**→ v1.8.2 已实现并发版**：死版本 `assertExportReadiness` 删除，改为纯门控 `assertNoBlockingExportIssues(issues, { allowWarnings })`；App 导出闸门把 Canvas 探针/已知资源/字体恢复问题 concat 进 issues 后调用同一实现；测试改走真实路径（checkExportReadiness + 门控组合），语义完全不变。
 ### M3 FNV-1a hash 三处复制
 - `deterministicTextLayout.ts:1912-1917` / `deterministicTypography.ts:618-625` / round-to-milli 逻辑两份（`opticalTypography.ts:76-79`、`deterministicTextLayout.ts:1888-1890`）。快照 hash 是"预览=导出"契约核心，分叉即最难排查的 mismatch。抽 ~15 行共享模块。
 ### M4 带说明书的陷阱：`clearTypographyMetricsCache(family)` 分支
@@ -142,7 +142,7 @@
 | 版本 | 内容 |
 |---|---|
 | **v1.8.1 修复版** | R1 fontSize clamp、R2 Canvas fallback fail-closed、R3 中断根因透出、R4 DOMParser、R6 分隔线 `-{3,}`、R8 rafRef 清零、荧光笔默认透明度 50%→25%（ROADMAP P2） |
-| **v1.8.2 性能版** | P2+P3 渲染性能三连、P4 WAL 防抖、P6 collectAllCss 缓存；顺手删 M1 死管线、M2 门控分叉。**2026-08-13 已全部实现待发版**：四门禁全绿（tsc/Vitest 41 文件 412 测试/ESLint/build），真实浏览器自查 23/23（打字/荧光笔/图片选择/12 页打字/撤销重做/双向滚动联动与开关/WAL 三路径/console 0），脚本与截图在 scratchpad/v182；`app/package.json` 已 bump 1.8.2 |
+| **v1.8.2 性能版** | P2+P3 渲染性能三连、P4 WAL 防抖、P6 collectAllCss 缓存；顺手删 M1 死管线、M2 门控分叉。**2026-08-13 已全部实现并完成双轨发布闭环（公告 om_x100b68fef232dca0de2af09d3045f55）**：四门禁全绿（tsc/Vitest 41 文件 412 测试/ESLint/build），真实浏览器自查 23/23（打字/荧光笔/图片选择/12 页打字/撤销重做/双向滚动联动与开关/WAL 三路径/console 0），脚本与截图在 scratchpad/v182；`app/package.json` 已 bump 1.8.2 |
 | **v1.9.0** | 字体本地化（原计划）+ P1 DP 求解器 + P5/P7 基线批量化（配 profile） |
 | 随功能版顺带 | M7 App.tsx 拆分、M3 hash 合并、R5 打开草稿冗余落盘、其余小项 |
 | 待产品拍板 | R7 英文段落 justify 弹性（或明示为产品边界） |
