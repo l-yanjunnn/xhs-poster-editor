@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-12（v1.7.2「确定性排版修复版」发布闭环已完成；新增 P0 需求 `REQ-EXPORT-PREFLIGHT-OVERRIDE` 与 P1 需求 `REQ-LONGDOC-SCROLL-SYNC`，均已完成产品边界标记，尚未开发或发布。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-12（v1.7.2「确定性排版修复版」发布闭环已完成；新增 P0 需求 `REQ-EXPORT-PREFLIGHT-OVERRIDE` 与 P1 需求 `REQ-LONGDOC-SCROLL-SYNC`，均已完成产品边界标记，尚未开发或发布。同日晚间：**Gate 0 CDN 字体诊断完成，疑点不成立**，见 §5 与 `docs/FONT-GATE0-2026-08-12.md`。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -256,10 +256,11 @@ v1.7 在既有像素渲染基座上新增交付编排层，不改 html2canvas �
 1. ~~**用户上传字体不参与导出渲染**~~：fontRegistry 注册时同存 `Map<family, blobURL>`（`getUserFontFaceCss()`），exportPng 的 onclone 把用户字体 `@font-face` 追加进注入 CSS，并 `await clonedDoc.fonts.ready`（3s 兜底）。本地像素对比验证：用户字体 vs 默认字体导出差异 10.4 万暗像素（字体真实生效）
 2. ~~**「包含正文」主题里的插图存的是 blob URL**~~：image 节点加 `assetId` attribute（`data-asset-id`），applyTheme 时 `resolveContentImages()` 按 id 从 IndexedDB 重新 resolve src（纯遍历逻辑 `mapContentImages` 有单测）。注意：v1.2.0 之前保存的含插图旧主题无 assetId，无法修复，需重新保存
 
-### ⚠️ 待验证疑点（v1.2.0 发现，未处理）
+### ✅ 疑点已验证不成立（Gate 0 诊断 2026-08-12 完成）
 
-- **CDN 字体（ZCOOL/马善政/Long Cang/LXGW）在 prod 导出里可能同样回退**：Google Fonts stylesheet 跨域读不到 `cssRules`，被 `collectAllCss()` 跳过；iframe 里 `<link>` 重新加载在 prod 是否成功未验证。V1.7.1 会在缺字时阻止导出并显示字体问题，但治本仍是 §8 的「其余字体本地化」（fontsource 化后进 styleSheets 自然被覆盖）
-- 这是后续字体工作的 **Gate 0 诊断项**，目前只是疑点，不得写成已确认 bug：若只确认单一生产导出缺陷，使用当期新补丁版本；若同时实施字体本地化、字重档位与性能优化，再按 `docs/ROADMAP-2026-08-12.md` 拆分为 ≥v1.9.0 功能版
+- ~~CDN 字体（ZCOOL/马善政/Long Cang/LXGW）在 prod 导出里可能同样回退~~：**不成立**。两生产入口（Cloudflare 走代理 + 大陆通道强制 `--no-proxy-server` 真直连）实测 5 个 CDN 字体在预览与导出 PNG 中均真实生效。机制：`collectAllCss()` 确实跳过跨域表（每次导出 2 条 skip 警告），但克隆文档里的 `<link>` 会重新加载 CDN CSS/woff2 且实测全部 200；预览用过即有缓存，导出期重请求即时命中
+- 完整证据、加载体积、直连时延与残余风险（冷缓存+慢网的 3s 兜底窗口）见 `docs/FONT-GATE0-2026-08-12.md`；诊断脚本 `tools/font-gate0/gate0_cdn_fonts_prod.py` 可重跑复现。**结论：无需当期补丁版本；字体本地化按 ROADMAP 以 ≥v1.9.0 性能/可靠性优化立项**
+- 附带方法论坑：Playwright chromium 不传 proxy 仍走 macOS 系统代理，测「大陆直连」必须 `--no-proxy-server`（`test_prod_deep.py` 注释中的「自动直连」实为假直连，对其回归用途无影响）
 
 ---
 
