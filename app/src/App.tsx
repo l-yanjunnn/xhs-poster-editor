@@ -85,9 +85,8 @@ import {
   resumeDirectoryExport,
 } from '@/lib/exportDelivery'
 import {
+  assertNoBlockingExportIssues,
   checkExportReadiness,
-  ExportReadinessError,
-  isBlockingExportIssue,
 } from '@/lib/exportReadiness'
 import {
   hasBlockingDeterministicLayoutIssues,
@@ -128,6 +127,10 @@ import './styles/canvas.css'
 import './styles/workspace.css'
 
 const AUTOSAVE_DELAY_MS = 900
+// WAL（localStorage 恢复日志）短防抖：连续击键时不再每键同步
+// stringify + 写盘。真正的关页兜底由 visibilitychange/pagehide 的
+// 同步捕获负责，崩溃保护窗口最多只放宽这 200ms。
+const WAL_DEBOUNCE_MS = 200
 const WRITER_LOCK_NAME = 'xhs-poster-editor-single-writer-v1'
 const WRITER_LOCK_RETRY_MS = 1_000
 const EMPTY_DOCUMENT_JSON = {
@@ -288,6 +291,7 @@ function App() {
   const [writerLeaseState, setWriterLeaseState] =
     useState<WriterLeaseState>('checking')
   const autosaveTimerRef = useRef<number | null>(null)
+  const walTimerRef = useRef<number | null>(null)
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
   const editRevisionRef = useRef(0)
   const documentRevisionRef = useRef(0)
@@ -315,6 +319,23 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false)
   // 收集多页 .page DOM 节点供导出截图使用
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
+  // P3：Preview 已 memo。每页 ref 回调按页序缓存，保持跨渲染身份稳定；
+  // 否则每次渲染 React 会以 null→节点重挂 ref，且 memo 永远失效。
+  // 卸载时 React 仍会用 null 回调同一函数，pageRefs 语义不变，
+  // 滚动联动/导出对 pageRefs.current 的消费不受影响。
+  const pageRefCallbacksRef = useRef<
+    Array<(element: HTMLDivElement | null) => void>
+  >([])
+  const getPageRefCallback = useCallback((index: number) => {
+    let callback = pageRefCallbacksRef.current[index]
+    if (!callback) {
+      callback = (element: HTMLDivElement | null) => {
+        pageRefs.current[index] = element
+      }
+      pageRefCallbacksRef.current[index] = callback
+    }
+    return callback
+  }, [])
   // v1.8 滚动联动：会话态开关（不进草稿/undo/导出）+ 中栏滚动容器与 sticky 标题
   const [scrollSyncOn, setScrollSyncOn] = useState(true)
   const canvasPanelRef = useRef<HTMLElement | null>(null)
@@ -515,6 +536,19 @@ function App() {
     },
     [],
   )
+
+  // P3：Preview 已 memo，onCommitImage 等函数 props 必须身份稳定；
+  // recordRecentAction 是它们的公共依赖，提前用 useCallback 固定。
+  const recordRecentAction = useCallback((label: string) => {
+    setRecentActions((previous) => [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        label,
+        time: Date.now(),
+      },
+      ...previous,
+    ].slice(0, 5))
+  }, [])
 
   const ensureUserFontsLoaded = useCallback(() => {
     if (!fontRestorePromiseRef.current) {
@@ -932,11 +966,25 @@ function App() {
     if (snapshot) {
       pendingSnapshotRef.current = snapshot
       dirtyDocumentRef.current = false
-      if (!writeEditorDocumentRecovery(snapshot)) {
-        setDraftStorageError(
-          '草稿内容过大或浏览器限制了临时保护；请等待“已保存”后再关闭页面。',
-        )
+      // WAL 写入走 200ms 短防抖：连续击键只在停顿后 stringify + 落
+      // localStorage 一次。切后台/关页仍由 visibilitychange/pagehide
+      // 的同步捕获兜底（见下一个 effect），保护窗口不实质变差。
+      if (walTimerRef.current !== null) {
+        window.clearTimeout(walTimerRef.current)
       }
+      walTimerRef.current = window.setTimeout(() => {
+        walTimerRef.current = null
+        // 更新的快照或已完成的正式落盘会先改写 pendingSnapshotRef；
+        // 只保护仍然待写的那一份，避免复活已被清除的 WAL。
+        if (pendingSnapshotRef.current?.recoveryId !== snapshot.recoveryId) {
+          return
+        }
+        if (!writeEditorDocumentRecovery(snapshot)) {
+          setDraftStorageError(
+            '草稿内容过大或浏览器限制了临时保护；请等待“已保存”后再关闭页面。',
+          )
+        }
+      }, WAL_DEBOUNCE_MS)
     }
     autosaveTimerRef.current = window.setTimeout(() => {
       autosaveTimerRef.current = null
@@ -1465,31 +1513,28 @@ function App() {
     }
   }
 
-  function recordRecentAction(label: string) {
-    setRecentActions((previous) => [
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        label,
-        time: Date.now(),
-      },
-      ...previous,
-    ].slice(0, 5))
-  }
-
-  function handleSelectCanvasImage(imageId: string) {
+  // P3：中央画布每页都接收这几个回调；Preview 已 memo，回调身份必须稳定。
+  const handleSelectCanvasImage = useCallback((imageId: string) => {
     editorRef.current?.selectImageById(imageId)
-  }
+  }, [])
 
-  function handleCommitCanvasImage(
-    imageId: string,
-    patch: { width?: string | null; align?: ImageAlign },
-    actionLabel: string,
-  ): boolean {
-    const committed =
-      editorRef.current?.commitImageAttributes(imageId, patch) ?? false
-    if (committed) recordRecentAction(actionLabel)
-    return committed
-  }
+  const handleClearCanvasSelection = useCallback(() => {
+    editorRef.current?.clearSelection()
+  }, [])
+
+  const handleCommitCanvasImage = useCallback(
+    (
+      imageId: string,
+      patch: { width?: string | null; align?: ImageAlign },
+      actionLabel: string,
+    ): boolean => {
+      const committed =
+        editorRef.current?.commitImageAttributes(imageId, patch) ?? false
+      if (committed) recordRecentAction(actionLabel)
+      return committed
+    },
+    [recordRecentAction],
+  )
 
   function handleImageAlign(align: ImageAlign) {
     const imageId = imageState.imageId
@@ -1554,6 +1599,12 @@ function App() {
     if (autosaveTimerRef.current !== null) {
       window.clearTimeout(autosaveTimerRef.current)
       autosaveTimerRef.current = null
+    }
+    // 调用方都会紧接着同步写一份新 WAL 或切换文档；防抖中的旧 WAL
+    // 计时器此时已经失去意义（其 recoveryId 守卫也会拦下陈旧写入）。
+    if (walTimerRef.current !== null) {
+      window.clearTimeout(walTimerRef.current)
+      walTimerRef.current = null
     }
   }
 
@@ -1993,13 +2044,12 @@ function App() {
         ].map((issue) => [`${issue.kind}:${issue.label}:${issue.message}`, issue]),
       )
       const issues = Array.from(issueMap.values())
-      // blocking 永不可绕过；warning（如 unsatisfied-line）需要用户在
-      // 弹窗里明确确认「按当前预览强制导出」后才放行。
-      const blockingIssues = issues.filter(isBlockingExportIssue)
-      if (blockingIssues.length > 0) throw new ExportReadinessError(issues)
-      if (issues.length > 0 && !options?.allowLayoutWarnings) {
-        throw new ExportReadinessError(issues)
-      }
+      // 门控判定与 exportReadiness 共用同一实现：blocking 永不可绕过；
+      // warning（如 unsatisfied-line）需要用户在弹窗里明确确认
+      // 「按当前预览强制导出」后才放行。
+      assertNoBlockingExportIssues(issues, {
+        allowWarnings: options?.allowLayoutWarnings,
+      })
     }
     // 强制导出的 warning 记录以页面 DOM 为准写入导出清单；快照 ID 与
     // 实际渲染使用同一 sealed snapshot。
@@ -2261,9 +2311,7 @@ function App() {
               {pages.map((pageHtml, index) => (
                 <Preview
                   key={index}
-                  ref={(element) => {
-                    pageRefs.current[index] = element
-                  }}
+                  ref={getPageRefCallback(index)}
                   html={pageHtml}
                   themeClass={themeClass}
                   bgSrc={index === 0 ? coverSrc : bgSrc}
@@ -2277,7 +2325,7 @@ function App() {
                   selectedImageId={imageState.imageId}
                   layoutRevision={previewLayoutRevision}
                   onSelectImage={handleSelectCanvasImage}
-                  onClearSelection={() => editorRef.current?.clearSelection()}
+                  onClearSelection={handleClearCanvasSelection}
                   onGestureStateChange={handleCanvasGestureStateChange}
                   onCommitImage={handleCommitCanvasImage}
                 />

@@ -204,6 +204,35 @@ interface FoundImage {
   nodeSize: number
 }
 
+// P2 性能：光标每移动一格都会触发 selectionUpdate/transaction 上报。
+// 值未变时不回调 App（否则每次都是新对象字面量 → setState → 整棵
+// App 树重渲染）。三个状态各自逐字段浅比较。
+function sameImageState(a: ImageState, b: ImageState): boolean {
+  return (
+    a.active === b.active &&
+    a.imageId === b.imageId &&
+    a.width === b.width &&
+    a.align === b.align &&
+    a.src === b.src &&
+    a.assetId === b.assetId
+  )
+}
+
+function sameTextSelectionState(
+  a: TextSelectionState,
+  b: TextSelectionState,
+): boolean {
+  return (
+    a.active === b.active &&
+    a.highlighted === b.highlighted &&
+    a.opacity === b.opacity
+  )
+}
+
+function sameHistoryState(a: HistoryState, b: HistoryState): boolean {
+  return a.canUndo === b.canUndo && a.canRedo === b.canRedo
+}
+
 function findImageById(editor: Editor, imageId: string): FoundImage | null {
   let found: FoundImage | null = null
   editor.state.doc.descendants((node, pos) => {
@@ -232,13 +261,20 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
 ) {
   const noWrapH1LayoutRef = useRef(noWrapH1Layout)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+  // 上次上报值：仅当逐字段比较发现变化时才回调 App（见 sameImageState 注释）。
+  const lastReportedRef = useRef<{
+    image: ImageState | null
+    text: TextSelectionState | null
+    history: HistoryState | null
+  }>({ image: null, text: null, history: null })
 
   const reportEditorState = useCallback((ed: Editor) => {
+    const last = lastReportedRef.current
     const imageActive = ed.isActive('image')
     const imageAttrs = imageActive
       ? (ed.getAttributes('image') as Partial<PosterImageAttributes>)
       : {}
-    onImageStateChange?.({
+    const nextImageState: ImageState = {
       active: imageActive,
       imageId:
         imageActive && typeof imageAttrs.imageId === 'string'
@@ -252,7 +288,11 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         imageActive && typeof imageAttrs.assetId === 'string'
           ? imageAttrs.assetId
           : null,
-    })
+    }
+    if (!last.image || !sameImageState(last.image, nextImageState)) {
+      last.image = nextImageState
+      onImageStateChange?.(nextImageState)
+    }
 
     const textSelection = ed.state.selection
     const textActive =
@@ -262,17 +302,29 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
           opacity?: unknown
         })
       : {}
-    onTextSelectionStateChange?.({
+    const nextTextSelectionState: TextSelectionState = {
       active: textActive,
       highlighted: textActive && ed.isActive('textHighlight'),
       opacity: normalizeHighlightOpacity(
         highlightAttrs.opacity ?? TEXT_HIGHLIGHT_DEFAULT_OPACITY,
       ),
-    })
-    onHistoryStateChange?.({
+    }
+    if (
+      !last.text ||
+      !sameTextSelectionState(last.text, nextTextSelectionState)
+    ) {
+      last.text = nextTextSelectionState
+      onTextSelectionStateChange?.(nextTextSelectionState)
+    }
+
+    const nextHistoryState: HistoryState = {
       canUndo: ed.can().undo(),
       canRedo: ed.can().redo(),
-    })
+    }
+    if (!last.history || !sameHistoryState(last.history, nextHistoryState)) {
+      last.history = nextHistoryState
+      onHistoryStateChange?.(nextHistoryState)
+    }
   }, [onHistoryStateChange, onImageStateChange, onTextSelectionStateChange])
 
   const editor = useEditor({

@@ -234,13 +234,17 @@ export async function checkExportReadiness(
   return issues
 }
 
-export async function assertExportReadiness(
-  pages: HTMLElement[],
-  options?: ReadinessOptions & { allowWarnings?: boolean },
-): Promise<void> {
-  const issues = await checkExportReadiness(pages, options)
+/**
+ * 唯一的预检门控实现：blocking 永不可绕过；warning（如 unsatisfied-line）
+ * 只有在用户明确确认 allowWarnings 后才放行。App 导出闸门在调用前把
+ * checkExportReadiness 之外的补充问题（Canvas 探针、已知资源问题、
+ * 字体恢复失败）concat 进 issues，再统一走这一份判定。
+ */
+export function assertNoBlockingExportIssues(
+  issues: ExportResourceIssue[],
+  options?: { allowWarnings?: boolean },
+): void {
   const blocking = issues.filter(isBlockingExportIssue)
-  // blocking 永不可绕过；warning 只有在用户明确确认后才放行。
   if (blocking.length > 0) throw new ExportReadinessError(issues)
   if (issues.length > 0 && !options?.allowWarnings) {
     throw new ExportReadinessError(issues)

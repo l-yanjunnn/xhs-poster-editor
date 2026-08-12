@@ -1,5 +1,4 @@
 import html2canvas from 'html2canvas-pro'
-import JSZip from 'jszip'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 import { getUserFontFaceCss } from './fontRegistry'
 import {
@@ -49,6 +48,16 @@ function collectAllCss(): string {
     }
   }
   return parts.join('\n')
+}
+
+/**
+ * 组装单次导出批共用的完整 CSS 文本（页面全部 styleSheets + 用户字体
+ * `@font-face`）。同一批（目录 / ZIP）内 CSS 不可能变化：交付层在批
+ * 开头调用一次，经 `RenderPageOptions.cssText` 传给每页渲染，避免
+ * 数百 KB 字符串 × 每页 × retry 的重复重算。注入策略本身不变。
+ */
+export function buildExportBatchCss(): string {
+  return `${collectAllCss()}\n${getUserFontFaceCss()}`
 }
 
 function stableRenderHash(value: string): string {
@@ -104,6 +113,11 @@ export interface RenderPageOptions {
    * 仍然拒绝渲染。这不是宽泛的 skip：快照必须已封存。
    */
   allowWarnings?: boolean
+  /**
+   * 批级 CSS 缓存：交付层用 `buildExportBatchCss()` 在批开头算一次后
+   * 透传。缺省时单页渲染自行现算，语义完全一致。
+   */
+  cssText?: string
 }
 
 function pageHasOnlyWarningLayoutIssues(page: HTMLElement): boolean {
@@ -130,7 +144,8 @@ function assertPageExportable(
   throw new Error('页面的确定性排版尚未通过字体与几何预检')
 }
 
-// export 仅为 E2E 测试直取 canvas 用（跳过下载管线做像素断言），业务方走 exportPages
+// export 仅为 E2E 测试直取 canvas 用（跳过交付管线做像素断言）；
+// 业务交付层（exportDelivery 的目录/ZIP 路径）走 renderPagePngBlob
 export async function pageToPngCanvas(
   page: HTMLElement,
   options?: RenderPageOptions,
@@ -219,8 +234,9 @@ export async function pageToPngCanvas(
     // 这两步缺一不可：CSS 文件提供 .theme-* 类的样式定义，:root inline vars 提供
     // 用户当前选择的字号/字体/密度等运行时值
     // 用户字体的 @font-face 单独拼接：它们经 FontFace API 注册，不在 styleSheets 里，
-    // collectAllCss() 覆盖不到（v8 上线后发现的盲区）
-    const cssText = `${collectAllCss()}\n${getUserFontFaceCss()}`
+    // collectAllCss() 覆盖不到（v8 上线后发现的盲区）。
+    // 批量导出时交付层预先算好 cssText 传入，单页/E2E 路径缺省现算。
+    const cssText = options?.cssText ?? buildExportBatchCss()
     const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
 
     const canvas = await html2canvas(cloned, {
@@ -337,56 +353,6 @@ export async function renderPagePngBlob(
   }
   // 3 次都 race，接受最后一次让用户至少能看到结果（可手动重试导出）
   return canvasToBlob(lastCanvas!)
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  // 60s 而不是 1s：大 zip 需要时间写盘，过早 revoke 会让 Chrome 下载文件损坏
-  setTimeout(() => {
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, 60_000)
-}
-
-// 单页直下 PNG，多页打 zip。filename 不含扩展名
-// onProgress: 每完成一页（含 zip 打包阶段）回调一次，便于 UI 显示 N/total
-export async function exportPages(
-  pages: HTMLElement[],
-  filename: string,
-  onProgress?: (current: number, total: number) => void,
-): Promise<void> {
-  if (pages.length === 0) return
-  // 导出弹窗已在前置检查里明确提示字体超时；用户选择“仍然导出”后，
-  // 实际导出也必须有上限，不能再次无期限卡在 fonts.ready。
-  await Promise.race([
-    document.fonts.ready,
-    new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
-  ])
-
-  if (pages.length === 1) {
-    const blob = await renderPagePngBlob(pages[0])
-    onProgress?.(1, 1)
-    triggerDownload(blob, `${filename}.png`)
-    return
-  }
-
-  // N 张截图 + 1 个 zip 打包步骤 = N+1 总步数
-  const totalSteps = pages.length + 1
-  const zip = new JSZip()
-  for (let i = 0; i < pages.length; i++) {
-    const blob = await renderPagePngBlob(pages[i])
-    zip.file(`${filename}-${i + 1}.png`, blob)
-    onProgress?.(i + 1, totalSteps)
-  }
-  const zipBlob = await zip.generateAsync({ type: 'blob' })
-  onProgress?.(totalSteps, totalSteps)
-  triggerDownload(zipBlob, `${filename}.zip`)
 }
 
 // 从 Tiptap HTML 里提取首个 H1 文本作为默认文件名；没有 H1 则回退到日期

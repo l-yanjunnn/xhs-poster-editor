@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { renderPagePngBlob } from './exportPng'
+import { buildExportBatchCss, renderPagePngBlob } from './exportPng'
 import {
   EXPORT_DELIVERY_MODE,
   createDeliveryPlan,
@@ -169,10 +169,12 @@ export async function executeZipExport({
   const folder = zip.folder(plan.folderName)
   if (!folder) throw new Error('无法创建 ZIP 顶层文件夹')
 
+  // 批内 CSS 不会变化：开头算一次，逐页透传（含 renderPagePngBlob 的 retry）。
+  const cssText = buildExportBatchCss()
   for (let index = 0; index < plan.files.length; index += 1) {
     const file = plan.files[index]
     const page = pageElements[file.pageNumber - 1]
-    const blob = await renderPagePngBlob(page, { allowWarnings })
+    const blob = await renderPagePngBlob(page, { allowWarnings, cssText })
     folder.file(file.fileName, blob)
     onProgress?.(index + 1, totalSteps)
   }
@@ -253,10 +255,12 @@ async function writeDirectoryPlan({
   const totalSteps = plan.pages.length + 1
   onProgress?.(completed.length, totalSteps)
 
+  // 批内 CSS 不会变化：开头算一次，逐页透传（含 renderPagePngBlob 的 retry）。
+  const cssText = buildExportBatchCss()
   try {
     for (const file of resume.remainingFiles) {
       const page = pageElements[file.pageNumber - 1]
-      const blob = await renderPagePngBlob(page, { allowWarnings })
+      const blob = await renderPagePngBlob(page, { allowWarnings, cssText })
       const fileHandle = await directoryHandle.getFileHandle(file.fileName, {
         create: true,
       })

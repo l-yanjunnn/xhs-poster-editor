@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -272,8 +273,12 @@ function makeContentImagesKeyboardAccessible(content: HTMLDivElement) {
 /**
  * `.page` 是唯一可导出节点；选框、手柄和参考线位于同尺度 sibling
  * `canvas-interaction-layer`。即使导出逻辑未执行清理，这些节点也不会被 clone。
+ *
+ * P3 性能：整个组件 memo。多页文档打字时只有 html 实际变化的页
+ * 重渲染；前提是 App 传入的 ref 回调与全部函数 props 身份稳定
+ * （App.tsx 用 ref 工厂 + useCallback 保证）。
  */
-export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
+export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
   {
     html,
     themeClass,
@@ -1105,4 +1110,4 @@ export const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
       </div>
     </div>
   )
-})
+}))

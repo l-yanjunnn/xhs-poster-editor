@@ -1,9 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  assertExportReadiness,
+  assertNoBlockingExportIssues,
   checkExportReadiness,
   ExportReadinessError,
 } from './exportReadiness'
+
+// 与 App.tsx 导出闸门相同的真实路径：先收集 issues，再统一门控判定。
+async function gateExportReadiness(
+  pages: HTMLElement[],
+  options?: { allowWarnings?: boolean },
+): Promise<void> {
+  const issues = await checkExportReadiness(pages)
+  assertNoBlockingExportIssues(issues, options)
+}
 
 const initialFontsDescriptor = Object.getOwnPropertyDescriptor(
   document,
@@ -57,7 +66,7 @@ describe('export readiness', () => {
     const page = document.createElement('div')
     markLayoutReady(page)
     page.appendChild(imageWithState(true, 0))
-    await expect(assertExportReadiness([page])).rejects.toBeInstanceOf(
+    await expect(gateExportReadiness([page])).rejects.toBeInstanceOf(
       ExportReadinessError,
     )
   })
@@ -150,11 +159,11 @@ describe('export readiness', () => {
       }),
     ])
     // 未确认时仍然拒绝；用户确认 allowWarnings 后放行。
-    await expect(assertExportReadiness([page])).rejects.toBeInstanceOf(
+    await expect(gateExportReadiness([page])).rejects.toBeInstanceOf(
       ExportReadinessError,
     )
     await expect(
-      assertExportReadiness([page], { allowWarnings: true }),
+      gateExportReadiness([page], { allowWarnings: true }),
     ).resolves.toBeUndefined()
   })
 
@@ -182,7 +191,7 @@ describe('export readiness', () => {
       }),
     ])
     await expect(
-      assertExportReadiness([page], { allowWarnings: true }),
+      gateExportReadiness([page], { allowWarnings: true }),
     ).rejects.toBeInstanceOf(ExportReadinessError)
   })
 

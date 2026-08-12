@@ -17,6 +17,7 @@ import {
 } from './exportPlan'
 
 vi.mock('./exportPng', () => ({
+  buildExportBatchCss: vi.fn(() => ''),
   renderPagePngBlob: vi.fn(async (page: HTMLElement) =>
     new Blob([page.dataset.page ?? 'unknown'], { type: 'image/png' }),
   ),
