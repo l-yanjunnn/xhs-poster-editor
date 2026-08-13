@@ -7,6 +7,7 @@ import {
   type LayoutAtomKind,
 } from './deterministicTextLayout'
 import { freezeOpticalListMarkerGeometry } from './opticalTypography'
+import { fnv1a32Hex } from './stableHash'
 
 export interface DeterministicFontRequest {
   family: string
@@ -618,14 +619,7 @@ function contentBoxOrigin(block: HTMLElement): { x: number; y: number } {
   }
 }
 
-function stableHash(value: string): string {
-  let hash = 0x811c9dc5
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
-}
+const stableHash = fnv1a32Hex
 
 function createSemanticGlyph(
   document: Document,
@@ -754,10 +748,18 @@ function materializedAtomBaselines(
   lineHeight: number,
   fallback: number,
 ): Map<HTMLElement, MaterializedBaselineMeasurement> {
-  const probes: Array<{ atom: HTMLElement; probe: HTMLElement }> = []
   const measurements = new Map<
     HTMLElement,
     MaterializedBaselineMeasurement
+  >()
+  // P7：baseline 在 atom 盒内的偏移只由字体（style/weight/size/family/
+  // line-height）、vertical-align 与盒高决定，与 atom 位置无关——同类
+  // atom 只在代表元素上放一个 probe，其余按类查表。一个块通常只有
+  // 1–3 个类，probe 数从逐字素降为逐类。
+  const classKeyByAtom = new Map<HTMLElement, string>()
+  const representatives = new Map<
+    string,
+    { atom: HTMLElement; glyph: HTMLElement; probe?: HTMLElement }
   >()
   for (const atom of atoms) {
     const glyph = atom.querySelector<HTMLElement>('.dtl-glyph')
@@ -765,27 +767,45 @@ function materializedAtomBaselines(
       measurements.set(atom, { value: fallback, measured: false })
       continue
     }
-    const probe = atom.ownerDocument.createElement('span')
-    probe.setAttribute('aria-hidden', 'true')
-    probe.setAttribute('data-dtl-baseline-probe', '')
-    probe.style.cssText = [
-      'display:inline-block',
-      'width:0',
-      'height:0',
-      'padding:0',
-      'margin:0',
-      'border:0',
-      'line-height:0',
-      'vertical-align:baseline',
-      'overflow:hidden',
-      'pointer-events:none',
-    ].join(';')
-    glyph.appendChild(probe)
-    probes.push({ atom, probe })
+    const style = atom.ownerDocument.defaultView?.getComputedStyle(glyph)
+    const key = [
+      style?.fontStyle ?? '',
+      style?.fontWeight ?? '',
+      style?.fontSize ?? '',
+      style?.lineHeight ?? '',
+      style?.fontFamily ?? '',
+      style?.verticalAlign ?? '',
+      atom.style.height,
+    ].join('|')
+    classKeyByAtom.set(atom, key)
+    if (!representatives.has(key)) {
+      representatives.set(key, { atom, glyph })
+    }
   }
+  const valueByClass = new Map<string, MaterializedBaselineMeasurement>()
   try {
+    for (const representative of representatives.values()) {
+      const probe = representative.atom.ownerDocument.createElement('span')
+      probe.setAttribute('aria-hidden', 'true')
+      probe.setAttribute('data-dtl-baseline-probe', '')
+      probe.style.cssText = [
+        'display:inline-block',
+        'width:0',
+        'height:0',
+        'padding:0',
+        'margin:0',
+        'border:0',
+        'line-height:0',
+        'vertical-align:baseline',
+        'overflow:hidden',
+        'pointer-events:none',
+      ].join(';')
+      representative.glyph.appendChild(probe)
+      representative.probe = probe
+    }
     // 批量写入 probe 后再统一读取 rect，避免 19 页逐字素反复布局。
-    for (const { atom, probe } of probes) {
+    for (const [key, { atom, probe }] of representatives) {
+      if (!probe) continue
       const atomRect = atom.getBoundingClientRect()
       const probeRect = probe.getBoundingClientRect()
       // style.height 保留 75.6px 之类的小数行高；offsetHeight 会先
@@ -799,13 +819,22 @@ function materializedAtomBaselines(
       const value = (probeRect.top - atomRect.top) / scaleY
       const measured =
         Number.isFinite(value) && value > 0 && value < lineHeight
-      measurements.set(atom, {
+      valueByClass.set(key, {
         value: measured ? value : fallback,
         measured,
       })
     }
   } finally {
-    for (const { probe } of probes) probe.remove()
+    for (const { probe } of representatives.values()) probe?.remove()
+  }
+  for (const atom of atoms) {
+    if (measurements.has(atom)) continue
+    const key = classKeyByAtom.get(atom)
+    const classValue = key === undefined ? undefined : valueByClass.get(key)
+    measurements.set(
+      atom,
+      classValue ?? { value: fallback, measured: false },
+    )
   }
   return measurements
 }
@@ -825,6 +854,14 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
     delta: number
     signature: string
   }
+  interface BaselineCandidate {
+    atom: HTMLElement
+    glyph: HTMLElement
+    textNode: Node
+    baseline: number
+    lineTop: number
+    atomTop: number
+  }
   const targetAtoms = Array.from(
     root.querySelectorAll<HTMLElement>('.dtl-atom'),
   ).filter((atom) => (atom.textContent ?? '') !== '')
@@ -832,6 +869,12 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
   const adjustmentByAtom = new Map<HTMLElement, BaselineAdjustment>()
   const signature: string[] = []
   let failed = false
+
+  // P5 写读分相：先对全部 atom 做结构校验与 top 复位（纯写 + 不触发
+  // 布局的 dataset/树读取），再统一进入几何读取。此前逐 atom 的
+  // 写 top → 读 rect 交替会让每个字素强制一次 reflow，2160×3600 导出
+  // 下是逐页最大的校准开销；分相后整批只有首次读取触发一次布局。
+  const candidates: BaselineCandidate[] = []
   for (const atom of targetAtoms) {
     const glyph = atom.querySelector<HTMLElement>('.dtl-glyph')
     if (!glyph) {
@@ -853,14 +896,6 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
       failed = true
       continue
     }
-
-    const style = atom.ownerDocument.defaultView?.getComputedStyle(glyph)
-    const fontSize = Number.parseFloat(style?.fontSize ?? '')
-    if (!finite(fontSize) || fontSize <= 0) {
-      atom.dataset.layoutExportBaselineError = 'invalid font size'
-      failed = true
-      continue
-    }
     const showText =
       atom.ownerDocument.defaultView?.NodeFilter.SHOW_TEXT ?? 4
     const walker = atom.ownerDocument.createTreeWalker(atom, showText)
@@ -875,6 +910,17 @@ export function calibrateDeterministicGlyphBaselinesForHtml2Canvas(
     atom.style.top = `${atomTop}px`
     delete atom.dataset.layoutExportBaselineError
     atom.dataset.layoutExportBaselineShift = ''
+    candidates.push({ atom, glyph, textNode, baseline, lineTop, atomTop })
+  }
+
+  for (const { atom, glyph, textNode, baseline, lineTop, atomTop } of candidates) {
+    const style = atom.ownerDocument.defaultView?.getComputedStyle(glyph)
+    const fontSize = Number.parseFloat(style?.fontSize ?? '')
+    if (!finite(fontSize) || fontSize <= 0) {
+      atom.dataset.layoutExportBaselineError = 'invalid font size'
+      failed = true
+      continue
+    }
     const atomRect = atom.getBoundingClientRect()
     const layoutHeight =
       cssPixels(atom.style.height) || atom.offsetHeight

@@ -2,6 +2,7 @@ import {
   decorateOpticalOrderedListMarkers,
   refreshOpticalOrderedListMarkerColumns,
 } from './opticalListMarkers'
+import { roundToMilliPx } from './stableHash'
 import {
   TYPOGRAPHY_SAMPLES,
   clearTypographyMetricsCache,
@@ -74,7 +75,7 @@ interface FontLoadOutcome {
 }
 
 function roundCssPx(value: number): string {
-  const rounded = Math.round(value * 1_000) / 1_000
+  const rounded = roundToMilliPx(value)
   return `${Object.is(rounded, -0) ? 0 : rounded}px`
 }
 

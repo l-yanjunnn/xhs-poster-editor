@@ -1,3 +1,7 @@
+// 显式 .ts 扩展名：tools/perf/solver-bench.mjs 用 node 原生 strip-types
+// 直跑本文件，node ESM 解析不认无扩展名说明符。
+import { fnv1a32Hex, roundToMilliPx } from './stableHash.ts'
+
 export type LayoutAtomKind =
   | 'han'
   | 'digit'
@@ -122,7 +126,9 @@ interface LineWidthModel {
 
 interface SegmentSolution {
   cost: number
-  lines: DeterministicLayoutLine[]
+  /** 本段首行的断点（atoms 下标，开区间端）；链式存储 + 延迟物化（P1）。 */
+  end: number
+  next: SegmentSolution | null
 }
 
 const DEFAULT_OPTIONS: ResolvedLayoutOptions = {
@@ -1473,6 +1479,13 @@ interface LineAdjustmentModel {
   model: LineWidthModel
   solvingTarget: number
   hangingClosingIndex: number | null
+  /**
+   * 两端对齐求解后可见右缘与 targetWidth 的残差。二分收敛时约等于 0；
+   * 被 min/max 夹住（压不进/撑不满）时超过 epsilon，与物化侧
+   * `justified && |targetWidth - actualWidth| > epsilon` 的 emergency
+   * 判定严格对应，供求解器在不物化的前提下淘汰候选。
+   */
+  visibleTargetError: number
 }
 
 function hangingClosingIndexFor(model: LineWidthModel): number {
@@ -1520,14 +1533,16 @@ function lineAdjustmentModel(
   targetWidth: number,
   options: ResolvedLayoutOptions,
   justified: boolean,
+  precomputedModel?: LineWidthModel,
 ): LineAdjustmentModel {
-  const model = widthModel(atoms, options)
+  const model = precomputedModel ?? widthModel(atoms, options)
   const lastVisibleIndex = hangingClosingIndexFor(model)
   if (lastVisibleIndex < 0) {
     return {
       model,
       solvingTarget: targetWidth,
       hangingClosingIndex: null,
+      visibleTargetError: 0,
     }
   }
   if (!justified) {
@@ -1537,6 +1552,7 @@ function lineAdjustmentModel(
       model,
       solvingTarget: targetWidth,
       hangingClosingIndex: lastVisibleIndex,
+      visibleTargetError: 0,
     }
   }
 
@@ -1566,10 +1582,13 @@ function lineAdjustmentModel(
   let lowError = visibleRightAt(low) - targetWidth
   let highError = visibleRightAt(high) - targetWidth
   let solvingTarget: number
+  let visibleTargetError: number
   if (lowError > options.epsilon) {
     solvingTarget = low
+    visibleTargetError = lowError
   } else if (highError < -options.epsilon) {
     solvingTarget = high
+    visibleTargetError = highError
   } else {
     for (let iteration = 0; iteration < 40; iteration += 1) {
       const middle = (low + high) / 2
@@ -1589,12 +1608,19 @@ function lineAdjustmentModel(
         highError = error
       }
     }
-    solvingTarget = Math.abs(lowError) <= Math.abs(highError) ? low : high
+    if (Math.abs(lowError) <= Math.abs(highError)) {
+      solvingTarget = low
+      visibleTargetError = lowError
+    } else {
+      solvingTarget = high
+      visibleTargetError = highError
+    }
   }
   return {
     model,
     solvingTarget,
     hangingClosingIndex: lastVisibleIndex,
+    visibleTargetError,
   }
 }
 
@@ -1710,26 +1736,34 @@ function solveSegment(
     let start = 0
     while (start < atoms.length) {
       let furthestLegalEnd: number | null = null
+      let emCap = 0
       for (let end = start + 1; end <= atoms.length; end += 1) {
+        emCap = Math.max(emCap, positive(atoms[end - 1].em))
+        if (
+          end !== atoms.length &&
+          !legalBreak(atoms[end - 1], atoms[end], groupWidths)
+        ) {
+          continue
+        }
         const slice = atoms.slice(start, end)
         const model = widthModel(slice, options)
         if (
-          end === atoms.length ||
-          legalBreak(atoms[end - 1], atoms[end], groupWidths)
+          raggedFittingWidth(model, options) <=
+            targetWidth + options.epsilon &&
+          lineCanSatisfyVisibleCorridors(
+            model,
+            model.natural,
+            false,
+            options.epsilon,
+          )
         ) {
-          if (
-            raggedFittingWidth(model, options) <=
-              targetWidth + options.epsilon &&
-            lineCanSatisfyVisibleCorridors(
-              model,
-              model.natural,
-              false,
-              options.epsilon,
-            )
-          ) {
-            furthestLegalEnd = end
-          }
+          furthestLegalEnd = end
         }
+        // P1 提前终止：min 随 end 单调不减（新原子只叠加非负 box/gap
+        // 下界；行尾→内部模式与边缘空格反收缩的抖动上界约 1 em）。任何
+        // 可放入的行都要求 min 不超过 targetWidth + 悬挂（≤1 em），越过
+        // 这个保守上界后更长的候选不可能再可行，无需继续扫描。
+        if (model.min > targetWidth * 1.1 + 3 * emCap) break
       }
       let end = furthestLegalEnd ?? start + 1
       if (furthestLegalEnd === null) {
@@ -1758,10 +1792,24 @@ function solveSegment(
     { length: atoms.length + 1 },
     () => null,
   )
-  best[atoms.length] = { cost: 0, lines: [] }
+  best[atoms.length] = { cost: 0, end: atoms.length, next: null }
+
+  // P1 延迟物化：候选筛选与 materializeLine 走同一组 adjustWidths /
+  // corridors 判定与 epsilon，物化只对最优链的每行各做一次。物化侧
+  // emergency 的两个额外来源（光学指标缺失、两端对齐求解被夹住）分别
+  // 用前缀和与 visibleTargetError 在此处 O(1) 复刻，可行集不变。
+  const missingOpticalPrefix = new Array<number>(atoms.length + 1)
+  missingOpticalPrefix[0] = 0
+  for (let index = 0; index < atoms.length; index += 1) {
+    missingOpticalPrefix[index + 1] =
+      missingOpticalPrefix[index] +
+      (atoms[index].opticalMetricsMissing && atoms[index].text !== '' ? 1 : 0)
+  }
 
   for (let start = atoms.length - 1; start >= 0; start -= 1) {
+    let emCap = 0
     for (let end = start + 1; end <= atoms.length; end += 1) {
+      emCap = Math.max(emCap, positive(atoms[end - 1].em))
       if (
         end < atoms.length &&
         !legalBreak(atoms[end - 1], atoms[end], groupWidths)
@@ -1769,6 +1817,9 @@ function solveSegment(
         continue
       }
       const slice = atoms.slice(start, end)
+      const model = widthModel(slice, options)
+      // P1 提前终止：推理同上方非两端对齐路径。
+      if (model.min > targetWidth * 1.1 + 3 * emCap) break
       const isLast = end === atoms.length
       const ragged = isLast || !options.justifyWrappedLines
       const adjustment = lineAdjustmentModel(
@@ -1776,8 +1827,8 @@ function solveSegment(
         targetWidth,
         options,
         !ragged,
+        model,
       )
-      const model = adjustment.model
       const feasible = ragged
         ? (
             raggedFittingWidth(model, options) <=
@@ -1799,30 +1850,49 @@ function solveSegment(
           )
       const tail = best[end]
       if (!feasible || !tail) continue
-      const line = materializeLine(
-        slice,
-        isLast ? terminalEnd : 'wrap',
-        targetWidth,
-        options,
-      )
-      if (!isLast && line.emergency) continue
-      const solution = {
+      if (
+        !isLast &&
+        (missingOpticalPrefix[end] - missingOpticalPrefix[start] > 0 ||
+          Math.abs(adjustment.visibleTargetError) > options.epsilon)
+      ) {
+        continue
+      }
+      const solution: SegmentSolution = {
         cost: lineCost(model, adjustment.solvingTarget, ragged) + tail.cost,
-        lines: [line, ...tail.lines],
+        end,
+        next: tail,
       }
       const current = best[start]
       if (
         !current ||
         solution.cost < current.cost - 1e-9 ||
         (Math.abs(solution.cost - current.cost) <= 1e-9 &&
-          solution.lines[0].atoms.length > current.lines[0].atoms.length)
+          end - start > current.end - start)
       ) {
         best[start] = solution
       }
     }
   }
 
-  if (best[0]) return best[0]!.lines
+  if (best[0]) {
+    const lines: DeterministicLayoutLine[] = []
+    let node: SegmentSolution | null = best[0]
+    let lineStart = 0
+    while (node && lineStart < atoms.length) {
+      const isLast = node.end === atoms.length
+      lines.push(
+        materializeLine(
+          atoms.slice(lineStart, node.end),
+          isLast ? terminalEnd : 'wrap',
+          targetWidth,
+          options,
+        ),
+      )
+      lineStart = node.end
+      node = node.next
+    }
+    return lines
+  }
 
   // 极端损坏字体/超长硬不拆内容的恢复路径。普通内容不会走到这里；
   // 返回 emergency 让 UI/预检明确失败，而不是静默导出错误版式。
@@ -1885,10 +1955,6 @@ export function solveDeterministicTextLayout(
   return lines
 }
 
-function stableNumber(value: number): number {
-  return Math.round(value * 1_000) / 1_000
-}
-
 /** 小型稳定 hash，供预览 DOM 与导出 clone 核验是否使用同一快照。 */
 export function deterministicLayoutSnapshotHash(
   lines: readonly DeterministicLayoutLine[],
@@ -1897,22 +1963,17 @@ export function deterministicLayoutSnapshotHash(
     lines.map((line) => ({
       end: line.end,
       justified: line.justified,
-      targetWidth: stableNumber(line.targetWidth),
-      actualWidth: stableNumber(line.actualWidth),
+      targetWidth: roundToMilliPx(line.targetWidth),
+      actualWidth: roundToMilliPx(line.actualWidth),
       atoms: line.atoms.map((atom) => [
         atom.text,
         atom.kind,
-        stableNumber(atom.x),
-        stableNumber(atom.boxWidth),
-        stableNumber(atom.glyphOffset),
-        stableNumber(atom.gapAfter),
+        roundToMilliPx(atom.x),
+        roundToMilliPx(atom.boxWidth),
+        roundToMilliPx(atom.glyphOffset),
+        roundToMilliPx(atom.gapAfter),
       ]),
     })),
   )
-  let hash = 0x811c9dc5
-  for (let index = 0; index < payload.length; index += 1) {
-    hash ^= payload.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
+  return fnv1a32Hex(payload)
 }

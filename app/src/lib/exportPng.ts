@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas-pro'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 import { getUserFontFaceCss } from './fontRegistry'
+import { fnv1a32Hex } from './stableHash'
 import {
   checkDeterministicFontReadiness,
   DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
@@ -60,14 +61,7 @@ export function buildExportBatchCss(): string {
   return `${collectAllCss()}\n${getUserFontFaceCss()}`
 }
 
-function stableRenderHash(value: string): string {
-  let hash = 0x811c9dc5
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
-}
+const stableRenderHash = fnv1a32Hex
 
 function exportRenderStateHash(
   page: HTMLElement,

@@ -143,6 +143,6 @@
 |---|---|
 | **v1.8.1 修复版** | R1 fontSize clamp、R2 Canvas fallback fail-closed、R3 中断根因透出、R4 DOMParser、R6 分隔线 `-{3,}`、R8 rafRef 清零、荧光笔默认透明度 50%→25%（ROADMAP P2） |
 | **v1.8.2 性能版** | P2+P3 渲染性能三连、P4 WAL 防抖、P6 collectAllCss 缓存；顺手删 M1 死管线、M2 门控分叉。**2026-08-13 已全部实现并完成双轨发布闭环（公告 om_x100b68fef232dca0de2af09d3045f55）**：四门禁全绿（tsc/Vitest 41 文件 412 测试/ESLint/build），真实浏览器自查 23/23（打字/荧光笔/图片选择/12 页打字/撤销重做/双向滚动联动与开关/WAL 三路径/console 0），脚本与截图在 scratchpad/v182；`app/package.json` 已 bump 1.8.2 |
-| **v1.9.0** | 字体本地化（原计划）+ P1 DP 求解器 + P5/P7 基线批量化（配 profile） |
-| 随功能版顺带 | M7 App.tsx 拆分、M3 hash 合并、R5 打开草稿冗余落盘、其余小项 |
-| 待产品拍板 | R7 英文段落 justify 弹性（或明示为产品边界） |
+| **v1.9.0** | 字体本地化（原计划）+ P1 DP 求解器 + P5/P7 基线批量化（配 profile）。**2026-08-13 用户拍板动工，并把 M7 App.tsx 拆分、M3 hash 合并、R5 打开草稿冗余落盘并入本版**；before 基线采集脚本在 tools/perf/，基线数字见 docs/PERF-BASELINE-2026-08-13.md |
+| 随功能版顺带 | 其余小项（M4/M5/M6、P8、R8 未清项） |
+| ~~待产品拍板~~ 已 mark | R7 英文段落 justify 弹性 — **2026-08-13 用户拍板：先 mark 不做**。当前工具面向中文正文，英文长段需求未出现；出现真实需求再决定"明示产品边界"还是"给空格伸缩区间"。在此之前不改求解器空格模型 |

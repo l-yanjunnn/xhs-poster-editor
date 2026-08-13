@@ -16,9 +16,16 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=ZCOOL+QingKe+HuangYou&family=Long+Cang&display=swap"
     />
+    <!-- v1.9.0 字体减重第一刀：包入口 style.css 会 @import 6 份分片
+         （regular/light/bold × 常规/mono），应用只用非 mono 的 400/700
+         两档，直链需要的两份，砍掉 4 份无用 CSS 与其请求 -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css"
+      href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-regular.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-bold.css"
     />
   </head>
   <body>
