@@ -22,6 +22,7 @@ from PIL import Image
 from playwright.async_api import async_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:4173/"
+USE_PROXY = "workers.dev" in URL  # 与 test_prod_deep 同款：Cloudflare 入口必须走本机代理
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "docs" / "screenshots" / "cover-slots-local"
 PAPER_MIN_LUMA = 200  # 暖纸底非常亮；低于此值视作"有墨迹"
@@ -111,7 +112,10 @@ async def apply(page, layout: str, vertical: str) -> None:
 
 async def main() -> None:
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True)
+        browser = await pw.chromium.launch(
+            headless=True,
+            proxy={"server": "http://127.0.0.1:7897"} if USE_PROXY else None,
+        )
         context = await browser.new_context(
             viewport={"width": 1440, "height": 900}, accept_downloads=True
         )
