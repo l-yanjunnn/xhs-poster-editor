@@ -189,6 +189,38 @@ describe('deterministic typography DOM snapshot', () => {
     ).toBe(true)
   })
 
+  it('centers short lines when the block computed text-align is center', () => {
+    const page = pageWithContent()
+    const result = layout(
+      page,
+      '<h1 style="width: 240px; font-size: 20px; line-height: 30px; text-align: center">甲乙</h1>',
+    )
+    const atoms = Array.from(
+      page.querySelectorAll<HTMLElement>('h1 > .dtl-atom'),
+    )
+    const xs = atoms.map((atom) => Number(atom.dataset.layoutX))
+
+    expect(result.issues).toEqual([])
+    expect(atoms.length).toBeGreaterThan(0)
+    expect(Math.min(...xs)).toBeGreaterThan(20)
+    expect(Math.max(...xs)).toBeLessThan(200)
+  })
+
+  it('re-centers after a block already has the left-locked layout class', () => {
+    const page = pageWithContent()
+    const source =
+      '<h1 style="width: 240px; font-size: 20px; line-height: 30px; --dtl-text-align: center">甲乙</h1>'
+    layout(page, source)
+    const again = layout(page, source)
+    const xs = Array.from(
+      page.querySelectorAll<HTMLElement>('h1 > .dtl-atom'),
+      (atom) => Number(atom.dataset.layoutX),
+    )
+
+    expect(again.issues).toEqual([])
+    expect(Math.min(...xs)).toBeGreaterThan(20)
+  })
+
   it('extends soft numeric/Latin groups across ASCII connectors and suffixes', () => {
     const page = pageWithContent()
     const result = layout(

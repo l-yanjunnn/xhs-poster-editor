@@ -198,3 +198,88 @@ describe('中文正文两端对齐契约', () => {
     expect(property(editorCoverSubtitle, 'text-align-last')).toBe('auto')
   })
 })
+
+describe('封面槽位 CSS 契约', () => {
+  it('A · 上不改 .content 的默认文档流', () => {
+    expect(() =>
+      findRule('.page--first[data-cover-layout="stack-left"] .content'),
+    ).toThrow('缺少画布规则')
+    expect(() =>
+      findRule('.page--first[data-cover-vertical="top"] .content'),
+    ).toThrow('缺少画布规则')
+  })
+
+  it('中/下只在封面页用 flex 推叠，不碰内页', () => {
+    const middle = findRule(
+      '.page--first[data-cover-vertical="middle"] .content',
+    )
+    expect(property(middle, 'justify-content')).toBe('center')
+    expect(
+      property(
+        findRule('.page--first[data-cover-vertical="bottom"] .content'),
+        'justify-content',
+      ),
+    ).toBe('flex-end')
+    expect(
+      rules.some((rule) =>
+        rule.selectorText.includes('[data-cover-') &&
+        !rule.selectorText.includes('.page--first'),
+      ),
+    ).toBe(false)
+  })
+
+  it('居中海报把主副标题居中，并用真实伪元素画分隔条', () => {
+    const title = findRule(
+      '.page--first[data-cover-layout="poster-center"] .content > h1:first-of-type',
+    )
+    const subtitle = findRule(
+      '.page--first[data-cover-layout="poster-center"] .content > h1:first-of-type + p',
+    )
+    const rule = findRule(
+      '.page--first[data-cover-layout="poster-center"] .content > h1:first-of-type::after',
+    )
+    expect(property(title, 'text-align')).toBe('center')
+    expect(property(title, 'text-align-last')).toBe('center')
+    expect(property(title, '--dtl-text-align')).toBe('center')
+    expect(property(title, 'width')).toBe('100%')
+    expect(property(subtitle, 'text-align')).toBe('center')
+    expect(property(subtitle, '--dtl-text-align')).toBe('center')
+    expect(property(rule, 'content')).toBe('""')
+    expect(property(rule, 'display')).toBe('block')
+    // 物化后块内流式高度为零，in-flow 伪元素会被压进标题字形底下
+    expect(property(rule, 'position')).toBe('absolute')
+    expect(() =>
+      findRule(
+        '.page--first[data-cover-layout="poster-center"] .content',
+      ),
+    ).toThrow('缺少画布规则')
+  })
+
+  it('槽位覆盖规则必须排在公考主题副标题规则之后（特异性打平靠顺序胜出）', () => {
+    const themeIndex = rules.findIndex((rule) =>
+      rule.selectorText.includes(
+        '.theme-public-exam-landscape.page--first',
+      ) && rule.selectorText.includes('+ p'),
+    )
+    const slotIndex = rules.findIndex((rule) =>
+      rule.selectorText.includes('[data-cover-layout="poster-center"]'),
+    )
+    expect(themeIndex).toBeGreaterThanOrEqual(0)
+    expect(slotIndex).toBeGreaterThan(themeIndex)
+  })
+
+  it('小字在上只改呈现顺序，不交换文档节点', () => {
+    const kicker = findRule(
+      '.page--first[data-cover-layout="kicker-above"] .content > h1:first-of-type + p',
+    )
+    expect(property(kicker, 'order')).toBe('-1')
+    // 眉题竖条画在盒外侧（margin-left 让位），不参与求解器行宽
+    expect(property(kicker, 'margin-left')).toBe('20px')
+    const bar = findRule(
+      '.page--first[data-cover-layout="kicker-above"] .content > h1:first-of-type + p::before',
+    )
+    expect(property(bar, 'content')).toBe('""')
+    expect(property(bar, 'position')).toBe('absolute')
+    expect(property(bar, 'left')).toBe('-20px')
+  })
+})

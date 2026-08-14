@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import {
+  DEFAULT_CONTENT,
   EditorPane,
   type EditorHandle,
   type HistoryState,
@@ -29,6 +30,7 @@ import { ContextInspector } from '@/components/Inspector/ContextInspector'
 import {
   BUILTIN_THEMES,
   DEFAULT_THEME,
+  PUBLIC_EXAM_THEME,
   getThemeCoverTextColors,
   type DensityLevel,
   type H1Width,
@@ -37,6 +39,12 @@ import {
   type Theme,
   type ThemeKey,
 } from '@/lib/themes'
+import {
+  COVER_LAYOUT_EXAMPLES,
+  replaceCoverLayoutExampleHtml,
+  replaceDefaultTutorialCoverHtml,
+  type CoverLayout,
+} from '@/lib/coverSlots'
 import { newUserThemeId, putUserTheme } from '@/lib/themeStore'
 import {
   BUILTIN_BACKGROUNDS,
@@ -116,6 +124,10 @@ function App() {
   )
   const [coverSubtitleColor, setCoverSubtitleColor] = useState(
     DEFAULT_THEME.coverSubtitleColor,
+  )
+  const [coverLayout, setCoverLayout] = useState(DEFAULT_THEME.coverLayout)
+  const [coverVertical, setCoverVertical] = useState(
+    DEFAULT_THEME.coverVertical,
   )
 
   // 资源同时持有 id（用于主题序列化）和 src（用于渲染）
@@ -297,6 +309,8 @@ function App() {
       logoAssetId,
       coverTitleColor,
       coverSubtitleColor,
+      coverLayout,
+      coverVertical,
     }),
     [
       themeClass,
@@ -317,6 +331,8 @@ function App() {
       logoAssetId,
       coverTitleColor,
       coverSubtitleColor,
+      coverLayout,
+      coverVertical,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -481,6 +497,8 @@ function App() {
     setLogoStrategy(document.style.logoStrategy)
     setCoverTitleColor(document.style.coverTitleColor)
     setCoverSubtitleColor(document.style.coverSubtitleColor)
+    setCoverLayout(document.style.coverLayout)
+    setCoverVertical(document.style.coverVertical)
     setLogoAssetId(document.style.logoAssetId)
     setPageBackground({
       coverAssetId: document.style.coverBgAssetId,
@@ -693,6 +711,8 @@ function App() {
     setLogoStrategy(theme.logoStrategy)
     setCoverTitleColor(theme.coverTitleColor)
     setCoverSubtitleColor(theme.coverSubtitleColor)
+    setCoverLayout(theme.coverLayout)
+    setCoverVertical(theme.coverVertical)
     setLogoAssetId(theme.logoAssetId)
     setPageBackground({
       coverAssetId: theme.coverBgAssetId,
@@ -711,6 +731,11 @@ function App() {
     if (theme.contentJSON && contentResult.status === 'fulfilled' && contentResult.value) {
       // 正文插图按 assetId 重新 resolve src（存储里的 blob URL 已跨会话失效）
       editorRef.current?.setContent(contentResult.value.document)
+    } else if (theme.id === PUBLIC_EXAM_THEME.id) {
+      // 默认教程状态下切公考：首页整页换成版式 A 示例封面
+      //（2026-08-14 用户拍板；正文被改过则一字不动）
+      const swapped = replaceDefaultTutorialCoverHtml(content, DEFAULT_CONTENT)
+      if (swapped !== null) editorRef.current?.setContent(swapped)
     }
     setThemeApplying(false)
   }
@@ -740,6 +765,8 @@ function App() {
       logoAssetId,
       coverTitleColor,
       coverSubtitleColor,
+      coverLayout,
+      coverVertical,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
@@ -767,6 +794,15 @@ function App() {
       BUILTIN_THEMES.find((t) => t.id === themeId) ??
       userThemes.find((t) => t.id === themeId)
     if (theme) applyTheme(theme)
+  }
+
+  function handleCoverLayout(nextLayout: CoverLayout) {
+    const swapped = replaceCoverLayoutExampleHtml(content, nextLayout)
+    if (swapped !== null) {
+      editorRef.current?.setContent(swapped)
+      customize(setCoverVertical)(COVER_LAYOUT_EXAMPLES[nextLayout].vertical)
+    }
+    customize(setCoverLayout)(nextLayout)
   }
 
   function handleRestoreCoverColors() {
@@ -1196,6 +1232,8 @@ function App() {
                   ref={getPageRefCallback(index)}
                   html={pageHtml}
                   themeClass={themeClass}
+                  coverLayout={coverLayout}
+                  coverVertical={coverVertical}
                   bgSrc={index === 0 ? coverSrc : bgSrc}
                   logoSrc={logoSrc}
                   showLogo={shouldShowLogo(index, pages.length)}
@@ -1246,6 +1284,8 @@ function App() {
               logoStrategy={logoStrategy}
               coverTitleColor={coverTitleColor}
               coverSubtitleColor={coverSubtitleColor}
+              coverLayout={coverLayout}
+              coverVertical={coverVertical}
               userFontFamilies={userFontFamilies}
               onFontH1={customize(setFontH1)}
               onFontH2={customize(setFontH2)}
@@ -1262,6 +1302,8 @@ function App() {
               onCoverTitleColor={customize(setCoverTitleColor)}
               onCoverSubtitleColor={customize(setCoverSubtitleColor)}
               onRestoreCoverColors={handleRestoreCoverColors}
+              onCoverLayout={handleCoverLayout}
+              onCoverVertical={customize(setCoverVertical)}
               onOpenAssetLibrary={() => {
                 setReplaceImageId(null)
                 setAssetLibInitialKind(undefined)

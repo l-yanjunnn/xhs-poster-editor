@@ -62,14 +62,10 @@ export interface DeterministicLayoutLine {
 export interface DeterministicLayoutOptions {
   /** 标题/封面副标题传 false：仍由同一求解器断行，但不拉伸包行。 */
   justifyWrappedLines?: boolean
-  /** @deprecated 双侧墨迹净空现在按字符 profile 求解，仅保留 API 兼容。 */
-  punctuationPreferredEm?: number
   punctuationMinEm?: number
   boundaryGapMaxEm?: number
   hanGapExpandMaxEm?: number
   hanGapCompressMaxEm?: number
-  /** @deprecated 普通字符边界不再参与两端对齐；仅保留字段兼容旧快照。 */
-  otherGapMaxEm?: number
   epsilon?: number
 }
 

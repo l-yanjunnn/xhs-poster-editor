@@ -80,6 +80,8 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     logoAssetId: theme.logoAssetId,
     coverTitleColor: theme.coverTitleColor,
     coverSubtitleColor: theme.coverSubtitleColor,
+    coverLayout: theme.coverLayout,
+    coverVertical: theme.coverVertical,
   }
 }
 
@@ -157,6 +159,9 @@ export function useDraftPersistence(
   const [draftSaveStatus, setDraftSaveStatus] =
     useState<DraftSaveStatus>('restoring')
   const [draftStorageError, setDraftStorageError] = useState<string | null>(null)
+  // state 是渲染值：await 之后同一闭包里读到的仍是旧文案（CODE-REVIEW R8）；
+  // 失败即时报错的路径必须读这个 ref。
+  const lastStorageErrorRef = useRef<string | null>(null)
   const autosaveTimerRef = useRef<number | null>(null)
   const walTimerRef = useRef<number | null>(null)
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -237,8 +242,9 @@ export function useDraftPersistence(
         }
         return true
       } catch (error) {
+        lastStorageErrorRef.current = describeDocumentStoreError(error)
         if (revision === editRevisionRef.current) {
-          setDraftStorageError(describeDocumentStoreError(error))
+          setDraftStorageError(lastStorageErrorRef.current)
           setDraftSaveStatus('error')
         }
         return false
@@ -505,7 +511,8 @@ export function useDraftPersistence(
     const revision = ++editRevisionRef.current
     const document = captureDocument(identity)
     if (!document) {
-      setDraftStorageError('编辑器尚未就绪，无法保存当前草稿')
+      lastStorageErrorRef.current = '编辑器尚未就绪，无法保存当前草稿'
+      setDraftStorageError(lastStorageErrorRef.current)
       setDraftSaveStatus('error')
       return false
     }
@@ -528,7 +535,9 @@ export function useDraftPersistence(
     const previousDraftId = activeDraftRef.current?.id ?? null
     const contentJSON = createEditorDocumentJSON(analysis.contentHtml)
     if (!(await flushActiveDraft())) {
-      throw new Error(draftStorageError || '当前草稿保存失败，已取消导入。')
+      throw new Error(
+        lastStorageErrorRef.current || '当前草稿保存失败，已取消导入。',
+      )
     }
 
     clearAutosaveTimer()

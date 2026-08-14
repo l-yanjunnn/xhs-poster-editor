@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
+import { coverSlotDataset } from '@/lib/coverSlots'
 import { OVERLAY_MAP, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
@@ -139,6 +140,8 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     theme.fontSize,
     theme.h2Bold,
     theme.themeClass,
+    theme.coverLayout,
+    theme.coverVertical,
   ])
 
   return (
@@ -163,6 +166,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
           ref={pageRef}
           className={`page page--first ${theme.themeClass}`}
           style={{ boxShadow: 'none' }}
+          {...coverSlotDataset(true, theme.coverLayout, theme.coverVertical)}
         >
           {bgSrc && <img className="bg" src={bgSrc} alt="" />}
           <div className="overlay" />
@@ -170,8 +174,8 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
           <div className="content">
             {isPublicExam ? (
               <>
-                <h1>申论高分方法</h1>
-                <p>公考上岸 · 核心答题思路</p>
+                <h1>申论大作文的三个底层结构</h1>
+                <p>从审题到卷面，一篇讲透；附 12 个真题句式模板</p>
               </>
             ) : (
               <>

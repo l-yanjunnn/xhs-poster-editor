@@ -60,6 +60,13 @@ import {
 } from '@/lib/imageModel'
 import { TEXT_HIGHLIGHT_COLOR } from '@/lib/textHighlight'
 import { normalizeHexColor } from '@/lib/hexColor'
+import {
+  COVER_LAYOUT_EXAMPLES,
+  COVER_LAYOUT_OPTIONS,
+  COVER_VERTICAL_OPTIONS,
+  type CoverLayout,
+  type CoverVertical,
+} from '@/lib/coverSlots'
 
 export interface RecentAction {
   id: string
@@ -103,6 +110,8 @@ interface Props {
   logoStrategy: LogoStrategy
   coverTitleColor: string
   coverSubtitleColor: string
+  coverLayout: CoverLayout
+  coverVertical: CoverVertical
   userFontFamilies: string[]
   onFontH1: (value: string) => void
   onFontH2: (value: string) => void
@@ -119,6 +128,8 @@ interface Props {
   onCoverTitleColor: (color: string) => void
   onCoverSubtitleColor: (color: string) => void
   onRestoreCoverColors: () => void
+  onCoverLayout: (layout: CoverLayout) => void
+  onCoverVertical: (vertical: CoverVertical) => void
   onOpenAssetLibrary: () => void
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
@@ -554,6 +565,13 @@ function PageInspector(props: Props) {
           </button>
         </div>
 
+        <CoverSlotFields
+          layout={props.coverLayout}
+          vertical={props.coverVertical}
+          onLayout={props.onCoverLayout}
+          onVertical={props.onCoverVertical}
+        />
+
         <CoverColorFields
           titleColor={props.coverTitleColor}
           subtitleColor={props.coverSubtitleColor}
@@ -649,6 +667,59 @@ function PageInspector(props: Props) {
         <span>请先选中文字，再调整荧光笔。</span>
       </div>
     </>
+  )
+}
+
+function CoverSlotFields({
+  layout,
+  vertical,
+  onLayout,
+  onVertical,
+}: {
+  layout: CoverLayout
+  vertical: CoverVertical
+  onLayout: (layout: CoverLayout) => void
+  onVertical: (vertical: CoverVertical) => void
+}) {
+  return (
+    <fieldset className="m-0 flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <legend className="px-1 text-xs font-semibold text-neutral-700">
+        封面版式
+      </legend>
+      <div className="cover-layout-options" role="group" aria-label="封面版式">
+        {COVER_LAYOUT_OPTIONS.map((option) => {
+          const example = COVER_LAYOUT_EXAMPLES[option.value]
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={layout === option.value ? 'is-active' : undefined}
+              aria-pressed={layout === option.value}
+              onClick={() => onLayout(option.value)}
+            >
+              <img src={example.previewSrc} alt="" />
+              <strong>{option.label}</strong>
+            </button>
+          )
+        })}
+      </div>
+      <div className="inspector-field">
+        <div className="inspector-field-label">垂直位置</div>
+        <div className="segmented-control" role="group" aria-label="垂直位置">
+          {COVER_VERTICAL_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={vertical === option.value ? 'is-active' : undefined}
+              aria-pressed={vertical === option.value}
+              onClick={() => onVertical(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </fieldset>
   )
 }
 

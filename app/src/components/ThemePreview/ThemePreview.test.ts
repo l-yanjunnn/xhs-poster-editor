@@ -92,9 +92,37 @@ describe('ThemePreview cover semantics', () => {
       '#654321',
     )
     const heading = host.querySelector('.content > h1')
-    expect(heading?.textContent).toBe('申论高分方法')
+    expect(heading?.textContent).toBe('申论大作文的三个底层结构')
     expect(heading?.nextElementSibling?.tagName).toBe('P')
-    expect(heading?.nextElementSibling?.textContent).toContain('公考上岸')
+    expect(heading?.nextElementSibling?.textContent).toContain('从审题到卷面')
+    expect(host.querySelector('.page')?.getAttribute('data-cover-layout')).toBe(
+      'stack-left',
+    )
+    expect(host.querySelector('.page')?.getAttribute('data-cover-vertical')).toBe(
+      'top',
+    )
+  })
+
+  it('把主题里的封面槽位打到首页节点上', async () => {
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockResolvedValue({
+      coverSrc: '/cover.png',
+      innerSrc: '/inner.png',
+      issues: [],
+    })
+    const { host } = await mountThemePreview(
+      publicExamTheme({
+        coverLayout: 'kicker-above',
+        coverVertical: 'bottom',
+      }),
+    )
+
+    expect(host.querySelector('.page')?.getAttribute('data-cover-layout')).toBe(
+      'kicker-above',
+    )
+    expect(host.querySelector('.page')?.getAttribute('data-cover-vertical')).toBe(
+      'bottom',
+    )
   })
 
   it('切换主题时立即清空旧 src，且慢请求不会覆盖新结果', async () => {

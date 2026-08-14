@@ -56,6 +56,8 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverBgAssetId
   delete legacy.coverTitleColor
   delete legacy.coverSubtitleColor
+  delete legacy.coverLayout
+  delete legacy.coverVertical
   return legacy
 }
 

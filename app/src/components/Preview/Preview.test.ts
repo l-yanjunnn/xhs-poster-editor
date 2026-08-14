@@ -810,3 +810,31 @@ describe('Preview deterministic typography transaction', () => {
     expect(previewTypographyMocks.calibrate).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Preview cover slots', () => {
+  it('只在首页打版式属性，内页保持空白', async () => {
+    const cover = await mountPreview(
+      { x: 120, top: 300, bottom: 300 },
+      {
+        pageIndex: 0,
+        coverLayout: 'poster-center',
+        coverVertical: 'middle',
+      },
+    )
+    const coverPage = cover.host.querySelector('.page')
+    expect(coverPage?.getAttribute('data-cover-layout')).toBe('poster-center')
+    expect(coverPage?.getAttribute('data-cover-vertical')).toBe('middle')
+
+    const inner = await mountPreview(
+      { x: 96, top: 180, bottom: 300 },
+      {
+        pageIndex: 1,
+        coverLayout: 'poster-center',
+        coverVertical: 'middle',
+      },
+    )
+    const innerPage = inner.host.querySelector('.page')
+    expect(innerPage?.hasAttribute('data-cover-layout')).toBe(false)
+    expect(innerPage?.hasAttribute('data-cover-vertical')).toBe(false)
+  })
+})

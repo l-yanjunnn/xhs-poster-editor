@@ -1,6 +1,14 @@
 // 主题数据模型 + 内置主题 + 共享映射表
 // 主题里只存 assetId（不存 blob URL），apply 时再 resolve，避免 session 间失效
 
+import {
+  DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_VERTICAL,
+  normalizeCoverLayout,
+  normalizeCoverVertical,
+  type CoverLayout,
+  type CoverVertical,
+} from './coverSlots'
 import { normalizeHexColor } from './hexColor'
 
 export type LogoStrategy = 'every' | 'first' | 'first-last' | 'none'
@@ -47,6 +55,8 @@ export interface Theme {
   logoAssetId: string
   coverTitleColor: string
   coverSubtitleColor: string
+  coverLayout: CoverLayout
+  coverVertical: CoverVertical
 
   // 正文（可选）— null = 仅样式；object = 含 Tiptap doc JSON
   contentJSON: object | null
@@ -99,6 +109,8 @@ export const BUILTIN_THEMES: Theme[] = [
     logoAssetId: 'builtin-logo-cat',
     coverTitleColor: '#1A1A1A',
     coverSubtitleColor: '#1A1A1A',
+    coverLayout: DEFAULT_COVER_LAYOUT,
+    coverVertical: DEFAULT_COVER_VERTICAL,
     contentJSON: null,
   },
   {
@@ -124,6 +136,8 @@ export const BUILTIN_THEMES: Theme[] = [
     logoAssetId: 'builtin-logo-cat',
     coverTitleColor: '#111111',
     coverSubtitleColor: '#111111',
+    coverLayout: DEFAULT_COVER_LAYOUT,
+    coverVertical: DEFAULT_COVER_VERTICAL,
     contentJSON: null,
   },
   {
@@ -149,6 +163,8 @@ export const BUILTIN_THEMES: Theme[] = [
     logoAssetId: 'builtin-logo-cat',
     coverTitleColor: '#F0F0F0',
     coverSubtitleColor: '#F0F0F0',
+    coverLayout: DEFAULT_COVER_LAYOUT,
+    coverVertical: DEFAULT_COVER_VERTICAL,
     contentJSON: null,
   },
   {
@@ -174,6 +190,8 @@ export const BUILTIN_THEMES: Theme[] = [
     logoAssetId: '',
     coverTitleColor: '#6D136C',
     coverSubtitleColor: '#5A465F',
+    coverLayout: DEFAULT_COVER_LAYOUT,
+    coverVertical: DEFAULT_COVER_VERTICAL,
     contentJSON: null,
   },
 ]
@@ -280,12 +298,18 @@ export function normalizeTheme(value: unknown): Theme | null {
       normalizeHexColor(theme.coverTitleColor) ?? fallbackColors.title,
     coverSubtitleColor:
       normalizeHexColor(theme.coverSubtitleColor) ?? fallbackColors.subtitle,
+    coverLayout: normalizeCoverLayout(theme.coverLayout),
+    coverVertical: normalizeCoverVertical(theme.coverVertical),
     contentJSON: theme.contentJSON as object | null,
   }
 }
 
 // App 启动加载的默认主题
 export const DEFAULT_THEME = BUILTIN_THEMES[0]
+
+export const PUBLIC_EXAM_THEME = BUILTIN_THEMES.find(
+  (theme) => theme.id === 'builtin-public-exam-landscape',
+)!
 
 // 叠色：[color, opacity]
 export const OVERLAY_MAP: Record<OverlayKey, [string, number]> = {

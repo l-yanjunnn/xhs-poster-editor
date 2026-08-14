@@ -1,3 +1,11 @@
+import {
+  DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_VERTICAL,
+  normalizeCoverLayout,
+  normalizeCoverVertical,
+  type CoverLayout,
+  type CoverVertical,
+} from './coverSlots'
 import type {
   DensityLevel,
   H1Width,
@@ -38,6 +46,9 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   /** 只接受已规范化的 #RRGGBB，避免恢复时注入模糊 CSS 值。 */
   coverTitleColor: string
   coverSubtitleColor: string
+  /** 封面槽位；旧 V2 草稿缺字段时按 A · 上兼容。 */
+  coverLayout: CoverLayout
+  coverVertical: CoverVertical
 }
 
 /**
@@ -324,7 +335,11 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
-    style: style as EditorDocumentStyleV2,
+    style: {
+      ...(style as EditorDocumentStyleV2),
+      coverLayout: normalizeCoverLayout(style.coverLayout),
+      coverVertical: normalizeCoverVertical(style.coverVertical),
+    },
     ...(publication ? { publication } : {}),
   }
 }
@@ -364,6 +379,8 @@ function migrateStoredDocumentV1(document: EditorDocumentV1): EditorDocumentV2 {
       coverBgAssetId: document.style.bgAssetId,
       coverTitleColor: legacyPrimaryColor,
       coverSubtitleColor: legacyPrimaryColor,
+      coverLayout: DEFAULT_COVER_LAYOUT,
+      coverVertical: DEFAULT_COVER_VERTICAL,
     },
   }
 }

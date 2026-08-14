@@ -137,7 +137,8 @@ interface Props {
   noWrapH1Layout?: NoWrapH1Layout
 }
 
-const DEFAULT_CONTENT = `
+// 导出给 App：切公考主题时判断「首页是否仍是默认教程」（见 coverSlots）
+export const DEFAULT_CONTENT = `
 <h1>小红书长图排版工具</h1>
 <p>使用指南 · 给非技术朋友的开箱即用工具</p>
 <hr class="divider">
@@ -174,7 +175,7 @@ const DEFAULT_CONTENT = `
 <hr class="page-break">
 
 <h1>主题、图片与参考线</h1>
-<p>主题库内置四套视觉方案，一键套用、不改正文：公考·山水卷（封面 + 内页双底图）、雅致、极简白、深夜黑。</p>
+<p>主题库内置四套视觉方案，一键套用、不改正文：公考·山水卷（封面 + 内页双底图）、雅致、极简白、深夜黑。右侧「封面版式」可选左对齐叠排、居中海报或小字在上大字在下，垂直位置上 / 中 / 下三档。</p>
 <h2>图片直接上手</h2>
 <ul>
   <li><strong>缩放</strong>：点击画布里的图片，拖四角等比调整</li>

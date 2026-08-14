@@ -440,12 +440,13 @@ export function measureElementInk(
 }
 
 /**
- * 清理度量缓存。用户以同 family 名称重新注册字体时，传入 family
- * 可以精确失效；不传 source 则清空所有 Document（主文档+导出 iframe）。
+ * 清理度量缓存。不传 source 则清空所有 Document（主文档+导出 iframe）。
+ * 不提供按 family 精确失效：缓存键里的 fontFamily 是完整 computed
+ * stack（如 `"Foo", sans-serif`），按单 family 匹配永远失配（CODE-REVIEW M4，
+ * fontRegistry 因此始终全量清理）。
  */
 export function clearTypographyMetricsCache(
   source?: Document | HTMLElement | null,
-  fontFamily?: string,
 ): void {
   if (source === undefined) {
     cacheByDocument = new WeakMap()
@@ -453,16 +454,7 @@ export function clearTypographyMetricsCache(
   }
   const ownerDocument = documentFromSource(source)
   if (!ownerDocument) return
-  if (!fontFamily) {
-    cacheByDocument.delete(ownerDocument)
-    return
-  }
-  const cache = cacheByDocument.get(ownerDocument)
-  if (!cache) return
-  const family = normalizeFontFamily(fontFamily)
-  for (const [key, metrics] of cache) {
-    if (metrics.fontFamily === family) cache.delete(key)
-  }
+  cacheByDocument.delete(ownerDocument)
 }
 
 /**

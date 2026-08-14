@@ -985,7 +985,6 @@ describe('deterministic text layout line solving', () => {
         atom('other-tail', 'C', 'other'),
       ],
       20.4,
-      { otherGapMaxEm: 0.1 },
     )
     const first = lines[0]
 

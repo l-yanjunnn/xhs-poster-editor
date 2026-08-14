@@ -1228,12 +1228,27 @@ function materializeBlock(
     blockStyle.fontSize,
     cssPixels(computed.lineHeight, blockStyle.fontSize * 1.2),
   )
-  const justify = computed.textAlign === 'justify'
+  // 物化后 .deterministic-text-layout 会把 text-align 锁成 left，
+  // 再次物化必须读 --dtl-text-align，否则封面海报居中会丢。
+  const textAlign =
+    computed.getPropertyValue('--dtl-text-align').trim() || computed.textAlign
+  const justify = textAlign === 'justify'
   const lines = solveDeterministicTextLayout(
     atoms.map((meta) => meta.input),
     width,
     { justifyWrappedLines: justify },
   )
+  // 封面海报等块用 CSS text-align:center；求解器仍按左起点出 x，
+  // 这里按行宽把整行平移，预览/导出共用同一份几何。
+  if (textAlign === 'center') {
+    for (const line of lines) {
+      const offset = (line.targetWidth - line.actualWidth) / 2
+      if (offset === 0) continue
+      for (const atom of line.atoms) {
+        atom.x += offset
+      }
+    }
+  }
   const provisionalBaseline = lineBaseline(
     block.ownerDocument,
     lineHeight,

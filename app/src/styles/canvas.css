@@ -218,6 +218,102 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* 封面槽位：只改首图呈现。A · 上不加 flex，旧草稿继续走文档流。
+ * 必须写在公考主题规则之后：与 .theme-public-exam-landscape.page--first 的
+ * 副标题规则（max-width/font-size/letter-spacing）特异性打平，靠后者胜出；
+ * 移到前面会被主题规则整组压掉（v1.10.0 开发期真实翻过车）。 */
+.page--first[data-cover-vertical="middle"] .content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.page--first[data-cover-vertical="bottom"] .content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.page--first[data-cover-layout="poster-center"] .content > h1:first-of-type {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+  text-align: center;
+  text-align-last: center;
+  --dtl-text-align: center;
+}
+/* 分隔条：物化后行盒全部绝对定位、块内流式高度为零，
+ * in-flow 伪元素会被压进标题字形底下；必须整条绝对定位挂在标题盒下缘。 */
+.page--first[data-cover-layout="poster-center"]
+  .content
+  > h1:first-of-type::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: calc(100% + 34px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.62;
+  border-radius: 999px;
+}
+.page--first[data-cover-layout="poster-center"]
+  .content
+  > h1:first-of-type
+  + p {
+  width: 100%;
+  max-width: none;
+  margin-top: 72px;
+  margin-right: 0;
+  margin-left: 0;
+  text-align: center;
+  text-align-last: center;
+  --dtl-text-align: center;
+}
+
+.page--first[data-cover-layout="kicker-above"] .content {
+  display: flex;
+  flex-direction: column;
+}
+.page--first[data-cover-layout="kicker-above"] .content > h1:first-of-type {
+  margin-top: 0;
+  font-size: calc(var(--fs-h1) * 1.16);
+  letter-spacing: 0.01em;
+}
+/* 眉题左移 20px 给竖条让位：竖条绝对定位在盒外侧，
+ * 不参与求解器行宽测量，也不会和首字重叠。 */
+.page--first[data-cover-layout="kicker-above"]
+  .content
+  > h1:first-of-type
+  + p {
+  position: relative;
+  order: -1;
+  margin-top: 0;
+  margin-bottom: 18px;
+  margin-left: 20px;
+  max-width: 100%;
+  font-size: calc(var(--fs-body) - 2px);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+.page--first[data-cover-layout="kicker-above"]
+  .content
+  > h1:first-of-type
+  + p::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 0.82em;
+  border-radius: 1px;
+  background: currentColor;
+}
+
 /* 首页仍输出 9:15，但信息流封面会中心裁成竖版 3:4：
  * 9:15 = 1080×1800，中心 3:4 = 1080×1440，上下各裁 180px。
  * 本轮先把 Logo 和正文起点放入可见区；正文末端仍由用户按遮罩手动检查。

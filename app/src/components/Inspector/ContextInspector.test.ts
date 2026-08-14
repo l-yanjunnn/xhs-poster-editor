@@ -62,6 +62,8 @@ function createProps(
     logoStrategy: DEFAULT_THEME.logoStrategy,
     coverTitleColor: '#6D136C',
     coverSubtitleColor: '#5A465F',
+    coverLayout: DEFAULT_THEME.coverLayout,
+    coverVertical: DEFAULT_THEME.coverVertical,
     userFontFamilies: [],
     onFontH1: vi.fn(),
     onFontH2: vi.fn(),
@@ -78,6 +80,8 @@ function createProps(
     onCoverTitleColor: vi.fn(),
     onCoverSubtitleColor: vi.fn(),
     onRestoreCoverColors: vi.fn(),
+    onCoverLayout: vi.fn(),
+    onCoverVertical: vi.fn(),
     onOpenAssetLibrary: vi.fn(),
     onOpenFontLibrary: vi.fn(),
     onOpenThemeLibrary: vi.fn(),
@@ -282,6 +286,33 @@ describe('ContextInspector cover colors', () => {
     expect(item.props.onRestoreCoverColors).toHaveBeenCalledOnce()
     expect(colorInput(item.host, '主标题').value).toBe('#6D136C')
     expect(colorInput(item.host, '主标题').hasAttribute('aria-invalid')).toBe(false)
+  })
+})
+
+describe('ContextInspector cover slots', () => {
+  it('把版式和垂直位置提交给页面样式，不改正文', async () => {
+    const onCoverLayout = vi.fn()
+    const onCoverVertical = vi.fn()
+    const { host } = await mountInspector({
+      onCoverLayout,
+      onCoverVertical,
+    })
+
+    const poster = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('button'),
+    ).find((button) => button.textContent?.includes('居中海报'))
+    const bottom = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[aria-label="垂直位置"] button'),
+    ).find((button) => button.textContent === '下')
+    await act(async () => poster?.click())
+    await act(async () => bottom?.click())
+
+    expect(onCoverLayout).toHaveBeenCalledWith('poster-center')
+    expect(onCoverVertical).toHaveBeenCalledWith('bottom')
+    const activeLayout = host.querySelector(
+      '[aria-label="封面版式"] button[aria-pressed="true"]',
+    )
+    expect(activeLayout?.textContent).toContain('左对齐叠排')
   })
 })
 

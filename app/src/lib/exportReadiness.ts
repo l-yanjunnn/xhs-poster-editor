@@ -49,18 +49,23 @@ function waitForTimeout(ms: number): Promise<'timeout'> {
   })
 }
 
-function imageLabel(image: HTMLImageElement, index: number): string {
+function imageLabel(
+  image: HTMLImageElement,
+  pageNumber: string,
+  indexInPage: number,
+): string {
   return (
     image.alt.trim() ||
     image.dataset.assetId ||
     image.dataset.imageId ||
-    `第 ${index + 1} 张图片`
+    // 用户在预检弹窗里对照的是页码，跨页全局序号对不上（CODE-REVIEW R8）
+    `第 ${pageNumber} 页第 ${indexInPage + 1} 张图片`
   )
 }
 
 async function checkImage(
   image: HTMLImageElement,
-  index: number,
+  label: string,
   timeoutMs: number,
 ): Promise<ExportResourceIssue | null> {
   if (image.complete) {
@@ -68,7 +73,7 @@ async function checkImage(
       ? null
       : {
           kind: 'image',
-          label: imageLabel(image, index),
+          label,
           message: '图片载入失败或素材已经被删除',
         }
   }
@@ -89,7 +94,7 @@ async function checkImage(
   if (result === 'loaded' && image.naturalWidth > 0) return null
   return {
     kind: 'image',
-    label: imageLabel(image, index),
+    label,
     message:
       result === 'timeout'
         ? `等待图片超过 ${Math.ceil(timeoutMs / 1000)} 秒`
@@ -103,16 +108,26 @@ export async function checkExportReadiness(
 ): Promise<ExportResourceIssue[]> {
   const imageTimeoutMs = options.imageTimeoutMs ?? 5_000
   const fontTimeoutMs = options.fontTimeoutMs ?? 5_000
-  const images = Array.from(
-    new Set(
-      pages.flatMap((page) =>
-        Array.from(page.querySelectorAll<HTMLImageElement>('img')),
-      ),
-    ),
-  )
+  const seenImages = new Set<HTMLImageElement>()
+  const imageEntries: { image: HTMLImageElement; label: string }[] = []
+  pages.forEach((page, pageIndex) => {
+    const pageNumber = page.dataset.pageNumber ?? String(pageIndex + 1)
+    Array.from(page.querySelectorAll<HTMLImageElement>('img')).forEach(
+      (image, indexInPage) => {
+        if (seenImages.has(image)) return
+        seenImages.add(image)
+        imageEntries.push({
+          image,
+          label: imageLabel(image, pageNumber, indexInPage),
+        })
+      },
+    )
+  })
   const imageIssues = (
     await Promise.all(
-      images.map((image, index) => checkImage(image, index, imageTimeoutMs)),
+      imageEntries.map(({ image, label }) =>
+        checkImage(image, label, imageTimeoutMs),
+      ),
     )
   ).filter((issue): issue is ExportResourceIssue => issue !== null)
 

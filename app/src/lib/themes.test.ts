@@ -11,6 +11,8 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverBgAssetId
   delete legacy.coverTitleColor
   delete legacy.coverSubtitleColor
+  delete legacy.coverLayout
+  delete legacy.coverVertical
   return legacy
 }
 
@@ -29,6 +31,8 @@ describe('normalizeTheme', () => {
     expect(normalized?.coverBgAssetId).toBe(source?.bgAssetId)
     expect(normalized?.coverTitleColor).toBe(color)
     expect(normalized?.coverSubtitleColor).toBe(color)
+    expect(normalized?.coverLayout).toBe('stack-left')
+    expect(normalized?.coverVertical).toBe('top')
   })
 
   it("preserves an explicit empty cover asset instead of falling back with '||'", () => {
@@ -91,6 +95,8 @@ describe('built-in themes V2', () => {
       coverBgAssetId: 'builtin-bg-public-exam-landscape-cover-v1',
       coverTitleColor: '#6D136C',
       coverSubtitleColor: '#5A465F',
+      coverLayout: 'stack-left',
+      coverVertical: 'top',
       logoStrategy: 'none',
       contentJSON: null,
     })
@@ -103,6 +109,29 @@ describe('built-in themes V2', () => {
     expect(getThemeCoverTextColors('theme-public-exam-landscape')).toEqual({
       title: '#6D136C',
       subtitle: '#5A465F',
+    })
+  })
+
+  it('keeps a stored cover slot pair and falls back unsafe values to A · 上', () => {
+    expect(
+      normalizeTheme({
+        ...BUILTIN_THEMES[0],
+        coverLayout: 'poster-center',
+        coverVertical: 'bottom',
+      }),
+    ).toMatchObject({
+      coverLayout: 'poster-center',
+      coverVertical: 'bottom',
+    })
+    expect(
+      normalizeTheme({
+        ...BUILTIN_THEMES[0],
+        coverLayout: 'free-drag',
+        coverVertical: 'y-420',
+      }),
+    ).toMatchObject({
+      coverLayout: 'stack-left',
+      coverVertical: 'top',
     })
   })
 })

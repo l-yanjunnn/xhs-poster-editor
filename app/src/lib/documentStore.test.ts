@@ -58,6 +58,8 @@ function makeDocument(
       coverBgAssetId: 'builtin-bg-cover',
       coverTitleColor: '#6D136C',
       coverSubtitleColor: '#5A465F',
+      coverLayout: 'stack-left',
+      coverVertical: 'top',
     },
   }
 }
@@ -98,6 +100,8 @@ function migratedLegacyDocument(document: EditorDocumentV1): EditorDocumentV2 {
       coverBgAssetId: document.style.bgAssetId,
       coverTitleColor: primaryColor,
       coverSubtitleColor: primaryColor,
+      coverLayout: 'stack-left',
+      coverVertical: 'top',
     },
   }
 }
@@ -205,6 +209,8 @@ describe('documentStore', () => {
       expect(restored?.style.coverBgAssetId).toBe(legacy.style.bgAssetId)
       expect(restored?.style.coverTitleColor).toBe(primaryColor)
       expect(restored?.style.coverSubtitleColor).toBe(primaryColor)
+      expect(restored?.style.coverLayout).toBe('stack-left')
+      expect(restored?.style.coverVertical).toBe('top')
       expect(await listEditorDocuments()).toEqual([
         migratedLegacyDocument(legacy),
       ])
@@ -279,6 +285,42 @@ describe('documentStore', () => {
       ).rejects.toThrow('封面颜色必须是规范六位 HEX')
     },
   )
+
+  it('旧 V2 缺封面槽位字段时按 A · 上兼容，不升 schema', async () => {
+    const document = makeDocument('legacy-cover-slots', 678)
+    const style = { ...document.style } as Partial<EditorDocumentV2['style']>
+    delete style.coverLayout
+    delete style.coverVertical
+
+    await putEditorDocument({
+      ...document,
+      style,
+    } as EditorDocumentV2)
+
+    const restored = await getEditorDocument(document.id)
+    expect(restored?.schemaVersion).toBe(EDITOR_DOCUMENT_SCHEMA_VERSION)
+    expect(restored?.style.coverLayout).toBe('stack-left')
+    expect(restored?.style.coverVertical).toBe('top')
+  })
+
+  it('保存并恢复用户选择的封面槽位', async () => {
+    const document = makeDocument('slot-roundtrip', 679)
+    await putEditorDocument({
+      ...document,
+      style: {
+        ...document.style,
+        coverLayout: 'poster-center',
+        coverVertical: 'bottom',
+      },
+    })
+
+    expect(await getEditorDocument(document.id)).toMatchObject({
+      style: {
+        coverLayout: 'poster-center',
+        coverVertical: 'bottom',
+      },
+    })
+  })
 
   it('拒绝损坏的样式枚举和不合理字号', async () => {
     const badDensity = makeDocument('bad-density', 700)

@@ -176,7 +176,7 @@ describe('Canvas TextMetrics 运行时度量', () => {
     measureFontInk({ ...spec, script: 'latin' }, doc)
     expect(measureText).toHaveBeenCalledTimes(2)
 
-    clearTypographyMetricsCache(doc, 'Test Sans')
+    clearTypographyMetricsCache(doc)
     measureFontInk(spec, doc)
     expect(measureText).toHaveBeenCalledTimes(3)
   })
