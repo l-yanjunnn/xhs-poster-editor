@@ -10,6 +10,7 @@ import {
 
 import type { EditorHandle } from '@/components/Editor/Editor'
 import { createEditorDocumentJSON } from '@/components/Editor/createEditorDocumentJSON'
+import { DEFAULT_CONTENT } from '@/components/Editor/Editor'
 import type { DraftSaveStatus } from '@/components/Toolbar/Toolbar'
 import {
   clearEditorDocumentRecovery,
@@ -38,10 +39,6 @@ const AUTOSAVE_DELAY_MS = 900
 // stringify + 写盘。真正的关页兜底由 visibilitychange/pagehide 的
 // 同步捕获负责，崩溃保护窗口最多只放宽这 200ms。
 const WAL_DEBOUNCE_MS = 200
-const EMPTY_DOCUMENT_JSON = {
-  type: 'doc',
-  content: [{ type: 'paragraph' }],
-}
 
 export interface DraftIdentity {
   id: string
@@ -696,6 +693,8 @@ export function useDraftPersistence(
 
       if (!nextDocument) {
         const now = Date.now()
+        // 删光全部草稿 = 回到开箱状态：装入默认教程而不是空白页
+        //（2026-08-14 用户反馈：删光后空白，找不到教程）
         nextDocument = {
           schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
           id: newEditorDocumentId(),
@@ -704,7 +703,7 @@ export function useDraftPersistence(
           title: '未命名草稿',
           createdAt: now,
           updatedAt: now,
-          contentJSON: EMPTY_DOCUMENT_JSON,
+          contentJSON: createEditorDocumentJSON(DEFAULT_CONTENT),
           style: styleFromTheme(DEFAULT_THEME),
         }
         await putEditorDocument(nextDocument)
