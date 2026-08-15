@@ -740,7 +740,7 @@ async def main() -> None:
         browser = await playwright.chromium.launch(
             headless=True,
             proxy=proxy,
-            args=[] if proxy else ["--no-proxy-server"],
+            args=["--disable-http2"] if proxy else ["--no-proxy-server"],
         )
         try:
             report = await run_ui(browser, args, run_dir)

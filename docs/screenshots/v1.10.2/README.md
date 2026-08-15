@@ -1,6 +1,6 @@
-# v1.10.2 本地目检材料
+# v1.10.2 目检与回归材料
 
-> 状态：本地实现与回归完成，等待用户目检。线上与 `app/package.json` 仍为 v1.10.1；本目录不代表已经发布。
+> 状态：v1.10.2 已于 2026-08-16 完成双轨发布。发布提交/tag 为 `0b2d6468c9f8aa4db9cdf6d88533b7eaff47f267` / `v1.10.2`；本目录保留发布前用户目检时看过的图片。
 
 | 文件 | 目检重点 |
 |---|---|
@@ -12,10 +12,14 @@
 | `06-code-block-dark-canvas.png` | 深夜黑旧主题画布回归 |
 | `07-code-block-dark-export.png` | 深夜黑 PNG 导出对照（原始回归产物 2160×3600，此处缩为 600×1000） |
 
-自动化几何证据：续段末行 `right=target=840`、`residual=0`；真段尾 `777.2 < 888`，旧主题真段尾 `697.2 < 920`。三组 Chromium 回归均为 0 console/page error。
+自动化几何证据：续段末行 `right=target=840`、`residual=0`；真段尾 `777.2 < 888`，旧主题真段尾 `697.2 < 920`。本地 Chromium 回归均为 0 console/page error。
+
+上线后，Cloudflare 与大陆通道均通过 `test_prod_deep.py`、低视口弹窗、跨页续段和 Code 块换行回归。两个入口加载同一份 JS/CSS 构建。
 
 可重复运行的脚本位于：
 
 - `tools/export-race-repro/test_v1102_dialog_viewport.py`
 - `tools/export-race-repro/test_continuation_local.py`
+- `tools/export-race-repro/test_continuation_prod.py`
 - `tools/export-race-repro/test_code_block_wrap_local.py`
+- `tools/export-race-repro/test_code_block_wrap_prod.py`

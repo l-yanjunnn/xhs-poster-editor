@@ -549,6 +549,7 @@ async def async_main(
         launch_options: dict[str, Any] = {"headless": True}
         if proxy_server:
             launch_options["proxy"] = {"server": proxy_server}
+            launch_options["args"] = ["--disable-http2"]
         else:
             launch_options["args"] = ["--no-proxy-server"]
         browser = await playwright.chromium.launch(**launch_options)

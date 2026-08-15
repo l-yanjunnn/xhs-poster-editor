@@ -87,6 +87,32 @@ async def export_current(page, name: str) -> bytes:
             name=f"导出全部 {page_count} 张",
             exact=True,
         ).last.click()
+        # 新版导出门禁会把可绕过的资源/排版 warning 留在同一弹窗内，
+        # 旧脚本若不处理只会空等 download 超时。生产深回归允许按当前
+        # 预览继续，但硬阻断仍必须失败。
+        for _ in range(40):
+            if not await dlg.is_visible():
+                break
+            blocking = dlg.get_by_text(
+                re.compile(
+                    r"字体或排版预检未通过，已阻止导出|"
+                    r"字体或确定性排版存在硬阻断问题",
+                ),
+                exact=False,
+            )
+            if await blocking.count() and await blocking.first.is_visible():
+                detail = await dlg.inner_text()
+                raise AssertionError(f"{name}: 导出存在硬阻断：{detail}")
+            warning_action = dlg.get_by_role(
+                "button",
+                name=re.compile(r"^(仍然导出|按当前预览强制导出)$"),
+            )
+            if await warning_action.count() and await warning_action.first.is_visible():
+                detail = await dlg.inner_text()
+                print(f"{name}: 处理可绕过的导出 warning：{detail}", flush=True)
+                await warning_action.first.click()
+                break
+            await asyncio.sleep(0.5)
     dl = await dl_info.value
     path = OUT / f"{name}{Path(dl.suggested_filename).suffix}"
     await dl.save_as(path)
@@ -111,7 +137,15 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
-            proxy={"server": "http://127.0.0.1:7897"} if USE_PROXY else None,
+            proxy={
+                "server": "http://127.0.0.1:7897",
+                # 雅致主题的 LXGW WenKai 来自 jsDelivr；本机可直连该
+                # 域名，旁路可避开代理对大字体分片的 HTTP/2 黑洞。
+                "bypass": "cdn.jsdelivr.net",
+            }
+            if USE_PROXY
+            else None,
+            args=["--disable-http2"] if USE_PROXY else ["--no-proxy-server"],
         )
         context = await browser.new_context(
             viewport={"width": 1440, "height": 900}, accept_downloads=True,
