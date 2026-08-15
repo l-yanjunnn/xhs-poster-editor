@@ -334,7 +334,7 @@ export function ExportDialog({
       }}
     >
       <DialogContent
-        className="grid max-h-[calc(100vh-56px)] grid-cols-1 overflow-hidden p-0 sm:max-w-[1080px]"
+        className="grid max-h-[calc(100dvh-56px)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 sm:max-w-[1080px]"
         description="选择全部或自选页码，导出到独立文件夹或单个兼容 ZIP"
       >
         <DialogHeader className="border-b border-neutral-200 px-6 py-5 pr-14">

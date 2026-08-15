@@ -169,7 +169,7 @@ export function ImportDialog({
       }}
     >
       <DialogContent
-        className={`grid max-h-[calc(100vh-56px)] grid-cols-1 overflow-hidden p-0 ${
+        className={`grid max-h-[calc(100dvh-56px)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 ${
           review ? 'sm:max-w-[1160px]' : 'sm:max-w-[780px]'
         }`}
         description="导入 Markdown 或纯文本，确认解析后生成可编辑的新草稿"
