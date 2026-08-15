@@ -236,6 +236,10 @@
   font-family: "JetBrains Mono", "SF Mono", "Menlo", monospace;
   font-size: 14px;
   margin: 10px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  max-width: 100%;
 }
 
 .tiptap-editor hr {

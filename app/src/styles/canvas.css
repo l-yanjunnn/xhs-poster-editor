@@ -534,6 +534,10 @@
   font-family: var(--font-mono);
   font-size: var(--fs-code);
   color: var(--c-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  max-width: 100%;
 }
 
 /* Tailwind preflight 清了 list-style，画布也要补回 */
