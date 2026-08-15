@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-13 深夜（**v1.9.0「引擎提速版」发布闭环完成**；需求源为 `docs/CODE-REVIEW-2026-08-13.md` §五版本编排 + 用户同日拍板并入 M7/M3/R5 与教程重写。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-15（**v1.10.2「用户反馈可靠性修复」已完成本地实现与回归，等待用户目检和上线授权**；已修反馈 1/3/4，反馈 2 封面标题不改代码、统一引导用 `Shift+Enter`。`app/package.json` 与线上仍为 v1.10.1，尚未 push / bump / deploy / tag / archive。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -12,8 +12,9 @@
 |---|---|
 | 线上版本 | **v1.10.1**。发布提交/tag 为 `927175f` / `v1.10.1`；Cloudflare 与 OSS/CDN 均加载 `assets/index-C9qzx69K.js` + `assets/index-CopAT3sD.css`（CSS 与 v1.10.0 同 hash，本版无样式改动），两入口与 `archive/dist-v1.10.1/` 一致。两入口删光草稿回归（v1.10.1 修复项 + 版本号断言）+ `test_prod_deep.py` 全绿（Cloudflare 前两跑复现代理黑洞事故签名，第三跑全绿闭环，同 v1.9.0/v1.10.0 发版日模式，纯环境故障）。v1.10.0 发布记录：提交/tag `adbc9ef` / `v1.10.0`，两入口 `test_prod_deep` + 封面槽位 8 项像素断言全绿 |
 | 本地归档 | 当前完整构建在 `app/dist/`；v1.10.1 快照在 `archive/dist-v1.10.1/`（9.6M，排除字体 3337 个）；v1.10.0 快照在 `archive/dist-v1.10.0/`；v1.9.0 快照在 `archive/dist-v1.9.0/`（发版时漏交 git，2026-08-14 已补交 `0e9bb1e`）；v1.8.2 / v1.8.0 快照在 `archive/dist-v1.8.2/`、`archive/dist-v1.8.0/`；v1.7.3 / v1.7.2 / v1.7.0 / v1.5.1 / v1.5.0 / v1.4.1 / v1.4.0 归档继续保留，完整复原走对应 tag + `bash ci.sh` |
-| 状态 | **线上 v1.9.0 双轨稳定**。引擎提速版：DP 断行求解器三改（提前终止/链式候选/延迟物化，2000 字单次求解 428 s→307 ms、输出与旧实现逐字节等价）；11 页长文档打字延迟 382→71 ms；导出基线校准写读分相 + probe 按类去重；App.tsx 五步拆分至 1286 行；全新 5 页默认教程（开箱一键干净导出）。性能证据 `docs/PERF-BASELINE-2026-08-13.md`、发布说明 `docs/RELEASE-v1.9.0.md`。v1.8.0 滚动联动记录如下（历史）：新增长文双向滚动联动（`REQ-LONGDOC-SCROLL-SYNC`）：左侧 Tiptap 与中央多页画布按「页/顶层块/块内进度」视口中心语义锚点双向定位，画布标题栏「滚动联动」开关（会话态，默认开）。联动只写两容器 scrollTop，不碰正文 JSON/选区/分页/导出 DOM；精确 tag `v1.8.0` 固定在 `067a761` |
-| 当前迭代 | **v1.10.1「删光草稿回开箱教程态」2026-08-14 深夜已双轨上线**（用户反馈当日修复并授权走闭环）。根因：删除最后一份草稿时自动新建的草稿装的是空段落（`EMPTY_DOCUMENT_JSON`，v1.10.0 之前就存在），用户删光草稿后画布空白、找不到教程。修复：该路径改为 `createEditorDocumentJSON(DEFAULT_CONTENT)` + 雅致默认样式，与首次开箱一致；`EMPTY_DOCUMENT_JSON` 常量随之删除。门禁四连全绿（Vitest 43/435）；真实浏览器回归（本地+两生产入口）：编辑落盘→删光全部草稿→教程 5 页回归→刷新仍在。发布提交/tag `927175f` / `v1.10.1`，`archive/dist-v1.10.1/` 已归档。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c7929024a0b24dbdb9c2277a7`。**v1.10.1 无未完成步骤**。v1.10.0 记录如下（历史） |
+| 状态 | **线上 v1.10.1 双轨稳定**。以下为 v1.9.0 引擎提速版历史摘要：DP 断行求解器三改（提前终止/链式候选/延迟物化，2000 字单次求解 428 s→307 ms、输出与旧实现逐字节等价）；11 页长文档打字延迟 382→71 ms；导出基线校准写读分相 + probe 按类去重；App.tsx 五步拆分至 1286 行；全新 5 页默认教程（开箱一键干净导出）。性能证据 `docs/PERF-BASELINE-2026-08-13.md`、发布说明 `docs/RELEASE-v1.9.0.md`。v1.8.0 滚动联动记录如下（历史）：新增长文双向滚动联动（`REQ-LONGDOC-SCROLL-SYNC`）：左侧 Tiptap 与中央多页画布按「页/顶层块/块内进度」视口中心语义锚点双向定位，画布标题栏「滚动联动」开关（会话态，默认开）。联动只写两容器 scrollTop，不碰正文 JSON/选区/分页/导出 DOM；精确 tag `v1.8.0` 固定在 `067a761` |
+| v1.10.1 迭代记录 | **v1.10.1「删光草稿回开箱教程态」2026-08-14 深夜已双轨上线**（用户反馈当日修复并授权走闭环）。根因：删除最后一份草稿时自动新建的草稿装的是空段落（`EMPTY_DOCUMENT_JSON`，v1.10.0 之前就存在），用户删光草稿后画布空白、找不到教程。修复：该路径改为 `createEditorDocumentJSON(DEFAULT_CONTENT)` + 雅致默认样式，与首次开箱一致；`EMPTY_DOCUMENT_JSON` 常量随之删除。门禁四连全绿（Vitest 43/435）；真实浏览器回归（本地+两生产入口）：编辑落盘→删光全部草稿→教程 5 页回归→刷新仍在。发布提交/tag `927175f` / `v1.10.1`，`archive/dist-v1.10.1/` 已归档。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c7929024a0b24dbdb9c2277a7`。**v1.10.1 无未完成步骤**。v1.10.0 记录如下（历史） |
+| 当前迭代 | **v1.10.2「用户反馈可靠性修复」本地实现完成，等待用户目检与上线授权**：反馈 1（低视口导入/导出弹窗 CTA 可达）、反馈 3（`Enter → 分页` 的跨页续段末行正确铺满，真段尾保持自然左对齐）、反馈 4（Code 块长中文、URL、无断点 token 静态自动换行）均已完成 TDD、全量门禁和真实 Chromium / PNG 回归。**反馈 2 不改产品或代码**：`Enter` 仍表示分段，同一标题内换行用 `Shift+Enter`。本地提交为 `3b93160` / `9879dca` / `ff85779`；目检材料见 `docs/screenshots/v1.10.2/`。未获用户确认前不得 bump、push、deploy、tag 或 archive |
 | v1.10.0 迭代记录 | **v1.10.0「结构化封面槽位版」2026-08-14 已双轨上线**（用户目检 + 授权走闭环；发布提交/tag `adbc9ef` / `v1.10.0`，两入口同构建 `index-Dzu6JFfe.js`，`archive/dist-v1.10.0/` 已归档；两入口 `test_prod_deep` + 封面槽位 8 项像素回归全绿，测 Cloudflare 入口的槽位回归需 `test_cover_slots_export_local.py` 的 workers.dev 显式代理逻辑）。范围 = ROADMAP P2 封面槽位（demo 已于 8-13 目检认可）。接手 8-13 深夜留在工作区的未提交半成品（`coverSlots.ts` + Inspector「封面版式」三卡/垂直三档 + App/documentStore/themes/Preview/ThemePreview 全链路 + `docs/design/cover-slots-demo-2026-08-13/SPEC.md`），闭环期修复三处真缺陷：① 槽位 CSS 覆盖块写在公考主题规则**前**且特异性打平被整组压掉（B 副标题在 80% 窄盒里居中偏左、C 眉题字号/0.18em 字距全失效）→ 移到主题规则之后 + `canvas.test.ts` 锁规则顺序；② B 分隔条 / C 眉题竖条用 in-flow 伪元素，被物化后绝对定位行盒压住不可见/与首字重叠 → 改绝对定位挂在物化块上（B 挂 `h1::after` 盒下缘居中、C 眉题 `margin-left:20px` 让位 + `::before` 绝对定位）；③ **Preview 排版事务 effect 漏 `coverLayout/coverVertical` 依赖**：切版式只触发「标 pending」的快速物化 effect，seal 事务永不重跑 → 所有页卡死 pending、导出静默挂死（无报错无 console）→ 补依赖。新增 `tools/export-race-repro/test_cover_slots_export_local.py`（8 项导出像素断言：B 分隔条进 PNG/主副标题居中 ±8px、C 竖条进 PNG 且为最左墨迹、A 左缘回归；headless 需置空 showSaveFilePicker 走经典下载）。顺带清理（CODE-REVIEW）：R8 导入失败 stale 文案（`lastStorageErrorRef` 镜像最新错误）、R8 预检图片标签改「第 X 页第 Y 张图片」、M4 `clearTypographyMetricsCache` family 陷阱分支删除、M5 弃用 option 字段（punctuationPreferredEm/otherGapMaxEm）删除。门禁：tsc/ESLint/build 全绿，Vitest **43 文件 / 435 测试**；画布截图 `docs/screenshots/cover-slots-local/`（00 默认雅致教程态、A 上/中/下、B 中、C 上、内页不变）。**示例文案策略（2026-08-14 用户拍板，推翻上会话的三项规格外改动）**：① 默认主题回退**雅致**（新建空草稿同）；② 默认教程首页文案保持教程原文；③ 示例只跟公考绑定——默认教程未改过时切「公考·山水卷」，首页**整页**换成版式 A 示例封面（`replaceDefaultTutorialCoverHtml`，忽略空白逐字比对整个首页、改过一字就不动、可撤销、只动第一个分页符之前）；封面仍是三套示例之一时切版式同步换示例文案（沿用）；④ 右栏三张版式卡缩略图改**中性灰阶排版示意图**（PIL 生成，`cover-layout-*-v1.png`，任何主题下不违和）。浏览器回归：默认态/切公考整页换示例/全页 sealed/撤销恢复教程/改过标题不覆盖 5 场景全过（脚本 scratchpad `test_theme_swap.py`）。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c6b9b1bcb0b143212ef197155`（含双入口地址 + 飞书使用说明云文档链接）。**v1.10.0 无未完成步骤**。v1.9.0 记录如下（历史） |
 | v1.9.0 迭代记录 | **v1.9.0「引擎提速版」2026-08-13 已双轨上线**（用户授权走闭环）。范围 = CODE-REVIEW §五 v1.9.0 行 + 用户拍板并入：① **P1** DP 断行求解器（`deterministicTextLayout.ts`：按 `model.min` 单调性提前终止内层扫描、`SegmentSolution` 改链式 `{cost,end,next}`、物化推迟到最优链重建；`lineAdjustmentModel` 增 `visibleTargetError` 供不物化淘汰 clamp 候选，`missingOptical` 前缀和复刻物化侧判据——可行集与旧实现严格一致）。微基准 100/500/2000 字与混排 = 67→15 / 6593→74 / 428401→**307** / 2824→72 ms；**等价性差分**：git HEAD 旧实现 vs 新实现 6 组语料（含 hardNoBreak 短语/标点密集/单字符）逐字节相等 + snapshotHash 相等；② **P5/P7** `deterministicTypography.ts`：导出基线校准写读分相（逐 atom reflow→整批一次）、`materializedAtomBaselines` 按 (font, line-height, 盒高) 类去重 probe（逐字素→每块 1–3 个）；端到端导出持平（html2canvas 主导），收益体现在打字延迟（11 页 382.4→71.2 ms、5 页 101.5→83.3 ms）；`lineBaseline` 缓存因字体加载失效风险明确不做；③ **R5** 纯打开草稿零落盘：真根因是 Editor 挂载 effect 在 onUpdate 回调身份变化时重放 HTML、旧回调依赖 draftReady 翻转致重放落在非 hydrating 窗口误标 dirty——改恒定身份回调（读 draftReadyRef/writerLeaseStateRef）+ autosave 守卫（dirty=false 且无 pending 且 revision>0 早退，新建空草稿 revision=0 例外），真实浏览器 5 场景回归全过；④ **M3** FNV-1a hash 实为 **4 处**拷贝（审查漏了 exportPng.ts 一处）+ 毫像素取整 2 处 → `stableHash.ts` 单一实现，单测钉死输出位；`deterministicTextLayout.ts` 对 stableHash 用显式 `.ts` 扩展名 import（node 直跑 solver-bench 需要）；⑤ **M7 五步拆分完成** App.tsx 2344→**1286 行**：`useWriterLease` / `useThemeCssVars` / `useResourceRecovery`(398) / `useDraftPersistence`(745) / `runExport`(279)；`hydrateDocument`、`activeDraftRef`、恒定身份 `handleEditorUpdate` 因跨域耦合留在 App（文件内有注释）；⑥ **默认教程重写**（用户目检通过）：覆盖公考主题/导入/发布文案/目录导出/滚动联动，修掉旧第 3 页两行排版超限——全新用户 5 页 layout issues 全空、导出直通无强制导出关卡；⑦ **字体减重第一刀**：index.html 跳过 LXGW 包入口 style.css（@import 6 份），直链 400/700 非 mono 两份。门禁：tsc/ESLint/build 全绿，Vitest **42 文件 / 417 测试**（v1.8.2 基线 41/412 + 新增 stableHash 5 项）。真实浏览器：`test_prod_deep`（本地+两生产入口）、`test_v180_local` + `test_v180_longdoc_local`（19 页联动）、`test_r5.py`（scratchpad，5 场景）全绿。发布闭环：`61267f0` 推 main + `deploy-oss.sh` 双轨同构建 `index-uiqcd8rt.js`，tag `v1.9.0` 已推，`archive/dist-v1.9.0/` 已归档。**生产回归事故记录**：Cloudflare 入口前三次 `test_prod_deep` 皆在首个导出等 download 120s 超时——探针定位为本机代理对 workers.dev 同源 Noto woff2 批量请求黑洞化 → `document.fonts.ready` 永挂 → 导出按既有 fail-safe 等待；同构建本地与大陆入口全绿、卡住字体为 v1.9.0 未触碰的 fontsource 文件、直连本网不可达（必走代理），判定纯环境故障；约 40 分钟后第 4 次复跑全绿闭环。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68ea7945a4a0b1523fb7acae06a`。**v1.9.0 无未完成步骤** |
 | v1.8.2 迭代记录 | **v1.8.2「性能版」2026-08-13 已双轨上线**（用户授权走闭环）。按 CODE-REVIEW §五 v1.8.2 行实现六项：① P2 `Editor.tsx` reportEditorState 三态浅比较 bail-out（ref 持上次值，光标移动值未变不回调 App）；② P3 `memo(Preview)` + App 端 `getPageRefCallback` 按页序缓存 ref 回调、画布回调（onSelectImage/onClearSelection/onCommitImage/recordRecentAction）全部 useCallback 固定，多页打字只重渲染变化页；③ P4 WAL 写入 200ms 短防抖（`WAL_DEBOUNCE_MS` + `walTimerRef`，定时器带 recoveryId 守卫防复活已清除 WAL；`clearAutosaveTimer` 连清 WAL 计时器），visibilitychange/pagehide 同步兜底原样保留；④ P6 `buildExportBatchCss()` 批级 CSS 缓存，`RenderPageOptions.cssText` 透传，`writeDirectoryPlan`/`executeZipExport` 批开头各算一次（含 retry 复用），onclone 注入策略不变；⑤ M1 删 `exportPages`/`triggerDownload`/JSZip 导入死管线约 50 行，`suggestFilename` 保留；⑥ M2 门控收敛为 `assertNoBlockingExportIssues(issues, {allowWarnings})` 单一实现，App 闸门与测试共用（测试改走 check+门控组合真实路径），语义逐行等价。门禁：tsc/ESLint/build 全绿，Vitest **41 文件 / 412 测试**；真实浏览器自查 23/23（打字/荧光笔/图片选择/12 页打字/撤销重做/双向滚动联动与开关/WAL 三路径：防抖后真实写入、900ms 自动保存清 WAL 不变、编辑后立即刷新不丢；console 0），脚本与截图在 scratchpad/v182。发布闭环：`dbf8c3b` 推 main + `deploy-oss.sh` 双轨同构建 `index-CNJjlkPq.js`，tag `v1.8.2` 已推，`archive/dist-v1.8.2/` 已归档；两生产入口 `test_prod_deep.py` 三主题+用户字体全绿。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68fef232dca0de2af09d3045f55`（含飞书使用说明云文档链接）。**v1.8.2 无未完成步骤** |
@@ -32,12 +33,15 @@
 | v1.7.2 门禁 | Vitest **40 文件 / 386 测试**、`tsc -b`、ESLint、Vite build 全绿；最小样例：行末误差、汉缝偏差、混排 baseline、标点双侧净空、冒号左右差、行末可见右缘均为 0，跨行下划线逐行存在；预览/导出行列 lag 均 0，H2 bbox 最大差 1px。真实 19 页本地 19/19；两个生产入口各通过 18/19 页导入与 19 张 2160×3600 ZIP，以及 1/2/5 页、三主题、用户字体和 UI 冒烟；console/page error 为 0 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
-### 迭代待办快照（2026-08-13 更新；功能规格以 `docs/ROADMAP-2026-08-12.md` 为准，代码质量项以 `docs/CODE-REVIEW-2026-08-13.md` §五版本编排为准）
+### 迭代待办快照（2026-08-15 更新；功能规格以 `docs/ROADMAP-2026-08-12.md` 为准，代码质量项以 `docs/CODE-REVIEW-2026-08-13.md` §五版本编排为准）
 
-> v1.10.0 结构化封面槽位版已上线出列（含 R8 两项用户可感知修复 + M4/M5 死代码清理，见上方当前迭代行）；v1.9.0 引擎提速版已上线出列。**R7 英文长段落 justify** 用户拍板先 mark 不做（详见 CODE-REVIEW §五）。下表是功能向未做事项；新会话从这里挑活，动手前读 ROADMAP 对应行。
+> **v1.10.2 已本地完成；新会话先承接用户目检结果，不要在未获授权时提前发布，也不要先从通用待办表挑活。** 用户确认后按 §2 完成版本 bump、双轨上线、生产回归、tag/归档，并把 **v1.10.0 + v1.10.1 + v1.10.2** 修改整合为一条专业公告交给用户发送。v1.10.1 / v1.10.0 / v1.9.0 均已上线出列。**R7 英文长段落 justify** 用户拍板先 mark 不做（详见 CODE-REVIEW §五）。下表其余项目仍是功能向未做事项。
 
 | 优先级 | 待办 | 一句话范围 |
 |---|---|---|
+| P0·反馈 1 ✅本地完成 | 低视口导入确认弹窗可达性 | 弹窗固定头尾、只让中间正文滚动，任何支持的桌面视口下都能看到并操作「生成到新草稿」 |
+| P1·反馈 3 ✅本地完成 | `Enter → 分页` 跨页续段 | 为跨页续段建立显式语义；只有上一页的续段末行铺满，真正段尾仍自然左对齐 |
+| P1·反馈 4 ✅本地完成 | Code 块长行自动换行 | 保留空格/Tab/手工换行与等宽字体，中文、URL 和无断点长串不得在编辑区、画布或 PNG 右侧被裁掉 |
 | P2 | 字体本地化后续刀 | 第一刀（LXGW 6 份 CSS→2 份）已随 v1.9.0 上线；剩余 = ZCOOL/马善政/Long Cang/LXGW 的 CDN 本地化或 npm 化、字重档位，按真实使用率拆批 |
 | P2 | 跨刷新目录续写 | 当前导出中断续写仅同一页面会话有效；评估目录句柄持久化、重新授权与已有文件核验 |
 | P2·先量化 | 清理 `hasRaceArtifact + retry` | v8 后属死保险，纯黑右缘背景会误判致每页多渲染 3 遍；先用生产矩阵证明可安全删 |
@@ -47,6 +51,128 @@
 | P3 | 小红书原生长文管线 | 另一条平台管线，需先重新调研账号能力与当期规则 |
 | P3 | 独立 `PosterTemplate` | 只有出现「带正文骨架/封面字段槽位/页类型」需求才设计；Theme 继续只管视觉 |
 | P3·条件触发 | 手机端独立壳 / v2.0.0 产品壳 / SaaS / Tauri | 各有触发条件，见 ROADMAP §1 |
+
+#### 当前迭代规格：v1.10.2「用户反馈可靠性修复」（本地实现完成，待用户目检/上线授权）
+
+**范围结论**：用户反馈共 4 项，本迭代只实现 **1 / 3 / 4**，现已完成本地代码、测试和真实浏览器/PNG 回归。反馈 2 是已有编辑语义与用户操作方式不一致，不改产品语义。以下原始规格保留作验收依据；当前 **未 bump 版本、未 push、未部署**。
+
+##### 反馈 1｜低视口下导入确认按钮不可达
+
+**需求与验收口径**
+
+- 文件选择、拖拽、粘贴和示例文档进入「确认解析结果」后，弹窗头部和底部操作区始终留在视口内；只有中间解析结果区可纵向滚动。
+- 在 1366×650 和 1600×720 等低高度桌面视口下，用户无需缩放页面就能看到并点击「生成到新草稿」，也能通过鼠标滚轮/触控板阅读中间全部内容。
+- 普通高度视口、关闭、返回修改、生成新草稿和焦点顺序不回归。
+
+**已确认根因**
+
+- `app/src/components/ImportDialog/ImportDialog.tsx` 的 `DialogContent` 只有 `max-h-[calc(100vh-56px)]` 和外层 `overflow-hidden`，没有明确的三行 Grid 轨道。`auto` 轨道按中间内容的 max-content 撑开，已有 `min-h-0 overflow-y-auto` 的正文区没有被压缩，最终由外层直接裁掉 footer。
+- 生产 1600×720 已稳定复现：弹窗可见高度约 664px，自然行高却是约 93 / 726 / 65px，底部 CTA 完全落在视口外。因此这是确定性布局缺陷，不是用户没找到按钮。
+
+**实施方法**
+
+1. 只在 `ImportDialog` 的 `DialogContent` 上补 `grid-rows-[auto_minmax(0,1fr)_auto]`，将限高改为动态视口单位 `max-h-[calc(100dvh-56px)]`（如要兼容旧浏览器，通过局部 CSS 保留 `100vh` fallback）。保留正文区已有的 `min-h-0 overflow-y-auto`。
+2. **不改全局通用 `DialogContent`**，避免影响其他弹窗。`app/src/components/ExportDialog/ExportDialog.tsx` 已确认存在同样的三段结构和限高写法，同批在 ExportDialog 上定向补同样的 Grid 行约束并单独验收，不把修复上移到通用组件。
+3. 弹窗的 header/footer 不参与滚动，中间区是唯一 scroll container；不用放开外层 `overflow-hidden` 来制造整个弹窗滚动。
+
+**自动化门禁**
+
+- 新增低视口 Playwright 几何断言：`CTA.getBoundingClientRect().bottom <= window.innerHeight`；footer 滚动前后均可见；中间区 `scrollHeight > clientHeight`，真实 wheel 后 `scrollTop > 0`。
+- 分别覆盖文件选择、拖拽、粘贴、示例进入 review 的路径；同时回归 ExportDialog 的长清单。
+- 加一组窄宽视口回归，检查 footer 换行后仍在可见区；仅用 `Tab` / `Shift+Tab` 能进入中间区并到达 footer 所有操作，焦点不被裁剪区域吞掉。
+- **不能只用 `locator.click()` 当可达性证据**：Playwright 会将被 `overflow-hidden` 裁掉的节点程序性滚入视图，会掩盖真实缺陷。
+
+##### 反馈 2｜封面标题换行（已拍板：不开发）
+
+- 保持现有契约：`Enter` 将 H1 拆成两个块级标题，封面主标题槽位只识别第一个 H1；同一标题内只换行必须用 `Shift+Enter`。
+- 对外回复口径：「封面标题内换行请用 `Shift+Enter`；`Enter` 会新建一个标题段落，因此不再属于原封面主标题。」
+- **不改 UI、文档模型、封面槽位或样式规则；不得把所有连续 H1 都染成封面主标题色**，否则会吞掉用户真正的第二标题，也会破坏副标题槽位的相邻语义。
+
+##### 反馈 3｜`Enter → 分页` 后，跨页续段的上一页末行应正常铺满
+
+**需求与验收口径**
+
+- 反馈用户已确认完整操作是：一个正文段落过长时，在需要跨页的位置先按 `Enter`，再插入分页符。
+- 产品将这条操作路径理解为「同一正文段落跨页继续」：上一页最后一行按普通自动换行行处理，在合法字距/标点界限内两端铺满；下一页从同一段落继续。
+- **真正的段落末行和 `Shift+Enter` 前的显式换行仍自然左对齐**。不将全文所有段尾拉满，不影响标题、列表、引用和 Code 块。
+- 编辑区、画布预览和 PNG 对「续段/真段尾」的解释一致；画布与 PNG 必须复用同一份已封印的确定性几何。
+
+**已确认根因**
+
+- Tiptap 的 `Enter` 执行 `splitBlock`，将原文本拆成两个独立段落；接着分页后，上一页的文本在结构上已被当成真段尾。
+- `app/src/lib/deterministicTextLayout.ts` 当前只对 `end === 'wrap'` 的行做 justify；自动换行用 `wrap`，`Shift+Enter` 用 `explicit`，段落末行用 `paragraph`。因此用户在原自动换行处按 Enter 后，该行会从「铺满行」变为「自然段尾」，字距和断行位置随之变化。这不是随机排版抖动，而是缺少「跨页续段」语义。
+
+**实施方法**
+
+1. 给根级 `RootPageBreak` 增加可持久化的 `continuation: boolean` 属性（HTML 使用明确 `data-*` 属性），旧草稿无属性时默认 `false`。分页符仍必须是 Tiptap `doc` 直接子节点，不破坏 §1 决策 9/15。
+2. 插入命令覆盖两条续段入口：①光标直接位于正文段中时分页，命令知道前后文本原属同一段，标记 `continuation=true`；②用户已确认的 `Enter → 分页` 主路径，用交易 meta 或窄范围 plugin state 记住刚刚发生的 split boundary，在没有中间编辑且选区仍在该边界时将分页转为续段。
+3. **不得仅凭「分页符前后恰好是两个段落」的 DOM 相邻关系猜测续段**；否则用户在真段落边界分页也会被误标。选区移走、继续输入或执行其他结构操作后，临时 split candidate 必须失效。
+4. 让 `normalizePageBreakHtml` / `normalizePageBreakJson`、Tiptap JSON/HTML round-trip、自动保存、恢复、撤销/重做都保留这个布尔属性；对粘贴/导入的非法值按 `false` 闭合。
+5. `splitIntoPages` 在切页时把该边界翻译为「上一页末段是 continuation terminal」的渲染标记，不能在移除 `<hr>` 时丢掉语义。
+6. 为确定性求解器增加显式 terminal 类型/选项（如 `continuation`）：仅 `wrap` 和 `continuation` 的行进入 justify，`paragraph` / `explicit` 仍保持现状。**不能只在 `materializeLine` 最后强行拉宽**；DP/贪心断行的候选可行性、成本、`ragged` 判定和 emergency 路径都要从求解开始将 continuation terminal 视为需铺满行，否则会先选错断点再硬拉字距。编辑区如需即时反馈，只能对带 continuation 属性的紧邻前段使用局部样式，不改全局 `text-align-last`。
+
+**明确禁止的伪修复**
+
+- 不全局设置 `text-align-last: justify`；这会把短段和真段尾也强拉满。
+- 不只改 CSS；画布文字已由确定性引擎物化，预览/PNG 必须在求解层理解 continuation。
+- 不用纯 DOM 相邻猜测代替可持久化文档语义，不改写真正的 `Enter` 分段契约。
+
+**自动化与视觉门禁**
+
+- 命令/文档层：段中直接分页会标记续段；`Enter → 分页` 会标记续段；真段落边界分页不标记；选区移走/编辑后临时 candidate 失效；分页符始终是 doc 直属。
+- 持久化：JSON/HTML round-trip、草稿保存重载、撤销/重做、粘贴/导入规范化，旧草稿默认 `false`。
+- 求解器：continuation terminal 的最后一行 `justified=true`；真段尾和 hard break 的最后一行仍 `false`；断行结果在字距/标点上限内，无新增 `unsatisfied-line`。
+- 极短的 continuation terminal 如果在既有字距/光学上限内无法合理铺满，继续走现有 emergency/预检机制；不为了「必须铺满」放宽排版安全阈值。
+- 端到端：用反馈主路径的真实长段落测试编辑区、1080×1800 公考画布和 2160×3600 PNG；上一页末行左右边界在断言容差内，预览与 PNG 的 snapshot hash/行几何一致。再用一个旧主题回归真段尾不被拉满。
+
+##### 反馈 4｜Code 块长文本无法自动换行
+
+**需求与验收口径**
+
+- Code 块在固定宽度静态海报中必须自动换行，不能依赖横向滚动；中文长句、长 URL 和无断点 token 都不得超出内容宽度或被 `.page { overflow: hidden; }` 裁掉。
+- 保留用户原文中的手工换行、连续空格、Tab、空行和等宽字体；自动换行不得改写 Tiptap 内容或插入真实换行符。
+- 左侧编辑区、中央画布和导出 PNG 的可见文本、换行语义一致。
+
+**已确认根因与实施方法**
+
+- `app/src/styles/editor.css` 的 `.tiptap-editor pre` 和 `app/src/styles/canvas.css` 的 `.content pre` 都没有显式换行规则，沿用 `<pre>` 默认 `white-space: pre`；画布页又使用 `overflow: hidden`，因此超宽内容直接被裁。导出复制同一画布 DOM/CSS，PNG 也会重现。
+- 同时在两处 `pre` 规则增加：
+
+  ```css
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  max-width: 100%;
+  ```
+
+- `white-space: pre-wrap` 保留原始空白和手工换行，同时允许按版心换行；`overflow-wrap: anywhere` 只在无合法断点的长 URL/token 必要时断开，也能正确收缩这类内容的 min-content 宽度。不用 `overflow-x: auto` 当静态海报解法，也不用隐藏溢出假装问题消失。
+- **不要将 `pre` 加入 `deterministicTypography.ts` 现有文字块物化选择器**。现有求解输入不保证完整保留 Code 块的空格/Tab/手工换行，本补丁由 CSS 负责 Code 换行，避免内容损坏。
+- 本项只修横向超宽/裁剪，**不在本迭代承诺超高 Code 块的自动分页**；纵向高度超出是独立分页需求，不能借换行补丁暗中改页面结构。
+
+**自动化与导出门禁**
+
+- CSS 契约测试同时锁住 editor/canvas 的 `pre-wrap` 与断词规则。
+- 真实 Chromium fixture 同时包含：超长中文、超长 URL/单 token、缩进、Tab、空行和手工换行。断言 `pre.scrollWidth <= pre.clientWidth`、页面无横向溢出、`textContent` 与原文一致，换行后的下半部文字可见。
+- 导出 2160×3600 PNG 做右边缘与换行后下一行像素断言，确认没有右侧截断、下一行实际进图。至少覆盖公考主题和一个旧主题，并回归普通段落/行内 code 未受影响。
+
+##### 本地完成记录（2026-08-15；等待用户目检）
+
+- 三个产品工作包保持独立提交：`3b93160`（低视口弹窗）、`9879dca`（Code 块换行）、`ff85779`（跨页续段）。均按 RED → GREEN 落地；反馈 3 在独立复核中发现并补齐可信 Enter provenance、Backspace→Undo 反例、尾随/连续 hard break 与封面副标题排除，复核后无剩余阻断。
+- 全量本地门禁：TypeScript、ESLint、Vite build 全绿，Vitest **45 文件 / 465 测试**全绿；代码审查未发现发布阻断。自动扫描对测试夹具中的 `selector` / dummy `token` 给出两条误报，人工确认既非 SQL 拼接也非凭据。
+- 反馈 1 真实 Chromium：文件、拖拽、粘贴、示例四入口与 19 页导出弹窗，在 1366×650、1600×720、900×650 下均验证固定头尾、正文真实滚动、CTA 可见和 Tab / Shift+Tab 可达；console/page error 为 0。
+- 反馈 3 真实 Chromium：通过真键盘 `Enter` 后点击真实「插入分页」按钮；公考续段末行 `right=target=840`、`residual=0`，真段尾 `777.2 < 888`，旧主题真段尾 `697.2 < 920`；三页均 ready + sealed + 0 issue，导出 PNG 为 2160×3600，预览/导出复用同一 snapshot。
+- 反馈 4 真实 Chromium：公考与深夜黑双主题的长中文、URL、无断点 token、Tab、连续空格、空行和手工换行均保真自动换行，无横向溢出或安全区警告；Code 块后的普通段落仍可见，两张导出 PNG 均为 2160×3600，console/page error 为 0。
+- 用户目检材料已固化到 `docs/screenshots/v1.10.2/`，完整回归可由 `tools/export-race-repro/test_v1102_dialog_viewport.py`、`test_continuation_local.py`、`test_code_block_wrap_local.py` 重现。
+- **发布状态**：`app/package.json` 仍为 1.10.1，`origin/main` 仍停在 `f3b6841`；未 push、未部署、未 tag、未建立 v1.10.2 归档。用户目检确认后才走版本 bump、双轨部署、两生产入口深回归和定向回归、tag/归档。
+- **公告决策**：发布闭环时不要分别发送历史补充；把 **v1.10.0 + v1.10.1 + v1.10.2** 的修改动作整合成同一条专业公告，由用户发送。
+
+##### 实施顺序、提交边界与整体验收
+
+1. 建议顺序为 **反馈 1 → 反馈 4 → 反馈 3**：先收口独立弹窗布局，再处理局部 CSS/导出回归，最后处理风险最高的文档语义 + 分页 + 求解器链路。三项保持独立 commit 和定向测试，出问题可单独回退。
+2. 每个工作包先写能复现当前缺陷的失败测试，再实现；不用只检查 class/函数被调用的浅层测试代替几何、持久化和 PNG 产物断言。
+3. 本地总门禁：`tsc -b`、`vitest run`、`eslint .`、`vite build`；随后跑低视口弹窗、跨页续段和 Code 块 PNG 三组真实浏览器回归，console/page error 为 0。
+4. 用户目检至少看三张对比：低视口弹窗的 CTA 可见；跨页续段的续段末行 vs 真段尾；Code 块画布 vs PNG。用户确认后才按 §2 走版本 bump、双轨部署、tag/归档/公告闭环。
+5. 因反馈 3 会碰 `Preview`/确定性几何，反馈 4 会碰 `canvas.css`/导出样式，部署后必须在 **Cloudflare + 大陆通道** 各跑 `test_prod_deep.py` 和本迭代新增定向回归，不得用本地 preview 成功代替生产验证。
 
 **新会话第一步**：读完本文件；改导出相关代码前必读 §5；动手前扫一遍 §6 坑手册的相关域。
 

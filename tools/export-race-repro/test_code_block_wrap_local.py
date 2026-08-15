@@ -35,15 +35,15 @@ SKIP_EXPORT = "--skip-export" in sys.argv
 OUT = Path("/tmp/xhs-code-block-wrap")
 OUT.mkdir(parents=True, exist_ok=True)
 
-LONG_CHINESE = "超长中文代码块应该在静态海报的版心内自动换行" * 4 + "中文尾标"
+LONG_CHINESE = "超长中文代码块应该在静态海报的版心内自动换行" * 2 + "中文尾标"
 LONG_URL = (
     "https://example.com/articles/"
-    + "very-long-path-segment-" * 8
+    + "very-long-path-segment-" * 4
     + "?token="
     + "A9b8C7d6E5f4" * 8
     + "&done=URL_END"
 )
-LONG_TOKEN = "UNBROKEN_TOKEN_" + "ZX90" * 38 + "_TOKEN_END"
+LONG_TOKEN = "UNBROKEN_TOKEN_" + "ZX90" * 20 + "_TOKEN_END"
 CODE_TEXT = (
     f"{LONG_CHINESE}\n"
     f"{LONG_URL}\n"
@@ -303,6 +303,11 @@ async def measure(page: Page, *, expect_inline_code: bool) -> dict:
               preRect.bottom <= contentRect.bottom + 0.75,
             followingParagraphVisible:
               paragraphRect.bottom <= contentRect.bottom + 0.75,
+            overflowWarningVisible: Boolean(
+              pageElement.closest('.page-preview-group')?.querySelector(
+                '.canvas-overflow-warning',
+              ),
+            ),
             lineCount: lineTops.length,
             codeWasNotMaterialized:
               !canvasPre.matches('.deterministic-text-layout') &&
@@ -447,6 +452,9 @@ async def main() -> None:
             assert metrics["followingParagraphVisible"], (
                 f"{theme}: Code 块后的普通段落超出内容区"
             )
+            assert not metrics["overflowWarningVisible"], (
+                f"{theme}: 回归夹具超出主题安全区，会污染横向换行验收"
+            )
             assert metrics["lineCount"] > CODE_TEXT.count("\n") + 1, (
                 f"{theme}: 未观测到自动换行，lines={metrics['lineCount']}"
             )
@@ -454,9 +462,13 @@ async def main() -> None:
             assert metrics["paragraphWasMaterialized"], f"{theme}: 普通段落确定性排版回归"
             assert metrics["paragraphMatches"], f"{theme}: 普通段落文本被改写"
 
+            preview_path = OUT / f"code-wrap-{slug}-preview.png"
+            await page.locator(".page").screenshot(path=preview_path)
+
             if SKIP_EXPORT:
                 print(
-                    f"[PASS] {theme}: 导出前 DOM/换行几何/封存门禁通过",
+                    f"[PASS] {theme}: 导出前 DOM/换行几何/封存门禁通过，"
+                    f"画布={preview_path}",
                     flush=True,
                 )
                 continue
@@ -485,6 +497,7 @@ async def main() -> None:
                 f"[PASS] {theme}: {metrics['lineCount']} 个可见行，"
                 f"右边界/第二行/末行像素="
                 f"{right_count}/{next_count}/{last_count}，PNG={output_path}"
+                f"，画布={preview_path}"
                 , flush=True
             )
 
