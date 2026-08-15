@@ -197,6 +197,22 @@ describe('中文正文两端对齐契约', () => {
     expect(property(editorCoverSubtitle, 'text-align')).toBe('start')
     expect(property(editorCoverSubtitle, 'text-align-last')).toBe('auto')
   })
+
+  it('编辑区只为显式续段分页前的根级正文铺满末行', () => {
+    const continuation = findRule(
+      '.tiptap-editor .ProseMirror > p:has(+ hr.page-break[data-page-break-continuation="true"])',
+      editorRules,
+    )
+    const coverSubtitleContinuation = findRule(
+      '.tiptap-editor .ProseMirror > h1:first-of-type + p:has(+ hr.page-break[data-page-break-continuation="true"])',
+      editorRules,
+    )
+
+    expect(property(continuation, 'text-align-last')).toBe('justify')
+    expect(property(coverSubtitleContinuation, 'text-align-last')).toBe('auto')
+    expect(continuation.selectorText).not.toContain('blockquote')
+    expect(continuation.selectorText).not.toContain('li')
+  })
 })
 
 describe('封面槽位 CSS 契约', () => {

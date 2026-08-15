@@ -44,6 +44,57 @@ afterEach(() => {
 })
 
 describe('deterministic typography DOM snapshot', () => {
+  it('materializes only an explicit continuation render marker as a justified terminal', () => {
+    const continuationPage = pageWithContent()
+    const continuation = layout(
+      continuationPage,
+      '<p data-page-continuation-terminal="true" style="width: 84px; font-size: 20px; line-height: 30px; text-align: justify">甲乙丙丁</p>',
+    )
+    const paragraphPage = pageWithContent()
+    const paragraph = layout(
+      paragraphPage,
+      '<p style="width: 84px; font-size: 20px; line-height: 30px; text-align: justify">甲乙丙丁</p>',
+    )
+    const continuationLine = continuationPage.querySelector<HTMLElement>(
+      '.dtl-line',
+    )!
+    const paragraphLine = paragraphPage.querySelector<HTMLElement>(
+      '.dtl-line',
+    )!
+
+    expect(continuation.issues).toEqual([])
+    expect(continuationLine.dataset.layoutEnd).toBe('continuation')
+    expect(continuationLine.dataset.layoutJustified).toBe('true')
+    expect(Number(continuationLine.dataset.layoutRight)).toBeCloseTo(
+      Number(continuationLine.dataset.layoutTarget),
+      3,
+    )
+    expect(paragraph.issues).toEqual([])
+    expect(paragraphLine.dataset.layoutEnd).toBe('paragraph')
+    expect(paragraphLine.dataset.layoutJustified).toBe('false')
+  })
+
+  it.each([
+    ['尾随一个显式换行', '甲乙<br>', 2],
+    ['尾随连续显式换行', '甲乙<br><br>', 3],
+  ])('%s 保留空行高且不产生续段预检警告', (_label, html, count) => {
+    const page = pageWithContent()
+    const result = layout(
+      page,
+      `<p data-page-continuation-terminal="true" style="width: 240px; font-size: 20px; line-height: 30px; text-align: justify">${html}</p>`,
+    )
+    const block = page.querySelector<HTMLElement>('p')!
+    const lines = Array.from(
+      block.querySelectorAll<HTMLElement>(':scope > .dtl-line'),
+    )
+
+    expect(result.issues).toEqual([])
+    expect(lines).toHaveLength(count)
+    expect(lines.at(-1)?.dataset.layoutEnd).toBe('continuation')
+    expect(lines.at(-1)?.dataset.layoutJustified).toBe('false')
+    expect(block.style.height).toBe(`${count * 30}px`)
+  })
+
   it('fails explicitly when Canvas omits visible ink metrics', () => {
     const context = {
       font: '',

@@ -153,6 +153,34 @@ describe('documentStore', () => {
     )
   })
 
+  it('跨页续段属性在草稿存储和 WAL 恢复中持久保留', async () => {
+    const document = makeDocument('continuation', 360, '跨页续段')
+    document.contentJSON = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: '前页续段' }],
+        },
+        { type: 'horizontalRule', attrs: { continuation: true } },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: '后页续段' }],
+        },
+      ],
+    }
+
+    await putEditorDocument(document)
+    expect((await getEditorDocument(document.id))?.contentJSON).toEqual(
+      document.contentJSON,
+    )
+
+    expect(writeEditorDocumentRecovery(document)).toBe(true)
+    expect(readEditorDocumentRecovery()?.contentJSON).toEqual(
+      document.contentJSON,
+    )
+  })
+
   it('草稿列表按最近修改时间倒序排列', async () => {
     await putEditorDocument(makeDocument('older', 200), false)
     await putEditorDocument(makeDocument('newer', 400), false)

@@ -146,6 +146,105 @@ function expectBalancedTextPunctuationGaps(
 }
 
 describe('deterministic text layout line solving', () => {
+  it('solves a continuation terminal as justified from candidate selection onward', () => {
+    const source = opticalHanAtoms('甲乙丙丁', 'continuation-terminal')
+    const paragraph = solveDeterministicTextLayout(source, 43)
+    const continuation = solveDeterministicTextLayout(source, 43, {
+      terminalEnd: 'continuation',
+    })
+
+    expect(paragraph).toHaveLength(1)
+    expect(paragraph[0]).toMatchObject({
+      end: 'paragraph',
+      justified: false,
+      emergency: false,
+    })
+    expect(continuation).toHaveLength(1)
+    expect(continuation[0]).toMatchObject({
+      end: 'continuation',
+      justified: true,
+      emergency: false,
+    })
+    expect(continuation[0].actualWidth).toBeCloseTo(43, 9)
+  })
+
+  it('keeps explicit breaks ragged while justifying the continuation tail', () => {
+    const source = opticalHanAtoms('甲乙丙丁', 'terminal-kinds')
+    source[1].forcedBreakAfter = true
+
+    const lines = solveDeterministicTextLayout(source, 21, {
+      terminalEnd: 'continuation',
+    })
+
+    expect(lines.map((line) => [line.end, line.justified])).toEqual([
+      ['explicit', false],
+      ['continuation', true],
+    ])
+    expect(lines.every((line) => !line.emergency)).toBe(true)
+  })
+
+  it('keeps an impossibly short continuation terminal on the existing emergency path', () => {
+    const [line] = solveDeterministicTextLayout(
+      opticalHanAtoms('甲乙', 'short-continuation'),
+      30,
+      { terminalEnd: 'continuation' },
+    )
+
+    expect(line.end).toBe('continuation')
+    expect(line.justified).toBe(true)
+    expect(line.emergency).toBe(true)
+  })
+
+  it('keeps the empty terminal after a trailing explicit break ragged and healthy', () => {
+    const source = opticalHanAtoms('甲乙', 'trailing-explicit')
+    source.at(-1)!.forcedBreakAfter = true
+
+    const lines = solveDeterministicTextLayout(source, 30, {
+      terminalEnd: 'continuation',
+    })
+
+    expect(lines.map((line) => ({
+      end: line.end,
+      justified: line.justified,
+      emergency: line.emergency,
+      atomCount: line.atoms.length,
+    }))).toEqual([
+      { end: 'explicit', justified: false, emergency: false, atomCount: 2 },
+      {
+        end: 'continuation',
+        justified: false,
+        emergency: false,
+        atomCount: 0,
+      },
+    ])
+  })
+
+  it('preserves every blank line for consecutive trailing explicit breaks', () => {
+    const source = [
+      ...opticalHanAtoms('甲乙', 'consecutive-explicit'),
+      atom('empty-explicit', '', 'other', {
+        advance: 0,
+        forcedBreakAfter: true,
+      }),
+    ]
+    source[1].forcedBreakAfter = true
+
+    const lines = solveDeterministicTextLayout(source, 30, {
+      terminalEnd: 'continuation',
+    })
+
+    expect(lines.map((line) => [
+      line.end,
+      line.justified,
+      line.emergency,
+      line.atoms.length,
+    ])).toEqual([
+      ['explicit', false, false, 2],
+      ['explicit', false, false, 1],
+      ['continuation', false, false, 0],
+    ])
+  })
+
   it('fits every feasible non-terminal line to target within 0.01px', () => {
     const lines = solveDeterministicTextLayout(
       hanAtoms('天地玄黄宇宙洪荒日月盈'),

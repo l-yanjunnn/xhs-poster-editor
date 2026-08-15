@@ -7,6 +7,7 @@ import { PosterImage } from './ImageExtension'
 import { NoWrapPhrase } from './NoWrapPhrase'
 import { TextHighlight } from './TextHighlight'
 import { handlePageBreakPaste } from './pageBreakCommand'
+import { PageBreakContinuation } from './pageBreakContinuation'
 import { applyBlockType, toggleBlockType } from './blockTypeCommand'
 
 // 分页节点不属于 block group，因此 listItem/blockquote 的内容表达式无法再
@@ -23,11 +24,24 @@ export const RootPageBreak = Node.create({
   group: 'pageBreak',
   atom: true,
   selectable: true,
+  addAttributes() {
+    return {
+      continuation: {
+        default: false,
+        parseHTML: (element) =>
+          element.getAttribute('data-page-break-continuation') === 'true',
+        renderHTML: (attributes) =>
+          attributes.continuation === true
+            ? { 'data-page-break-continuation': 'true' }
+            : {},
+      },
+    }
+  },
   parseHTML() {
     return [{ tag: 'hr:not(.divider)', priority: 900 }]
   },
-  renderHTML() {
-    return ['hr', { class: 'page-break' }]
+  renderHTML({ HTMLAttributes }) {
+    return ['hr', { ...HTMLAttributes, class: 'page-break' }]
   },
 })
 
@@ -128,6 +142,7 @@ export function createEditorExtensions() {
     RootPageBreak,
     Divider,
     PageBreakInvariants,
+    PageBreakContinuation,
     BlockTypeShortcuts,
     NoWrapPhrase,
     TextHighlight,

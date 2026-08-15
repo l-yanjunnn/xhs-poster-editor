@@ -3,6 +3,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { describe, expect, it, vi } from 'vitest'
 import { splitIntoPages } from '@/lib/splitPages'
 import { createEditorExtensions } from './editorExtensions'
+import { hasContinuationSplitCandidate } from './pageBreakContinuation'
 import {
   handlePageBreakPaste,
   insertRootPageBreak,
@@ -33,6 +34,16 @@ function setCursor(editor: Editor, needle: string, offset = 0): void {
   )
 }
 
+function pressKey(editor: Editor, key: string): boolean {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+  })
+  editor.view.dom.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
 function rootTypes(editor: Editor): string[] {
   return editor.getJSON().content?.map((node) => node.type) ?? []
 }
@@ -46,7 +57,185 @@ function expectOnlyRootPageBreaks(editor: Editor): void {
   })
 }
 
+function pageBreakContinuation(editor: Editor): boolean {
+  const pageBreak = editor.getJSON().content?.find(
+    (node) => node.type === 'horizontalRule',
+  )
+  return pageBreak?.attrs?.continuation === true
+}
+
 describe('insertRootPageBreak', () => {
+  it('marks a direct split inside a root paragraph as a durable continuation', () => {
+    const editor = makeEditor('<p>上一页后半继续到下一页</p>')
+    setCursor(editor, '上一页后半继续到下一页', 5)
+
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(true)
+    expect(editor.getHTML()).toContain(
+      'data-page-break-continuation="true"',
+    )
+    const restoredFromJson = makeEditor(editor.getJSON())
+    const restoredFromHtml = makeEditor(editor.getHTML())
+    expect(pageBreakContinuation(restoredFromJson)).toBe(true)
+    expect(pageBreakContinuation(restoredFromHtml)).toBe(true)
+    expect(restoredFromHtml.getHTML()).toContain(
+      'data-page-break-continuation="true"',
+    )
+    const inserted = editor.getJSON()
+    expect(editor.commands.undo()).toBe(true)
+    expect(rootTypes(editor)).not.toContain('horizontalRule')
+    expect(editor.commands.redo()).toBe(true)
+    expect(editor.getJSON()).toEqual(inserted)
+    expect(pageBreakContinuation(editor)).toBe(true)
+    restoredFromJson.destroy()
+    restoredFromHtml.destroy()
+    editor.destroy()
+  })
+
+  it('marks only an immediate Enter split boundary as continuation', () => {
+    const editor = makeEditor('<p>长段落前半后半内容</p>')
+    setCursor(editor, '长段落前半后半内容', 5)
+
+    expect(pressKey(editor, 'Enter')).toBe(true)
+    expect(hasContinuationSplitCandidate(editor.state)).toBe(true)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(rootTypes(editor).slice(0, 3)).toEqual([
+      'paragraph',
+      'horizontalRule',
+      'paragraph',
+    ])
+    expect(pageBreakContinuation(editor)).toBe(true)
+    const inserted = editor.getJSON()
+    expect(editor.commands.undo()).toBe(true)
+    expect(rootTypes(editor)).not.toContain('horizontalRule')
+    expect(editor.commands.redo()).toBe(true)
+    expect(editor.getJSON()).toEqual(inserted)
+    editor.destroy()
+  })
+
+  it('never marks heading, list, blockquote, or code boundaries as continuation', () => {
+    const fixtures = [
+      ['<h2>标题上下半</h2>', '标题上下半', 2],
+      [
+        '<ul><li><p>列表上下半</p></li><li><p>后项</p></li></ul>',
+        '列表上下半',
+        2,
+      ],
+      [
+        '<blockquote><p>引用上下半</p></blockquote><p>正文</p>',
+        '引用上下半',
+        2,
+      ],
+      ['<pre><code>const-value</code></pre>', 'const-value', 5],
+      [
+        '<h1>封面主标题</h1><p>封面副标题上下半</p><p>正文</p>',
+        '封面副标题上下半',
+        4,
+      ],
+    ] as const
+
+    for (const [html, needle, offset] of fixtures) {
+      const editor = makeEditor(html)
+      setCursor(editor, needle, offset)
+      expect(insertRootPageBreak(editor)).toBe(true)
+      expect(pageBreakContinuation(editor)).toBe(false)
+      expectOnlyRootPageBreaks(editor)
+      editor.destroy()
+    }
+  })
+
+  it('does not create an Enter continuation candidate inside the cover subtitle', () => {
+    const editor = makeEditor(
+      '<h1>封面主标题</h1><p>封面副标题前半后半</p><p>正文</p>',
+    )
+    setCursor(editor, '封面副标题前半后半', 5)
+
+    expect(pressKey(editor, 'Enter')).toBe(true)
+    expect(hasContinuationSplitCandidate(editor.state)).toBe(false)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('does not infer continuation at a genuine paragraph boundary', () => {
+    const editor = makeEditor('<p>完整段落</p><p>新段落</p>')
+    setCursor(editor, '新段落')
+
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('invalidates the Enter candidate after selection movement, even if it returns', () => {
+    const editor = makeEditor('<p>长段落前半后半内容</p>')
+    setCursor(editor, '长段落前半后半内容', 5)
+    expect(pressKey(editor, 'Enter')).toBe(true)
+    const boundary = editor.state.selection.from
+
+    editor.commands.setTextSelection(boundary + 1)
+    editor.commands.setTextSelection(boundary)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('invalidates the Enter candidate after intervening text editing', () => {
+    const editor = makeEditor('<p>长段落前半后半内容</p>')
+    setCursor(editor, '长段落前半后半内容', 5)
+    expect(pressKey(editor, 'Enter')).toBe(true)
+    const boundary = editor.state.selection.from
+
+    editor.commands.insertContent('新')
+    editor.commands.setTextSelection(boundary)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('invalidates the Enter candidate after another formatting transaction', () => {
+    const editor = makeEditor('<p>长段落前半后半内容</p>')
+    setCursor(editor, '长段落前半后半内容', 5)
+    expect(pressKey(editor, 'Enter')).toBe(true)
+
+    expect(editor.commands.toggleBold()).toBe(true)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('does not create an Enter candidate when undo restores two genuine paragraphs', () => {
+    const editor = makeEditor('<p>真段一</p><p>真段二</p>')
+    setCursor(editor, '真段二')
+
+    expect(pressKey(editor, 'Backspace')).toBe(true)
+    expect(rootTypes(editor)).toEqual(['paragraph'])
+    expect(editor.commands.undo()).toBe(true)
+    expect(rootTypes(editor)).toEqual(['paragraph', 'paragraph'])
+    expect(hasContinuationSplitCandidate(editor.state)).toBe(false)
+    expect(insertRootPageBreak(editor)).toBe(true)
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    editor.destroy()
+  })
+
+  it('defaults old page breaks without the attribute to non-continuation', () => {
+    const editor = makeEditor(
+      '<p>前页</p><hr class="page-break"><p>后页</p>',
+    )
+
+    expect(pageBreakContinuation(editor)).toBe(false)
+    expect(editor.getJSON().content?.[1]?.attrs?.continuation).toBe(false)
+    expect(editor.getHTML()).not.toContain('data-page-break-continuation')
+    editor.destroy()
+  })
+
   it('keeps paragraph and heading insertion at the cursor position', () => {
     const editor = makeEditor('<p>正文内容</p><h2>后续</h2>')
     setCursor(editor, '正文内容', 2)

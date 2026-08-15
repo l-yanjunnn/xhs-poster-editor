@@ -7,6 +7,10 @@ export interface PageBreakJsonNode {
 }
 
 const PAGE_BREAK_NODE_TYPE = 'horizontalRule'
+export const PAGE_BREAK_CONTINUATION_ATTRIBUTE =
+  'data-page-break-continuation'
+export const PAGE_CONTINUATION_TERMINAL_ATTRIBUTE =
+  'data-page-continuation-terminal'
 
 function isPageBreakJsonNode(node: PageBreakJsonNode): boolean {
   return node.type === PAGE_BREAK_NODE_TYPE
@@ -30,20 +34,26 @@ function hasVisibleJsonContent(node: PageBreakJsonNode): boolean {
 
 interface CleanedJsonNode {
   node: PageBreakJsonNode | null
-  breaksBefore: number
-  breaksAfter: number
+  breaksBefore: boolean[]
+  breaksAfter: boolean[]
 }
 
 interface BreakScan {
-  breaksBefore: number
-  breaksAfter: number
+  breaksBefore: boolean[]
+  breaksAfter: boolean[]
   sawVisibleContent: boolean
+}
+
+function pageBreakJsonContinuation(node: PageBreakJsonNode): boolean {
+  return node.attrs?.continuation === true
 }
 
 function scanJsonBreakPlacement(node: PageBreakJsonNode, scan: BreakScan): void {
   if (isPageBreakJsonNode(node)) {
-    if (scan.sawVisibleContent) scan.breaksAfter += 1
-    else scan.breaksBefore += 1
+    const target = scan.sawVisibleContent
+      ? scan.breaksAfter
+      : scan.breaksBefore
+    target.push(pageBreakJsonContinuation(node))
     return
   }
   if (
@@ -63,8 +73,8 @@ function cleanJsonTree(node: PageBreakJsonNode): PageBreakJsonNode | null {
   const content: PageBreakJsonNode[] = []
   for (const child of node.content) {
     const scan: BreakScan = {
-      breaksBefore: 0,
-      breaksAfter: 0,
+      breaksBefore: [],
+      breaksAfter: [],
       sawVisibleContent: false,
     }
     scanJsonBreakPlacement(child, scan)
@@ -72,7 +82,7 @@ function cleanJsonTree(node: PageBreakJsonNode): PageBreakJsonNode | null {
     if (!cleaned) continue
     if (
       child.type === 'listItem' &&
-      scan.breaksBefore + scan.breaksAfter > 0 &&
+      scan.breaksBefore.length + scan.breaksAfter.length > 0 &&
       !hasVisibleJsonContent(cleaned)
     ) {
       continue
@@ -116,8 +126,8 @@ function trimBreakAdjacentEmptyJsonBlocks(
 /** 清掉嵌套分页，同时保留它相对当前最外层块的前/后语义。 */
 function cleanNestedJsonNode(node: PageBreakJsonNode): CleanedJsonNode {
   const scan: BreakScan = {
-    breaksBefore: 0,
-    breaksAfter: 0,
+    breaksBefore: [],
+    breaksAfter: [],
     sawVisibleContent: false,
   }
   scanJsonBreakPlacement(node, scan)
@@ -126,8 +136,8 @@ function cleanNestedJsonNode(node: PageBreakJsonNode): CleanedJsonNode {
     node: cleaned
       ? trimBreakAdjacentEmptyJsonBlocks(
           cleaned,
-          scan.breaksBefore > 0,
-          scan.breaksAfter > 0,
+          scan.breaksBefore.length > 0,
+          scan.breaksAfter.length > 0,
         )
       : null,
     breaksBefore: scan.breaksBefore,
@@ -135,8 +145,11 @@ function cleanNestedJsonNode(node: PageBreakJsonNode): CleanedJsonNode {
   }
 }
 
-function pageBreakJsonNode(): PageBreakJsonNode {
-  return { type: PAGE_BREAK_NODE_TYPE }
+function pageBreakJsonNode(continuation = false): PageBreakJsonNode {
+  return {
+    type: PAGE_BREAK_NODE_TYPE,
+    attrs: { continuation },
+  }
 }
 
 function normalizeRootListJson(node: PageBreakJsonNode): PageBreakJsonNode[] {
@@ -159,25 +172,25 @@ function normalizeRootListJson(node: PageBreakJsonNode): PageBreakJsonNode[] {
     currentItems = []
   }
 
-  const appendBreaks = (count: number) => {
+  const appendBreaks = (continuations: readonly boolean[]) => {
     flushList()
-    for (let index = 0; index < count; index += 1) {
-      output.push(pageBreakJsonNode())
+    for (const continuation of continuations) {
+      output.push(pageBreakJsonNode(continuation))
     }
   }
 
   for (const child of node.content ?? []) {
     if (isPageBreakJsonNode(child)) {
-      appendBreaks(1)
+      appendBreaks([pageBreakJsonContinuation(child)])
       continue
     }
 
     const cleaned = cleanNestedJsonNode(child)
-    if (cleaned.breaksBefore > 0) appendBreaks(cleaned.breaksBefore)
+    if (cleaned.breaksBefore.length > 0) appendBreaks(cleaned.breaksBefore)
     if (cleaned.node) {
       const consumeEmptyItem =
         child.type === 'listItem' &&
-        cleaned.breaksBefore + cleaned.breaksAfter > 0 &&
+        cleaned.breaksBefore.length + cleaned.breaksAfter.length > 0 &&
         !hasVisibleJsonContent(cleaned.node)
       if (!consumeEmptyItem) {
         if (currentItems.length === 0) currentStartOffset = keptItemCount
@@ -185,7 +198,7 @@ function normalizeRootListJson(node: PageBreakJsonNode): PageBreakJsonNode[] {
         if (child.type === 'listItem') keptItemCount += 1
       }
     }
-    if (cleaned.breaksAfter > 0) appendBreaks(cleaned.breaksAfter)
+    if (cleaned.breaksAfter.length > 0) appendBreaks(cleaned.breaksAfter)
   }
   flushList()
   return output
@@ -204,7 +217,7 @@ export function normalizePageBreakJson<T extends object>(document: T): T {
   const content: PageBreakJsonNode[] = []
   for (const child of root.content) {
     if (isPageBreakJsonNode(child)) {
-      content.push({ ...child })
+      content.push(pageBreakJsonNode(pageBreakJsonContinuation(child)))
       continue
     }
     if (isListJsonNode(child)) {
@@ -213,12 +226,12 @@ export function normalizePageBreakJson<T extends object>(document: T): T {
     }
 
     const cleaned = cleanNestedJsonNode(child)
-    for (let index = 0; index < cleaned.breaksBefore; index += 1) {
-      content.push(pageBreakJsonNode())
+    for (const continuation of cleaned.breaksBefore) {
+      content.push(pageBreakJsonNode(continuation))
     }
     if (cleaned.node) content.push(cleaned.node)
-    for (let index = 0; index < cleaned.breaksAfter; index += 1) {
-      content.push(pageBreakJsonNode())
+    for (const continuation of cleaned.breaksAfter) {
+      content.push(pageBreakJsonNode(continuation))
     }
   }
   return { ...root, content } as T
@@ -226,6 +239,10 @@ export function normalizePageBreakJson<T extends object>(document: T): T {
 
 function isPageBreakElement(node: Element): boolean {
   return node.tagName === 'HR' && !node.classList.contains('divider')
+}
+
+function pageBreakElementContinuation(node: Element): boolean {
+  return node.getAttribute(PAGE_BREAK_CONTINUATION_ATTRIBUTE) === 'true'
 }
 
 function hasVisibleDomContent(node: Element): boolean {
@@ -248,8 +265,10 @@ function scanDomBreakPlacement(node: Node, scan: BreakScan): void {
   if (node.nodeType !== Node.ELEMENT_NODE) return
   const element = node as Element
   if (isPageBreakElement(element)) {
-    if (scan.sawVisibleContent) scan.breaksAfter += 1
-    else scan.breaksBefore += 1
+    const target = scan.sawVisibleContent
+      ? scan.breaksAfter
+      : scan.breaksBefore
+    target.push(pageBreakElementContinuation(element))
     return
   }
   if (
@@ -283,27 +302,27 @@ function pruneEmptyBreakContainers(node: Element): void {
 
 interface CleanedDomNode {
   node: HTMLElement | null
-  breaksBefore: number
-  breaksAfter: number
+  breaksBefore: boolean[]
+  breaksAfter: boolean[]
 }
 
 function cleanNestedDomElement(node: HTMLElement): CleanedDomNode {
   const scan: BreakScan = {
-    breaksBefore: 0,
-    breaksAfter: 0,
+    breaksBefore: [],
+    breaksAfter: [],
     sawVisibleContent: false,
   }
   scanDomBreakPlacement(node, scan)
   const clone = node.cloneNode(true) as HTMLElement
   removeNestedPageBreakElements(clone)
-  if (scan.breaksBefore + scan.breaksAfter > 0) {
+  if (scan.breaksBefore.length + scan.breaksAfter.length > 0) {
     pruneEmptyBreakContainers(clone)
-    if (scan.breaksBefore > 0) {
+    if (scan.breaksBefore.length > 0) {
       while (clone.firstElementChild && isEmptyDomBlock(clone.firstElementChild)) {
         clone.firstElementChild.remove()
       }
     }
-    if (scan.breaksAfter > 0) {
+    if (scan.breaksAfter.length > 0) {
       while (clone.lastElementChild && isEmptyDomBlock(clone.lastElementChild)) {
         clone.lastElementChild.remove()
       }
@@ -311,7 +330,7 @@ function cleanNestedDomElement(node: HTMLElement): CleanedDomNode {
   }
   return {
     node:
-      scan.breaksBefore + scan.breaksAfter > 0 &&
+      scan.breaksBefore.length + scan.breaksAfter.length > 0 &&
       !hasVisibleDomContent(clone)
         ? null
         : clone,
@@ -320,9 +339,15 @@ function cleanNestedDomElement(node: HTMLElement): CleanedDomNode {
   }
 }
 
-function createPageBreakElement(document: Document): HTMLElement {
+function createPageBreakElement(
+  document: Document,
+  continuation = false,
+): HTMLElement {
   const pageBreak = document.createElement('hr')
   pageBreak.className = 'page-break'
+  if (continuation) {
+    pageBreak.setAttribute(PAGE_BREAK_CONTINUATION_ATTRIBUTE, 'true')
+  }
   return pageBreak
 }
 
@@ -346,31 +371,31 @@ function normalizeRootListElement(list: HTMLElement): Node[] {
     currentItems = []
   }
 
-  const appendBreaks = (count: number) => {
+  const appendBreaks = (continuations: readonly boolean[]) => {
     flushList()
-    for (let index = 0; index < count; index += 1) {
-      output.push(createPageBreakElement(list.ownerDocument))
+    for (const continuation of continuations) {
+      output.push(createPageBreakElement(list.ownerDocument, continuation))
     }
   }
 
   for (const child of Array.from(list.children)) {
     if (isPageBreakElement(child)) {
-      appendBreaks(1)
+      appendBreaks([pageBreakElementContinuation(child)])
       continue
     }
 
     const cleaned = cleanNestedDomElement(child as HTMLElement)
-    if (cleaned.breaksBefore > 0) appendBreaks(cleaned.breaksBefore)
+    if (cleaned.breaksBefore.length > 0) appendBreaks(cleaned.breaksBefore)
     const consumeEmptyItem =
       child.tagName === 'LI' &&
-      cleaned.breaksBefore + cleaned.breaksAfter > 0 &&
+      cleaned.breaksBefore.length + cleaned.breaksAfter.length > 0 &&
       !cleaned.node
     if (!consumeEmptyItem && cleaned.node) {
       if (currentItems.length === 0) currentStartOffset = keptItemCount
       currentItems.push(cleaned.node)
       if (cleaned.node.tagName === 'LI') keptItemCount += 1
     }
-    if (cleaned.breaksAfter > 0) appendBreaks(cleaned.breaksAfter)
+    if (cleaned.breaksAfter.length > 0) appendBreaks(cleaned.breaksAfter)
   }
   flushList()
   return output
@@ -396,6 +421,11 @@ export function normalizePageBreakHtml(html: string): string {
     if (isPageBreakElement(element)) {
       const pageBreak = element.cloneNode(true) as HTMLElement
       pageBreak.classList.add('page-break')
+      if (pageBreakElementContinuation(element)) {
+        pageBreak.setAttribute(PAGE_BREAK_CONTINUATION_ATTRIBUTE, 'true')
+      } else {
+        pageBreak.removeAttribute(PAGE_BREAK_CONTINUATION_ATTRIBUTE)
+      }
       output.push(pageBreak)
       continue
     }
@@ -405,12 +435,12 @@ export function normalizePageBreakHtml(html: string): string {
     }
 
     const cleaned = cleanNestedDomElement(element)
-    for (let index = 0; index < cleaned.breaksBefore; index += 1) {
-      output.push(createPageBreakElement(parsed))
+    for (const continuation of cleaned.breaksBefore) {
+      output.push(createPageBreakElement(parsed, continuation))
     }
     if (cleaned.node) output.push(cleaned.node)
-    for (let index = 0; index < cleaned.breaksAfter; index += 1) {
-      output.push(createPageBreakElement(parsed))
+    for (const continuation of cleaned.breaksAfter) {
+      output.push(createPageBreakElement(parsed, continuation))
     }
   }
 

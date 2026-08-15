@@ -7,6 +7,7 @@ import {
   type LayoutAtomKind,
 } from './deterministicTextLayout'
 import { freezeOpticalListMarkerGeometry } from './opticalTypography'
+import { PAGE_CONTINUATION_TERMINAL_ATTRIBUTE } from './pageBreak'
 import { fnv1a32Hex } from './stableHash'
 
 export interface DeterministicFontRequest {
@@ -1233,10 +1234,16 @@ function materializeBlock(
   const textAlign =
     computed.getPropertyValue('--dtl-text-align').trim() || computed.textAlign
   const justify = textAlign === 'justify'
+  const continuationTerminal =
+    block.tagName === 'P' &&
+    block.getAttribute(PAGE_CONTINUATION_TERMINAL_ATTRIBUTE) === 'true'
   const lines = solveDeterministicTextLayout(
     atoms.map((meta) => meta.input),
     width,
-    { justifyWrappedLines: justify },
+    {
+      justifyWrappedLines: justify,
+      terminalEnd: continuationTerminal ? 'continuation' : 'paragraph',
+    },
   )
   // 封面海报等块用 CSS text-align:center；求解器仍按左起点出 x，
   // 这里按行宽把整行平移，预览/导出共用同一份几何。

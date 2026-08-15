@@ -20,6 +20,73 @@ function listItem(
 }
 
 describe('page-break content normalization', () => {
+  it('preserves only a strict boolean continuation flag in JSON', () => {
+    const valid = normalizePageBreakJson<PageBreakJsonNode>({
+      type: 'doc',
+      content: [
+        paragraph('前页'),
+        { type: 'horizontalRule', attrs: { continuation: true } },
+        paragraph('后页'),
+      ],
+    })
+    const invalid = normalizePageBreakJson<PageBreakJsonNode>({
+      type: 'doc',
+      content: [
+        paragraph('前页'),
+        { type: 'horizontalRule', attrs: { continuation: 'true' } },
+        paragraph('后页'),
+      ],
+    })
+
+    expect(valid.content?.[1]?.attrs?.continuation).toBe(true)
+    expect(invalid.content?.[1]?.attrs?.continuation ?? false).toBe(false)
+  })
+
+  it('preserves a valid continuation flag while lifting a nested break', () => {
+    const normalized = normalizePageBreakJson<PageBreakJsonNode>({
+      type: 'doc',
+      content: [
+        {
+          type: 'blockquote',
+          content: [
+            paragraph('前页'),
+            { type: 'horizontalRule', attrs: { continuation: true } },
+            paragraph('后页'),
+          ],
+        },
+      ],
+    })
+
+    expect(normalized.content?.[1]).toMatchObject({
+      type: 'horizontalRule',
+      attrs: { continuation: true },
+    })
+  })
+
+  it('preserves only data-page-break-continuation="true" in HTML', () => {
+    const valid = normalizePageBreakHtml(
+      '<p>前页</p><hr class="page-break" data-page-break-continuation="true"><p>后页</p>',
+    )
+    const invalid = normalizePageBreakHtml(
+      '<p>前页</p><hr class="page-break" data-page-break-continuation="yes"><p>后页</p>',
+    )
+
+    expect(valid).toContain('data-page-break-continuation="true"')
+    expect(invalid).not.toContain('data-page-break-continuation')
+  })
+
+  it('preserves continuation while lifting a nested HTML break', () => {
+    const normalized = normalizePageBreakHtml(
+      '<blockquote><p>前页</p><hr class="page-break" data-page-break-continuation="true"><p>后页</p></blockquote>',
+    )
+    const parsed = new DOMParser().parseFromString(normalized, 'text/html')
+    const pageBreak = parsed.body.querySelector(':scope > hr.page-break')
+
+    expect(pageBreak?.getAttribute('data-page-break-continuation')).toBe(
+      'true',
+    )
+  })
+
   it('lifts an old ordered-list page break and continues numbering', () => {
     const input: PageBreakJsonNode = {
       type: 'doc',

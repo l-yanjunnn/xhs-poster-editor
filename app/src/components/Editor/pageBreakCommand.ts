@@ -16,6 +16,10 @@ import type { EditorView } from '@tiptap/pm/view'
 import { normalizePageBreakHtml } from '@/lib/pageBreak'
 import { normalizeChineseBoldBoundaryWhitespaceHtml } from '@/lib/textReliability'
 import { stripPastedImageIds } from './contentNormalization'
+import {
+  hasContinuationSplitCandidate,
+  isRootContinuationParagraphPosition,
+} from './pageBreakContinuation'
 
 function isList(node: ProseMirrorNode): boolean {
   return node.type.name === 'bulletList' || node.type.name === 'orderedList'
@@ -165,12 +169,20 @@ export function insertRootPageBreak(editor: Editor): boolean {
 
   const pageBreak = editor.state.schema.nodes.horizontalRule
   if (!pageBreak) return false
+  const directParagraphContinuation =
+    selection.empty &&
+    isRootContinuationParagraphPosition($from) &&
+    $from.parentOffset > 0 &&
+    $from.parentOffset < $from.parent.content.size
+  const continuation =
+    directParagraphContinuation || hasContinuationSplitCandidate(editor.state)
+  const pageBreakNode = pageBreak.create({ continuation })
   const transaction = editor.state.tr
   if (selection instanceof NodeSelection) {
-    transaction.insert(selection.to, pageBreak.create())
+    transaction.insert(selection.to, pageBreakNode)
     placeSelectionAfterBreak(transaction, selection.to + 1)
   } else {
-    transaction.replaceSelectionWith(pageBreak.create())
+    transaction.replaceSelectionWith(pageBreakNode)
     if (transaction.selection instanceof TextSelection) {
       const forward = Selection.findFrom(
         transaction.doc.resolve(transaction.selection.from),

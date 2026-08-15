@@ -327,3 +327,13 @@
   text-align: start;
   text-align-last: auto;
 }
+
+/* Enter 拆段后插入的显式续排分页：左页末行与预览/导出一致铺满。 */
+.tiptap-editor .ProseMirror > p:has(+ hr.page-break[data-page-break-continuation="true"]) {
+  text-align-last: justify;
+}
+
+/* 封面副标题不是正文续段，即使载入了该属性也保持自然末行。 */
+.tiptap-editor .ProseMirror > h1:first-of-type + p:has(+ hr.page-break[data-page-break-continuation="true"]) {
+  text-align-last: auto;
+}

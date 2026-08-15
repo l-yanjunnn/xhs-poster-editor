@@ -35,7 +35,15 @@ export interface LayoutAtomInput {
   opticalMetricsMissing?: boolean
 }
 
-export type LayoutLineEnd = 'wrap' | 'explicit' | 'paragraph'
+export type LayoutLineEnd =
+  | 'wrap'
+  | 'explicit'
+  | 'paragraph'
+  | 'continuation'
+export type LayoutTerminalEnd = Extract<
+  LayoutLineEnd,
+  'paragraph' | 'continuation'
+>
 
 export interface PositionedLayoutAtom extends LayoutAtomInput {
   x: number
@@ -62,6 +70,8 @@ export interface DeterministicLayoutLine {
 export interface DeterministicLayoutOptions {
   /** 标题/封面副标题传 false：仍由同一求解器断行，但不拉伸包行。 */
   justifyWrappedLines?: boolean
+  /** 分页前的跨页续段用 continuation；真段尾默认 paragraph。 */
+  terminalEnd?: LayoutTerminalEnd
   punctuationMinEm?: number
   boundaryGapMaxEm?: number
   hanGapExpandMaxEm?: number
@@ -71,6 +81,7 @@ export interface DeterministicLayoutOptions {
 
 interface ResolvedLayoutOptions {
   justifyWrappedLines: boolean
+  terminalEnd: LayoutTerminalEnd
   punctuationMinEm: number
   boundaryGapMaxEm: number
   hanGapExpandMaxEm: number
@@ -129,6 +140,7 @@ interface SegmentSolution {
 
 const DEFAULT_OPTIONS: ResolvedLayoutOptions = {
   justifyWrappedLines: true,
+  terminalEnd: 'paragraph',
   punctuationMinEm: 0.5,
   boundaryGapMaxEm: 0.25,
   // 极端行宽会先耗尽标点和混排边界。0.12em 仍是整行统一的微调，
@@ -164,6 +176,8 @@ function resolveOptions(
 ): ResolvedLayoutOptions {
   return {
     justifyWrappedLines: options.justifyWrappedLines ?? true,
+    terminalEnd:
+      options.terminalEnd === 'continuation' ? 'continuation' : 'paragraph',
     punctuationMinEm: clamp(
       finite(
         options.punctuationMinEm ?? DEFAULT_OPTIONS.punctuationMinEm,
@@ -1627,7 +1641,8 @@ function materializeLine(
   options: ResolvedLayoutOptions,
   justifyWrappedLine = options.justifyWrappedLines,
 ): DeterministicLayoutLine {
-  const justified = end === 'wrap' && justifyWrappedLine
+  const justified =
+    (end === 'wrap' || end === 'continuation') && justifyWrappedLine
   const adjustment = lineAdjustmentModel(
     atoms,
     targetWidth,
@@ -1724,7 +1739,10 @@ function solveSegment(
   options: ResolvedLayoutOptions,
 ): DeterministicLayoutLine[] {
   if (atoms.length === 0) {
-    return [materializeLine([], terminalEnd, targetWidth, options)]
+    // 尾随 <br> 会在显式行后保留一个空行。空行没有
+    // 可分配字缝，即使所在段是跨页续段，也不能将它强行
+    // justify 后误报 unsatisfied-line；行高与 terminal 语义仍保留。
+    return [materializeLine([], terminalEnd, targetWidth, options, false)]
   }
   const groupWidths = breakGroupWidths(atoms, targetWidth, options)
   if (!options.justifyWrappedLines) {
@@ -1817,12 +1835,15 @@ function solveSegment(
       // P1 提前终止：推理同上方非两端对齐路径。
       if (model.min > targetWidth * 1.1 + 3 * emCap) break
       const isLast = end === atoms.length
-      const ragged = isLast || !options.justifyWrappedLines
+      const justified =
+        options.justifyWrappedLines &&
+        (!isLast || terminalEnd === 'continuation')
+      const ragged = !justified
       const adjustment = lineAdjustmentModel(
         slice,
         targetWidth,
         options,
-        !ragged,
+        justified,
         model,
       )
       const feasible = ragged
@@ -1847,7 +1868,7 @@ function solveSegment(
       const tail = best[end]
       if (!feasible || !tail) continue
       if (
-        !isLast &&
+        justified &&
         (missingOpticalPrefix[end] - missingOpticalPrefix[start] > 0 ||
           Math.abs(adjustment.visibleTargetError) > options.epsilon)
       ) {
@@ -1947,7 +1968,7 @@ export function solveDeterministicTextLayout(
     segment.push(atom)
     if (atom.forcedBreakAfter) flush('explicit')
   }
-  flush('paragraph')
+  flush(options.terminalEnd)
   return lines
 }
 

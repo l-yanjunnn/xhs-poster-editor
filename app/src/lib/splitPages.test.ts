@@ -17,6 +17,25 @@ describe('splitIntoPages', () => {
     expect(splitIntoPages(html)).toEqual(['<h1>A</h1>', '<h1>B</h1>'])
   })
 
+  it('propagates an explicit continuation boundary to the previous paragraph', () => {
+    const pages = splitIntoPages(
+      '<p>前页续段</p><hr class="page-break" data-page-break-continuation="true"><p>后页续段</p>',
+    )
+
+    expect(pages[0]).toBe(
+      '<p data-page-continuation-terminal="true">前页续段</p>',
+    )
+    expect(pages[1]).toBe('<p>后页续段</p>')
+  })
+
+  it('does not trust a standalone render marker without continuation semantics', () => {
+    const pages = splitIntoPages(
+      '<p data-page-continuation-terminal="true">完整段落</p><hr class="page-break"><p>新段落</p>',
+    )
+
+    expect(pages[0]).toBe('<p>完整段落</p>')
+  })
+
   it('hr.divider 不当分页符（保留在页内）', () => {
     const html = '<h1>A</h1><hr class="divider"><p>B</p>'
     const pages = splitIntoPages(html)
