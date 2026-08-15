@@ -20,6 +20,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable
+from urllib.parse import urlparse
 
 from playwright.async_api import Browser, BrowserContext, Locator, Page, async_playwright, expect
 
@@ -53,6 +54,14 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("/tmp/xhs-v1102-dialog-viewport"),
         help="截图与结果根目录",
+    )
+    parser.add_argument(
+        "--proxy",
+        default=os.environ.get("PROXY_URL"),
+        help=(
+            "可选 Chromium 代理；workers.dev 未显式传入时自动使用 "
+            "http://127.0.0.1:7897"
+        ),
     )
     return parser.parse_args()
 
@@ -531,7 +540,18 @@ async def async_main(
     run_dir: Path,
 ) -> dict[str, Any]:
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
+        proxy_server = args.proxy
+        hostname = (urlparse(args.url).hostname or "").lower()
+        if not proxy_server and (
+            hostname == "workers.dev" or hostname.endswith(".workers.dev")
+        ):
+            proxy_server = "http://127.0.0.1:7897"
+        launch_options: dict[str, Any] = {"headless": True}
+        if proxy_server:
+            launch_options["proxy"] = {"server": proxy_server}
+        else:
+            launch_options["args"] = ["--no-proxy-server"]
+        browser = await playwright.chromium.launch(**launch_options)
         try:
             primary = await run_primary(
                 browser,
@@ -568,7 +588,7 @@ def main() -> int:
         log(f"找不到回归 fixture：{fixture_path}")
         return 1
     source = fixture_path.read_text(encoding="utf-8")
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     run_dir = args.out.expanduser().resolve() / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     log(f"目标：{args.url}；证据：{run_dir}")
