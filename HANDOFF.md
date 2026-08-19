@@ -2,7 +2,7 @@
 
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
-> 最后更新：2026-08-16（**v1.10.2「用户反馈可靠性修复」已完成双轨发布闭环**；反馈 1/3/4 已修复，反馈 2 保持现有语义、同一标题内换行使用 `Shift+Enter`。版本、两生产入口、深回归与三组定向回归、精确 tag 和不覆盖归档均已闭环；v1.10.1–v1.10.2 合并公告已由旧企业租户 `default` 的「Claude聊天助手」发送至刘彦君 1v1 私聊，消息 `om_x100b673d13ea44a0b4af0de2ed1ccd4` 已回读确认，群聊转发由用户自行完成。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
+> 最后更新：2026-08-19（**v1.11.0「封面副标题微排版」完整范围已由用户确认；待开发、未测试、未发布**。本次只完成开工规格与交接，没有修改产品代码；线上稳定版仍为 v1.10.2，`app/package.json` 的 `version` 仍为 `1.10.2`。v1.10.2 已完成双轨发布、精确 tag、不覆盖归档与公告闭环。旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）
 
 ---
 
@@ -14,7 +14,8 @@
 | 本地归档 | 当前完整构建在 `app/dist/`；v1.10.2 快照在 `archive/dist-v1.10.2/`（9.6M，排除字体 3337 个）；v1.10.1 快照在 `archive/dist-v1.10.1/`（9.6M，排除字体 3337 个）；v1.10.0 快照在 `archive/dist-v1.10.0/`；v1.9.0 快照在 `archive/dist-v1.9.0/`（发版时漏交 git，2026-08-14 已补交 `0e9bb1e`）；更旧归档继续保留，完整复原走对应 tag + `bash ci.sh` |
 | 状态 | **线上 v1.10.2 双轨稳定，发布闭环完成，无未完成发版步骤**。本版修复低视口导入/导出弹窗 CTA 可达性、`Enter → 分页` 的跨页续段末行排版，以及 Code 块长中文、URL 和无断点 token 的静态换行；真段尾、手工换行、空白和等宽字体语义保持不变 |
 | v1.10.1 迭代记录 | **v1.10.1「删光草稿回开箱教程态」2026-08-14 深夜已双轨上线**（用户反馈当日修复并授权走闭环）。根因：删除最后一份草稿时自动新建的草稿装的是空段落（`EMPTY_DOCUMENT_JSON`，v1.10.0 之前就存在），用户删光草稿后画布空白、找不到教程。修复：该路径改为 `createEditorDocumentJSON(DEFAULT_CONTENT)` + 雅致默认样式，与首次开箱一致；`EMPTY_DOCUMENT_JSON` 常量随之删除。门禁四连全绿（Vitest 43/435）；真实浏览器回归（本地+两生产入口）：编辑落盘→删光全部草稿→教程 5 页回归→刷新仍在。发布提交/tag `927175f` / `v1.10.1`，`archive/dist-v1.10.1/` 已归档。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c7929024a0b24dbdb9c2277a7`。**v1.10.1 无未完成步骤**。v1.10.0 记录如下（历史） |
-| 当前迭代 | **v1.10.2「用户反馈可靠性修复」2026-08-16 已双轨上线并完成全部闭环**。产品工作包提交为 `3b93160` / `9879dca` / `ff85779`，发布提交与 tag 为 `0b2d6468c9f8aa4db9cdf6d88533b7eaff47f267` / `v1.10.2`。反馈 1/3/4 已通过 TDD、全量 CI、真实 Chromium/PNG 本地回归与双入口生产回归；反馈 2 不改产品或代码，`Enter` 仍表示分段，同一标题内换行用 `Shift+Enter`。`archive/dist-v1.10.2/` 已归档。按用户最终决定，公告仅合并 v1.10.1 与 v1.10.2；已使用「Claude聊天助手」回复刘彦君既有发布会话，消息 `om_x100b673d13ea44a0b4af0de2ed1ccd4` 已回读确认，用户自行转发群聊 |
+| 最近完成迭代 | **v1.10.2「用户反馈可靠性修复」2026-08-16 已双轨上线并完成全部闭环**。产品工作包提交为 `3b93160` / `9879dca` / `ff85779`，发布提交与 tag 为 `0b2d6468c9f8aa4db9cdf6d88533b7eaff47f267` / `v1.10.2`。反馈 1/3/4 已通过 TDD、全量 CI、真实 Chromium/PNG 本地回归与双入口生产回归；反馈 2 不改产品或代码，`Enter` 仍表示分段，同一标题内换行用 `Shift+Enter`。`archive/dist-v1.10.2/` 已归档。按用户最终决定，公告仅合并 v1.10.1 与 v1.10.2；已使用「Claude聊天助手」回复刘彦君既有发布会话，消息 `om_x100b673d13ea44a0b4af0de2ed1ccd4` 已回读确认，用户自行转发群聊 |
+| 下一迭代 | **v1.11.0「封面副标题微排版」范围已确认、待开发**。2026-08-19 用户确认把「副标题字距：紧凑 / 标准 / 舒展」定义为可撤回实验能力，再根据实际使用决定保留或隐藏；同时澄清现有全局 H1 宽度的 UI 命名，并用群聊真实样稿补空格、软换行、预览/PNG 一致性回归。**尚未改码、未 bump 包版本、不存在 v1.11.0 tag / archive / 生产构建**；详细范围见本节下方 v1.11.0 规格。 |
 | v1.10.0 迭代记录 | **v1.10.0「结构化封面槽位版」2026-08-14 已双轨上线**（用户目检 + 授权走闭环；发布提交/tag `adbc9ef` / `v1.10.0`，两入口同构建 `index-Dzu6JFfe.js`，`archive/dist-v1.10.0/` 已归档；两入口 `test_prod_deep` + 封面槽位 8 项像素回归全绿，测 Cloudflare 入口的槽位回归需 `test_cover_slots_export_local.py` 的 workers.dev 显式代理逻辑）。范围 = ROADMAP P2 封面槽位（demo 已于 8-13 目检认可）。接手 8-13 深夜留在工作区的未提交半成品（`coverSlots.ts` + Inspector「封面版式」三卡/垂直三档 + App/documentStore/themes/Preview/ThemePreview 全链路 + `docs/design/cover-slots-demo-2026-08-13/SPEC.md`），闭环期修复三处真缺陷：① 槽位 CSS 覆盖块写在公考主题规则**前**且特异性打平被整组压掉（B 副标题在 80% 窄盒里居中偏左、C 眉题字号/0.18em 字距全失效）→ 移到主题规则之后 + `canvas.test.ts` 锁规则顺序；② B 分隔条 / C 眉题竖条用 in-flow 伪元素，被物化后绝对定位行盒压住不可见/与首字重叠 → 改绝对定位挂在物化块上（B 挂 `h1::after` 盒下缘居中、C 眉题 `margin-left:20px` 让位 + `::before` 绝对定位）；③ **Preview 排版事务 effect 漏 `coverLayout/coverVertical` 依赖**：切版式只触发「标 pending」的快速物化 effect，seal 事务永不重跑 → 所有页卡死 pending、导出静默挂死（无报错无 console）→ 补依赖。新增 `tools/export-race-repro/test_cover_slots_export_local.py`（8 项导出像素断言：B 分隔条进 PNG/主副标题居中 ±8px、C 竖条进 PNG 且为最左墨迹、A 左缘回归；headless 需置空 showSaveFilePicker 走经典下载）。顺带清理（CODE-REVIEW）：R8 导入失败 stale 文案（`lastStorageErrorRef` 镜像最新错误）、R8 预检图片标签改「第 X 页第 Y 张图片」、M4 `clearTypographyMetricsCache` family 陷阱分支删除、M5 弃用 option 字段（punctuationPreferredEm/otherGapMaxEm）删除。门禁：tsc/ESLint/build 全绿，Vitest **43 文件 / 435 测试**；画布截图 `docs/screenshots/cover-slots-local/`（00 默认雅致教程态、A 上/中/下、B 中、C 上、内页不变）。**示例文案策略（2026-08-14 用户拍板，推翻上会话的三项规格外改动）**：① 默认主题回退**雅致**（新建空草稿同）；② 默认教程首页文案保持教程原文；③ 示例只跟公考绑定——默认教程未改过时切「公考·山水卷」，首页**整页**换成版式 A 示例封面（`replaceDefaultTutorialCoverHtml`，忽略空白逐字比对整个首页、改过一字就不动、可撤销、只动第一个分页符之前）；封面仍是三套示例之一时切版式同步换示例文案（沿用）；④ 右栏三张版式卡缩略图改**中性灰阶排版示意图**（PIL 生成，`cover-layout-*-v1.png`，任何主题下不违和）。浏览器回归：默认态/切公考整页换示例/全页 sealed/撤销恢复教程/改过标题不覆盖 5 场景全过（脚本 scratchpad `test_theme_swap.py`）。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c6b9b1bcb0b143212ef197155`（含双入口地址 + 飞书使用说明云文档链接）。**v1.10.0 无未完成步骤**。v1.9.0 记录如下（历史） |
 | v1.9.0 迭代记录 | **v1.9.0「引擎提速版」2026-08-13 已双轨上线**（用户授权走闭环）。范围 = CODE-REVIEW §五 v1.9.0 行 + 用户拍板并入：① **P1** DP 断行求解器（`deterministicTextLayout.ts`：按 `model.min` 单调性提前终止内层扫描、`SegmentSolution` 改链式 `{cost,end,next}`、物化推迟到最优链重建；`lineAdjustmentModel` 增 `visibleTargetError` 供不物化淘汰 clamp 候选，`missingOptical` 前缀和复刻物化侧判据——可行集与旧实现严格一致）。微基准 100/500/2000 字与混排 = 67→15 / 6593→74 / 428401→**307** / 2824→72 ms；**等价性差分**：git HEAD 旧实现 vs 新实现 6 组语料（含 hardNoBreak 短语/标点密集/单字符）逐字节相等 + snapshotHash 相等；② **P5/P7** `deterministicTypography.ts`：导出基线校准写读分相（逐 atom reflow→整批一次）、`materializedAtomBaselines` 按 (font, line-height, 盒高) 类去重 probe（逐字素→每块 1–3 个）；端到端导出持平（html2canvas 主导），收益体现在打字延迟（11 页 382.4→71.2 ms、5 页 101.5→83.3 ms）；`lineBaseline` 缓存因字体加载失效风险明确不做；③ **R5** 纯打开草稿零落盘：真根因是 Editor 挂载 effect 在 onUpdate 回调身份变化时重放 HTML、旧回调依赖 draftReady 翻转致重放落在非 hydrating 窗口误标 dirty——改恒定身份回调（读 draftReadyRef/writerLeaseStateRef）+ autosave 守卫（dirty=false 且无 pending 且 revision>0 早退，新建空草稿 revision=0 例外），真实浏览器 5 场景回归全过；④ **M3** FNV-1a hash 实为 **4 处**拷贝（审查漏了 exportPng.ts 一处）+ 毫像素取整 2 处 → `stableHash.ts` 单一实现，单测钉死输出位；`deterministicTextLayout.ts` 对 stableHash 用显式 `.ts` 扩展名 import（node 直跑 solver-bench 需要）；⑤ **M7 五步拆分完成** App.tsx 2344→**1286 行**：`useWriterLease` / `useThemeCssVars` / `useResourceRecovery`(398) / `useDraftPersistence`(745) / `runExport`(279)；`hydrateDocument`、`activeDraftRef`、恒定身份 `handleEditorUpdate` 因跨域耦合留在 App（文件内有注释）；⑥ **默认教程重写**（用户目检通过）：覆盖公考主题/导入/发布文案/目录导出/滚动联动，修掉旧第 3 页两行排版超限——全新用户 5 页 layout issues 全空、导出直通无强制导出关卡；⑦ **字体减重第一刀**：index.html 跳过 LXGW 包入口 style.css（@import 6 份），直链 400/700 非 mono 两份。门禁：tsc/ESLint/build 全绿，Vitest **42 文件 / 417 测试**（v1.8.2 基线 41/412 + 新增 stableHash 5 项）。真实浏览器：`test_prod_deep`（本地+两生产入口）、`test_v180_local` + `test_v180_longdoc_local`（19 页联动）、`test_r5.py`（scratchpad，5 场景）全绿。发布闭环：`61267f0` 推 main + `deploy-oss.sh` 双轨同构建 `index-uiqcd8rt.js`，tag `v1.9.0` 已推，`archive/dist-v1.9.0/` 已归档。**生产回归事故记录**：Cloudflare 入口前三次 `test_prod_deep` 皆在首个导出等 download 120s 超时——探针定位为本机代理对 workers.dev 同源 Noto woff2 批量请求黑洞化 → `document.fonts.ready` 永挂 → 导出按既有 fail-safe 等待；同构建本地与大陆入口全绿、卡住字体为 v1.9.0 未触碰的 fontsource 文件、直连本网不可达（必走代理），判定纯环境故障；约 40 分钟后第 4 次复跑全绿闭环。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68ea7945a4a0b1523fb7acae06a`。**v1.9.0 无未完成步骤** |
 | v1.8.2 迭代记录 | **v1.8.2「性能版」2026-08-13 已双轨上线**（用户授权走闭环）。按 CODE-REVIEW §五 v1.8.2 行实现六项：① P2 `Editor.tsx` reportEditorState 三态浅比较 bail-out（ref 持上次值，光标移动值未变不回调 App）；② P3 `memo(Preview)` + App 端 `getPageRefCallback` 按页序缓存 ref 回调、画布回调（onSelectImage/onClearSelection/onCommitImage/recordRecentAction）全部 useCallback 固定，多页打字只重渲染变化页；③ P4 WAL 写入 200ms 短防抖（`WAL_DEBOUNCE_MS` + `walTimerRef`，定时器带 recoveryId 守卫防复活已清除 WAL；`clearAutosaveTimer` 连清 WAL 计时器），visibilitychange/pagehide 同步兜底原样保留；④ P6 `buildExportBatchCss()` 批级 CSS 缓存，`RenderPageOptions.cssText` 透传，`writeDirectoryPlan`/`executeZipExport` 批开头各算一次（含 retry 复用），onclone 注入策略不变；⑤ M1 删 `exportPages`/`triggerDownload`/JSZip 导入死管线约 50 行，`suggestFilename` 保留；⑥ M2 门控收敛为 `assertNoBlockingExportIssues(issues, {allowWarnings})` 单一实现，App 闸门与测试共用（测试改走 check+门控组合真实路径），语义逐行等价。门禁：tsc/ESLint/build 全绿，Vitest **41 文件 / 412 测试**；真实浏览器自查 23/23（打字/荧光笔/图片选择/12 页打字/撤销重做/双向滚动联动与开关/WAL 三路径：防抖后真实写入、900ms 自动保存清 WAL 不变、编辑后立即刷新不丢；console 0），脚本与截图在 scratchpad/v182。发布闭环：`dbf8c3b` 推 main + `deploy-oss.sh` 双轨同构建 `index-CNJjlkPq.js`，tag `v1.8.2` 已推，`archive/dist-v1.8.2/` 已归档；两生产入口 `test_prod_deep.py` 三主题+用户字体全绿。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68fef232dca0de2af09d3045f55`（含飞书使用说明云文档链接）。**v1.8.2 无未完成步骤** |
@@ -34,12 +35,15 @@
 | v1.7.2 门禁 | Vitest **40 文件 / 386 测试**、`tsc -b`、ESLint、Vite build 全绿；最小样例：行末误差、汉缝偏差、混排 baseline、标点双侧净空、冒号左右差、行末可见右缘均为 0，跨行下划线逐行存在；预览/导出行列 lag 均 0，H2 bbox 最大差 1px。真实 19 页本地 19/19；两个生产入口各通过 18/19 页导入与 19 张 2160×3600 ZIP，以及 1/2/5 页、三主题、用户字体和 UI 冒烟；console/page error 为 0 |
 | 定位 | 小红书 9:15（3:5）长图排版工具，给非技术用户开箱即用。阶段 A：纯静态站点（无登录无后端） |
 
-### 迭代待办快照（2026-08-16 更新；功能规格以 `docs/ROADMAP-2026-08-12.md` 为准，代码质量项以 `docs/CODE-REVIEW-2026-08-13.md` §五版本编排为准）
+### 迭代待办快照（2026-08-19 更新；v1.11.0 规格以本节为唯一来源；旧 `docs/ROADMAP-2026-08-12.md` 只保留长期候选，代码质量项仍参考 `docs/CODE-REVIEW-2026-08-13.md` §五）
 
-> **v1.10.2 已于 2026-08-16 双轨上线并出列，当前没有发布遗留。** 按用户最终决定，公告只合并 v1.10.1 与 v1.10.2；旧企业租户 `default` 的「Claude聊天助手」已发至刘彦君 1v1 私聊，消息 `om_x100b673d13ea44a0b4af0de2ed1ccd4` 已回读确认，群聊转发由用户自行完成。**R7 英文长段落 justify** 用户拍板先 mark 不做（详见 CODE-REVIEW §五）。下表 P2/P3 为尚未立项或待触发事项。
+> **v1.10.2 已于 2026-08-16 双轨上线并出列，当前没有发布遗留。v1.11.0 范围已确认但尚未实现，不能描述为已修复、已测试或已发布。** `R7` 英文长段落 justify 继续 mark 不做（详见 CODE-REVIEW §五）。下表 P2/P3 为尚未立项或待触发事项。
 
 | 优先级 | 待办 | 一句话范围 |
 |---|---|---|
+| P0·v1.11.0（待开发） | 封面副标题字距三档 | 新增「紧凑 / 标准 / 舒展」，只作用首图副标题；标准档逐像素保持 v1.10.2 当前视觉，紧凑/舒展先用真实样稿校准 |
+| P1·v1.11.0（待开发） | H1 宽度命名澄清 | 将右栏 `H1 宽度`改名为`全篇 H1 宽度`并保持原位置、原行为；不冒充封面主标题专属设置 |
+| P1·v1.11.0（待开发） | 首图微排版可靠性回归 | 用群聊真实文案锁住有意空格、`Shift+Enter` 软换行、三套封面版式以及预览/2160×3600 PNG 的一致性 |
 | P0·反馈 1 ✅v1.10.2 已上线 | 低视口导入确认弹窗可达性 | 弹窗固定头尾、只让中间正文滚动，任何支持的桌面视口下都能看到并操作「生成到新草稿」 |
 | P1·反馈 3 ✅v1.10.2 已上线 | `Enter → 分页` 跨页续段 | 为跨页续段建立显式语义；只有上一页的续段末行铺满，真正段尾仍自然左对齐 |
 | P1·反馈 4 ✅v1.10.2 已上线 | Code 块长行自动换行 | 保留空格/Tab/手工换行与等宽字体，中文、URL 和无断点长串不得在编辑区、画布或 PNG 右侧被裁掉 |
@@ -52,6 +56,91 @@
 | P3 | 小红书原生长文管线 | 另一条平台管线，需先重新调研账号能力与当期规则 |
 | P3 | 独立 `PosterTemplate` | 只有出现「带正文骨架/封面字段槽位/页类型」需求才设计；Theme 继续只管视觉 |
 | P3·条件触发 | 手机端独立壳 / v2.0.0 产品壳 / SaaS / Tauri | 各有触发条件，见 ROADMAP §1 |
+
+#### v1.11.0「封面副标题微排版」（范围已确认｜待开发、未测试、未发布）
+
+> **状态边界**：2026-08-19 用户已确认完整范围，并因新增用户可见能力正式锁定版本号 `v1.11.0`。线上稳定版、最新精确 tag 与最新归档仍为 v1.10.2，`app/package.json` 的 `version` 仍为 `1.10.2`；当前没有 v1.11.0 产品提交、tag、`archive/dist-v1.11.0/` 或生产构建。本节是下一窗口的实施规格，不是完成记录。
+
+##### 一、需求来源与归因边界
+
+- 证据源是飞书群「公考美术优化」2026-08-18 21:10 至 2026-08-19 00:04 的消息与截图；群内「麦宏博」即本项目语境中的「小麦」，截图里的线上编辑器为 v1.10.2。
+- **小麦直接反馈**：发出一张副标题发生折行的首图后表示“看起来不对劲”，随后用红框标注副标题区域；提出“可以调一下副标题的左右间距”；被建议切 80% / 100% 后回复“调整不了哦，我 try 过了”。这能确认现有操作没有解决他的排版问题，但不能仅凭群聊判定他要的是区块宽度、统一字距、局部空格还是更明确的断行控制。
+- **周宇直接反馈**：除第一张图外的其余页面“完全没问题，手工感非常棒”，本轮重点只改首图并提升点击率；要求封面“有呼吸感”，在截图中标出若干词组/标点边界并说“需要加空格，调下字间距”。标注更接近局部留白，不能反推为他已明确要求整段统一 `letter-spacing`。
+- **代码核验**：封面副标题当前为 `text-align: start`、`text-align-last: auto`，不是两端对齐块；之前群里把问题笼统归为“两端对齐优化”的说法不能当作已确认根因。本版不得重写 justify 或确定性断行引擎来“修”一个尚未成立的根因。
+- **2026-08-19 产品决定**：尽管统一字距不是小麦原话，用户同意先把「紧凑 / 标准 / 舒展」做成封面副标题专属、可撤回的实验能力，再根据实际使用决定保留或隐藏。该实验不得宣称已经完整解决“小麦的左右间距反馈”。
+- 附件里虽出现“本页内容已超出安全区，请手动分页”，但周宇同时明确除首图外都没问题；安全区/自动分页不纳入本版。iCloud 共享文件夹不可见属于协作权限问题，也不归因为编辑器缺陷。
+
+##### 二、确认范围
+
+1. **副标题字距三档**
+   - 右栏封面版式区域新增「副标题字距」，展示为「紧凑 / 标准 / 舒展」，内部值固定为 `compact / standard / relaxed`。
+   - 只作用于首页“第一个 H1 + 紧邻第一个 p”中的副标题；不改变文字内容、主副标题对齐关系、区块宽度、字号、行高、颜色、上下间距或分页语义。
+   - `standard` 的定义不是统一写死一个新数值，而是**严格保持 v1.10.2 各主题/版式当前视觉**：公考普通/居中约 `0.02em`，其他主题普通/居中沿用 `normal/0`，kicker 眉题沿用 `0.18em`。
+   - `compact / relaxed` 的最终数值属于视觉标定，不在未目检前冻结。首轮候选可从普通版式 `0em / 0.08em`、kicker `0.10em / 0.26em` 起做样张；其他主题若“紧凑”和“标准”无可见差异，不得为了制造差异直接上线负字距，先通过真实字体与 PNG 目检决定。
+   - 入口可标记为实验能力；如果后续证实冗余，只隐藏 UI，继续保留解析/渲染兼容，不能让已经保存该档位的草稿失真或打不开。
+2. **H1 宽度命名澄清**
+   - 现有 `h1Width` 实际作用全篇 `.content h1`，本版只将右栏文案从「H1 宽度」改为「全篇 H1 宽度」，保持原位置、选项、持久化与行为。
+   - 左侧编辑区的 H1 语义工具继续存在；改右栏文案或增加副标题字距，都不会删除、替换或改写 H1 节点。
+   - 不把现有全局 `h1Width` 移进封面版式，也不改名为「主标题宽度」。未来若需要封面专属主标题宽度，必须新建独立字段，不能复用全局字段造成误导。
+3. **真实样稿可靠性回归**
+   - 核心副标题 fixture 使用群聊原句：`「看起来」高分和「实际高分」是两件事情`；同时覆盖用户插入单个有意空格、数字/中文混排、短副标题、长副标题与 kicker 眉题。
+   - `Shift+Enter` 继续表示同一副标题内软换行，`Enter` 继续新建块；本版不改变既有编辑语义。
+   - 普通文本、且不属于既有“中文粗体边界空白清理”场景时，单个有意空格与 NBSP 必须在 Tiptap JSON、刷新恢复、中央预览和 PNG 中可预期保留；本版不改变既有粗体边界清理规则，也不把连续多个普通 ASCII 空格定义为精排工具。
+
+##### 三、实施工作包
+
+1. **WP1 · 状态、草稿与主题兼容**
+   - 在 `coverSlots.ts` 建立 `CoverSubtitleSpacing`、默认值 `standard`、三档选项与 normalize；运行时 `Theme` / `EditorDocumentStyleV2` 增加 `coverSubtitleSpacing`。
+   - 旧 V1、旧 V2、旧用户主题缺失或出现非法值时一律 normalize 为 `standard`；不得把缺字段改成草稿/主题损坏。无需升级 `EditorDocumentV3`、IndexedDB `DB_VERSION` 或 recovery key。
+   - 接通新建/导入/删除至最后草稿后的样式来源、普通 IndexedDB 快照、WAL/recovery、草稿 hydrate、主题应用/保存/恢复。
+2. **WP2 · Inspector 与应用状态**
+   - 在现有封面版式/垂直位置控制附近增加三段式控件，辅助说明“只影响封面副标题”；图片或正文文字选中态不重复出现入口。
+   - App state、`documentStyle` 及其依赖、hydrate、apply/save theme、`customize()` dirty 标记、Preview 和 Inspector props 全链路接通。
+   - 同批完成「H1 宽度」→「全篇 H1 宽度」的纯文案澄清，不改变现有 `h1Width` 数据。
+3. **WP3 · 局部渲染与 sealed snapshot**
+   - 扩展 `coverSlotDataset(isFirstPage, layout, vertical, spacing)`，同步更新 Preview 与 ThemePreview 调用；通过首页 dataset/CSS 将字距限定到 `.page--first .content > h1:first-of-type + p`。
+   - CSS 规则必须放在公考主题、poster-center 与 kicker 规则之后；`standard` 不得新增统一 `letter-spacing` 覆盖，只为 `compact / relaxed` 加规则，kicker 特化规则最后，以保证旧草稿回落 standard 后视觉不漂移。
+   - 左侧编辑区只保证副标题文字、普通场景空格和软换行语义，不在本版新增字距实时预览接线；最终字距以中央成品画布与 PNG 为准。H1、内页、正文 density 与其他标题均保持不变。
+   - 将新属性加入 `previewLayoutRevision`、Preview 两组排版事务依赖和 ThemePreview typography 依赖；切换后 Preview 必须从 pending 重新得到最新的 `ready`（或既有 warning 状态）+ `sealed` 快照，ThemePreview 必须更新 dataset、视觉与光学校准，快速连续切换不得被旧事务回写。
+   - 字距实际变化时，切换前后的 Preview snapshot ID 必须不同，并断言副标题 atom 间距/横坐标或换行几何发生对应变化，不能只检查最终重新显示 `ready + sealed`。
+   - 不改 `deterministicTypography.ts` / `deterministicTextLayout.ts` 算法：现有链路已读取 computed `letter-spacing` 并烘焙进 atom 几何。PNG 继续复制用户眼前同一份 sealed snapshot，不另建导出排版分支。
+4. **WP4 · TDD、真实浏览器与视觉标定**
+   - 单元/契约测试至少覆盖：三档 normalize 与首页 dataset、内页无属性、旧 V1/V2/用户主题兼容、IDB/WAL 往返、Inspector 选中态、主题保存/恢复、CSS 作用域与规则顺序、Preview 重新 `ready + sealed`、ThemePreview dataset/视觉更新、文字 Unicode 完整性。
+   - 浏览器核心矩阵：公考主题 3 套封面版式 × 3 档字距，共 9 组；至少一个非公考旧主题也覆盖三档，且用 `standard` 与 v1.10.2 做视觉非回归；三个垂直位置各覆盖一例。
+   - 使用群聊真实副标题检查 computed 字距、折行、溢出、文字完整性、单个有意空格、`Shift+Enter`、自动保存刷新与用户主题恢复。
+   - PNG 至少覆盖 3 版式 × 3 档，尺寸固定 `2160 × 3600`；预览与 PNG 的行数、位置、文字与 snapshot 一致，poster-center 仍居中，kicker 竖条/顺序不回归。
+
+##### 四、明确不做
+
+- 不在本版新增「副标题宽度 / 左右 padding / 80%—100%」控制；这仍是小麦直接反馈的强候选，但要等三档字距真实使用或再次确认后独立立项。
+- 不新增封面主标题专属宽度，不移动现有全局 H1 宽度，不改 H1 节点或左侧编辑工具。
+- 不做自由字距滑杆、任意数值输入、选中文字局部 tracking、连续多空格精排或自由文本框。
+- 不改正文两端对齐、确定性断行/标点算法、分页、安全区、图片、PNG/ZIP/目录交付管线。
+- 不把去内部术语、去 AI 句式、点击率文案、B 站复用或 iCloud 素材归档混进编辑器代码；这些属于内容/协作工作流的后续议题。
+- 本规划阶段不 bump `app/package.json`，不创建 tag/归档，不部署双轨，不发公告；用户目检和发布授权必须分开取得。
+
+##### 五、验收顺序与状态检查表
+
+1. 先锁 v1.10.2 `standard` 基线截图/PNG，再写失败测试与实现，防止“标准档”偷偷改旧视觉。
+2. 完成状态/兼容 → UI → CSS/排版事务 → 单元门禁；再生成三档 × 三版式本地截图与 PNG 供用户目检。
+3. 用户确定紧凑/舒展的最终视觉数值后，再跑 `tsc -b`、ESLint、Vitest、Vite build 与真实浏览器完整回归。
+4. 只有用户另行明确授权，才 bump 版本、提交、tag、双轨部署、双生产入口回归、不覆盖归档与公告；不能把“同意规划/开始开发”解释为发布授权。
+
+- [x] 已读取 2026-08-18—19 群聊并区分小麦、周宇与产品推断
+- [x] 用户同意三档字距作为可撤回实验方向（2026-08-19）
+- [x] HANDOFF 规划草案已写入（2026-08-19）
+- [x] 用户确认 v1.11.0 完整范围（2026-08-19）
+- [ ] RED 复现 / v1.10.2 标准基线
+- [ ] 功能实现与单元门禁
+- [ ] 本地真实 Chromium / 2160×3600 PNG 回归
+- [ ] 用户目检并锁定紧凑/舒展数值
+- [ ] 用户单独授权发布
+- [ ] bump / commit / 精确 tag / 双轨部署 / 双入口生产回归
+- [ ] `archive/dist-v1.11.0/` 不覆盖归档、README/USAGE/HANDOFF/公告闭环
+
+##### 六、新窗口开工提示
+
+> 继续小红书排版编辑器 v1.11.0「封面副标题微排版」。先读 `HANDOFF.md` §0 的 v1.11.0 规格；完整范围已由用户确认，可直接实施 WP1–WP4。线上稳定版仍为 v1.10.2，`app/package.json` 的 `version` 仍为 `1.10.2`。开工后先建立 standard 基线与 RED 测试，再做三档字距和「全篇 H1 宽度」文案澄清。不要新增副标题宽度/自由滑杆，不改确定性排版或导出算法，不部署、不 tag、不发公告；先交三档 × 三版式本地截图和 PNG 给用户目检。保留工作树中既有的未跟踪文件 `docs/飞书使用说明-文档封面.png`，不要纳入、移动或删除。
 
 #### v1.10.2「用户反馈可靠性修复」（2026-08-16 已完成并双轨上线）
 
