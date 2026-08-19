@@ -23,7 +23,9 @@ function createIndexedDbStub(): IDBFactory {
       return successfulRequest<IDBValidKey>(id)
     },
     getAll() {
-      return successfulRequest([...records.values()].map((value) => structuredClone(value)))
+      return successfulRequest(
+        [...records.values()].map((value) => structuredClone(value)),
+      )
     },
     delete(id: IDBValidKey) {
       records.delete(String(id))
@@ -58,6 +60,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverSubtitleColor
   delete legacy.coverLayout
   delete legacy.coverVertical
+  delete legacy.coverSubtitleSpacing
   return legacy
 }
 
@@ -85,6 +88,35 @@ describe('themeStore V2 normalization', () => {
         coverBgAssetId: '',
         coverTitleColor: '#F0F0F0',
         coverSubtitleColor: '#F0F0F0',
+        coverSubtitleSpacing: 'standard',
+      }),
+    ])
+  })
+
+  it('normalizes missing and invalid stored spacing to standard without dropping the theme', async () => {
+    const missing = asLegacyTheme(BUILTIN_THEMES[0])
+    records.set('legacy-missing-spacing', {
+      ...missing,
+      id: 'legacy-missing-spacing',
+      isBuiltin: false,
+      createdAt: 10,
+    })
+    records.set('legacy-invalid-spacing', {
+      ...BUILTIN_THEMES[1],
+      id: 'legacy-invalid-spacing',
+      isBuiltin: false,
+      createdAt: 20,
+      coverSubtitleSpacing: 'tracking-12',
+    })
+
+    expect(await listUserThemes()).toEqual([
+      expect.objectContaining({
+        id: 'legacy-invalid-spacing',
+        coverSubtitleSpacing: 'standard',
+      }),
+      expect.objectContaining({
+        id: 'legacy-missing-spacing',
+        coverSubtitleSpacing: 'standard',
       }),
     ])
   })
@@ -97,6 +129,7 @@ describe('themeStore V2 normalization', () => {
       createdAt: 20,
       coverTitleColor: '#6d136c',
       coverSubtitleColor: '#5a465f',
+      coverSubtitleSpacing: 'compact',
     })
 
     expect(records.get('user-lowercase')).toEqual(
@@ -104,7 +137,15 @@ describe('themeStore V2 normalization', () => {
         coverBgAssetId: 'builtin-bg-xuan',
         coverTitleColor: '#6D136C',
         coverSubtitleColor: '#5A465F',
+        coverSubtitleSpacing: 'compact',
       }),
     )
+
+    expect(await listUserThemes()).toEqual([
+      expect.objectContaining({
+        id: 'user-lowercase',
+        coverSubtitleSpacing: 'compact',
+      }),
+    ])
   })
 })

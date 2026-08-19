@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUILTIN_THEMES, type Theme } from '@/lib/themes'
 import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
+import {
+  calibratePageTypography,
+  calibratePageTypographyNow,
+} from '@/lib/opticalTypography'
 import { ThemePreview } from './ThemePreview'
 
 vi.mock('@/lib/resolveAsset', () => ({
@@ -11,6 +15,10 @@ vi.mock('@/lib/resolveAsset', () => ({
 }))
 vi.mock('@/lib/pageBackgrounds', () => ({
   resolvePageBackgrounds: vi.fn(),
+}))
+vi.mock('@/lib/opticalTypography', () => ({
+  calibratePageTypography: vi.fn(),
+  calibratePageTypographyNow: vi.fn(),
 }))
 
 type ReactActGlobal = typeof globalThis & {
@@ -20,6 +28,10 @@ type ReactActGlobal = typeof globalThis & {
 
 const mockedResolveAssetSrc = vi.mocked(resolveAssetSrc)
 const mockedResolvePageBackgrounds = vi.mocked(resolvePageBackgrounds)
+const mockedCalibratePageTypography = vi.mocked(calibratePageTypography)
+const mockedCalibratePageTypographyNow = vi.mocked(
+  calibratePageTypographyNow,
+)
 const mounted: Array<{ host: HTMLDivElement; root: Root }> = []
 
 function publicExamTheme(overrides: Partial<Theme> = {}): Theme {
@@ -53,6 +65,16 @@ function deferred<T>() {
 beforeEach(() => {
   mockedResolveAssetSrc.mockReset()
   mockedResolvePageBackgrounds.mockReset()
+  mockedCalibratePageTypography.mockReset().mockResolvedValue({
+    status: 'ready',
+    h2Count: 0,
+    markerCount: 0,
+    fontIssues: [],
+  })
+  mockedCalibratePageTypographyNow.mockReset().mockReturnValue({
+    h2Count: 0,
+    markerCount: 0,
+  })
 })
 
 afterEach(async () => {
@@ -101,6 +123,11 @@ describe('ThemePreview cover semantics', () => {
     expect(host.querySelector('.page')?.getAttribute('data-cover-vertical')).toBe(
       'top',
     )
+    expect(
+      host
+        .querySelector('.page')
+        ?.getAttribute('data-cover-subtitle-spacing'),
+    ).toBe('standard')
   })
 
   it('把主题里的封面槽位打到首页节点上', async () => {
@@ -114,6 +141,7 @@ describe('ThemePreview cover semantics', () => {
       publicExamTheme({
         coverLayout: 'kicker-above',
         coverVertical: 'bottom',
+        coverSubtitleSpacing: 'compact',
       }),
     )
 
@@ -123,6 +151,73 @@ describe('ThemePreview cover semantics', () => {
     expect(host.querySelector('.page')?.getAttribute('data-cover-vertical')).toBe(
       'bottom',
     )
+    expect(
+      host
+        .querySelector('.page')
+        ?.getAttribute('data-cover-subtitle-spacing'),
+    ).toBe('compact')
+  })
+
+  it('仅切换副标题字距也会更新 dataset、取消旧校准并重跑最新校准', async () => {
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockResolvedValue({
+      coverSrc: '/cover.png',
+      innerSrc: '/inner.png',
+      issues: [],
+    })
+    const item = await mountThemePreview(
+      publicExamTheme({ coverSubtitleSpacing: 'standard' }),
+    )
+    const page = item.host.querySelector<HTMLElement>('.page')!
+    const initialCalls = mockedCalibratePageTypography.mock.calls.length
+    const initialSignal = (
+      mockedCalibratePageTypography.mock.calls.at(-1)?.[1] as {
+        signal: AbortSignal
+      }
+    ).signal
+
+    await act(async () => {
+      item.root.render(
+        createElement(ThemePreview, {
+          theme: publicExamTheme({ coverSubtitleSpacing: 'compact' }),
+        }),
+      )
+      await Promise.resolve()
+    })
+
+    expect(page.dataset.coverSubtitleSpacing).toBe('compact')
+    expect(initialSignal.aborted).toBe(true)
+    expect(mockedCalibratePageTypography).toHaveBeenCalledTimes(
+      initialCalls + 1,
+    )
+    const compactSignal = (
+      mockedCalibratePageTypography.mock.calls.at(-1)?.[1] as {
+        signal: AbortSignal
+      }
+    ).signal
+
+    await act(async () => {
+      item.root.render(
+        createElement(ThemePreview, {
+          theme: publicExamTheme({ coverSubtitleSpacing: 'relaxed' }),
+        }),
+      )
+      await Promise.resolve()
+    })
+
+    expect(page.dataset.coverSubtitleSpacing).toBe('relaxed')
+    expect(compactSignal.aborted).toBe(true)
+    expect(mockedCalibratePageTypography).toHaveBeenCalledTimes(
+      initialCalls + 2,
+    )
+    const latestOptions = mockedCalibratePageTypography.mock.calls.at(-1)?.[1]
+    expect(latestOptions).toEqual(
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        includeLists: false,
+      }),
+    )
+    expect((latestOptions!.signal as AbortSignal).aborted).toBe(false)
   })
 
   it('切换主题时立即清空旧 src，且慢请求不会覆盖新结果', async () => {

@@ -809,6 +809,121 @@ describe('Preview deterministic typography transaction', () => {
     expect(page?.querySelector('.content')?.textContent).toBe('新内容')
     expect(previewTypographyMocks.calibrate).toHaveBeenCalledTimes(1)
   })
+
+  it('切换副标题字距会以新 dataset 重跑 pending 事务，封存新快照与 atom 几何', async () => {
+    const transitions: Array<{
+      spacing: string
+      state: string
+      phase: string
+      secondAtomX: number
+    }> = []
+    previewTypographyMocks.delegates.materialize = (
+      pageValue,
+      optionsValue,
+    ) => {
+      const page = pageValue as HTMLElement
+      const options = optionsValue as { state?: 'pending' | 'ready' }
+      const spacing = page.dataset.coverSubtitleSpacing ?? 'missing'
+      const secondAtomX = spacing === 'relaxed' ? 208 : 160
+      const content = page.querySelector<HTMLElement>('.content')
+      if (!content) throw new Error('Preview test page is missing .content')
+      content.innerHTML = [
+        '<h1>封面标题</h1>',
+        '<p>',
+        '<span class="dtl-atom" data-layout-atom="fixture-0" data-layout-x="0">「看起来」高分和 </span>',
+        `<span class="dtl-atom" data-layout-atom="fixture-1" data-layout-x="${secondAtomX}">「实际高分」是两件事情</span>`,
+        '<br data-layout-explicit-break>',
+        '<span class="dtl-atom" data-layout-atom="fixture-2" data-layout-x="0">2026\u00a0真题</span>',
+        '</p>',
+      ].join('')
+      const snapshotId = `spacing-${spacing}-x-${secondAtomX}`
+      page.dataset.layoutSnapshot = snapshotId
+      page.dataset.layoutBaseSnapshot = snapshotId
+      page.dataset.layoutSnapshotPhase = 'layout'
+      page.dataset.layoutState = options.state ?? 'pending'
+      page.dataset.layoutIssueCount = '0'
+      page.dataset.layoutIssues = '[]'
+      page.dataset.layoutFontRequest = '[]'
+      transitions.push({
+        spacing,
+        state: page.dataset.layoutState,
+        phase: page.dataset.layoutSnapshotPhase,
+        secondAtomX,
+      })
+      return {
+        snapshotId,
+        blockCount: 1,
+        lineCount: 2,
+        fontRequests: [],
+        issues: [],
+      }
+    }
+
+    const padding = { x: 120, top: 300, bottom: 300 }
+    const baseProps: ComponentProps<typeof Preview> = {
+      ref: pageRefWithPadding(padding),
+      html: [
+        '<h1>封面标题</h1>',
+        '<p>「看起来」高分和 「实际高分」是两件事情<br>2026\u00a0真题</p>',
+      ].join(''),
+      themeClass: 'theme-public-exam-landscape',
+      previewScale: PREVIEW_SCALE,
+      coverLayout: 'poster-center',
+      coverVertical: 'middle',
+      coverSubtitleSpacing: 'standard',
+    }
+    const item = await mountPreview(padding, baseProps)
+    const page = item.host.querySelector<HTMLElement>('.page')!
+    const standardSnapshot = page.dataset.layoutSnapshot
+    const standardX = Number(
+      page.querySelector<HTMLElement>('[data-layout-atom="fixture-1"]')
+        ?.dataset.layoutX,
+    )
+
+    expect(page.dataset.coverSubtitleSpacing).toBe('standard')
+    expect(page.dataset.layoutState).toBe('ready')
+    expect(page.dataset.layoutSnapshotPhase).toBe('sealed')
+    expect(transitions).toContainEqual({
+      spacing: 'standard',
+      state: 'pending',
+      phase: 'layout',
+      secondAtomX: 160,
+    })
+
+    transitions.length = 0
+    await act(async () => {
+      item.root.render(
+        createElement(Preview, {
+          ...baseProps,
+          coverSubtitleSpacing: 'relaxed',
+        }),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const relaxedX = Number(
+      page.querySelector<HTMLElement>('[data-layout-atom="fixture-1"]')
+        ?.dataset.layoutX,
+    )
+    expect(page.dataset.coverSubtitleSpacing).toBe('relaxed')
+    expect(transitions).toContainEqual({
+      spacing: 'relaxed',
+      state: 'pending',
+      phase: 'layout',
+      secondAtomX: 208,
+    })
+    expect(page.dataset.layoutState).toBe('ready')
+    expect(page.dataset.layoutSnapshotPhase).toBe('sealed')
+    expect(page.dataset.layoutSnapshot).not.toBe(standardSnapshot)
+    expect(relaxedX).toBeGreaterThan(standardX)
+    expect(page.querySelector('.content')?.textContent).toBe(
+      '封面标题「看起来」高分和 「实际高分」是两件事情2026\u00a0真题',
+    )
+    expect(page.querySelectorAll('[data-layout-explicit-break]')).toHaveLength(
+      1,
+    )
+  })
 })
 
 describe('Preview cover slots', () => {
@@ -819,11 +934,15 @@ describe('Preview cover slots', () => {
         pageIndex: 0,
         coverLayout: 'poster-center',
         coverVertical: 'middle',
+        coverSubtitleSpacing: 'relaxed',
       },
     )
     const coverPage = cover.host.querySelector('.page')
     expect(coverPage?.getAttribute('data-cover-layout')).toBe('poster-center')
     expect(coverPage?.getAttribute('data-cover-vertical')).toBe('middle')
+    expect(coverPage?.getAttribute('data-cover-subtitle-spacing')).toBe(
+      'relaxed',
+    )
 
     const inner = await mountPreview(
       { x: 96, top: 180, bottom: 300 },
@@ -831,10 +950,22 @@ describe('Preview cover slots', () => {
         pageIndex: 1,
         coverLayout: 'poster-center',
         coverVertical: 'middle',
+        coverSubtitleSpacing: 'relaxed',
       },
     )
     const innerPage = inner.host.querySelector('.page')
     expect(innerPage?.hasAttribute('data-cover-layout')).toBe(false)
     expect(innerPage?.hasAttribute('data-cover-vertical')).toBe(false)
+    expect(innerPage?.hasAttribute('data-cover-subtitle-spacing')).toBe(false)
+
+    const defaultCover = await mountPreview(
+      { x: 120, top: 300, bottom: 300 },
+      { pageIndex: 0 },
+    )
+    expect(
+      defaultCover.host
+        .querySelector('.page')
+        ?.getAttribute('data-cover-subtitle-spacing'),
+    ).toBe('standard')
   })
 })

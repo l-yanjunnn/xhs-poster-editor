@@ -1,9 +1,12 @@
 import {
   DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_SUBTITLE_SPACING,
   DEFAULT_COVER_VERTICAL,
   normalizeCoverLayout,
+  normalizeCoverSubtitleSpacing,
   normalizeCoverVertical,
   type CoverLayout,
+  type CoverSubtitleSpacing,
   type CoverVertical,
 } from './coverSlots'
 import type {
@@ -49,6 +52,8 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   /** 封面槽位；旧 V2 草稿缺字段时按 A · 上兼容。 */
   coverLayout: CoverLayout
   coverVertical: CoverVertical
+  /** 封面副标题字距；旧 V1/V2 草稿缺字段时保持既有 standard 视觉。 */
+  coverSubtitleSpacing: CoverSubtitleSpacing
 }
 
 /**
@@ -339,6 +344,9 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
       ...(style as EditorDocumentStyleV2),
       coverLayout: normalizeCoverLayout(style.coverLayout),
       coverVertical: normalizeCoverVertical(style.coverVertical),
+      coverSubtitleSpacing: normalizeCoverSubtitleSpacing(
+        style.coverSubtitleSpacing,
+      ),
     },
     ...(publication ? { publication } : {}),
   }
@@ -381,6 +389,7 @@ function migrateStoredDocumentV1(document: EditorDocumentV1): EditorDocumentV2 {
       coverSubtitleColor: legacyPrimaryColor,
       coverLayout: DEFAULT_COVER_LAYOUT,
       coverVertical: DEFAULT_COVER_VERTICAL,
+      coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     },
   }
 }

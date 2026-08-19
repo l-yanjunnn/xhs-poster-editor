@@ -63,8 +63,10 @@ import { normalizeHexColor } from '@/lib/hexColor'
 import {
   COVER_LAYOUT_EXAMPLES,
   COVER_LAYOUT_OPTIONS,
+  COVER_SUBTITLE_SPACING_OPTIONS,
   COVER_VERTICAL_OPTIONS,
   type CoverLayout,
+  type CoverSubtitleSpacing,
   type CoverVertical,
 } from '@/lib/coverSlots'
 
@@ -112,6 +114,7 @@ interface Props {
   coverSubtitleColor: string
   coverLayout: CoverLayout
   coverVertical: CoverVertical
+  coverSubtitleSpacing: CoverSubtitleSpacing
   userFontFamilies: string[]
   onFontH1: (value: string) => void
   onFontH2: (value: string) => void
@@ -130,6 +133,7 @@ interface Props {
   onRestoreCoverColors: () => void
   onCoverLayout: (layout: CoverLayout) => void
   onCoverVertical: (vertical: CoverVertical) => void
+  onCoverSubtitleSpacing: (spacing: CoverSubtitleSpacing) => void
   onOpenAssetLibrary: () => void
   onOpenFontLibrary: () => void
   onOpenThemeLibrary: () => void
@@ -568,8 +572,10 @@ function PageInspector(props: Props) {
         <CoverSlotFields
           layout={props.coverLayout}
           vertical={props.coverVertical}
+          subtitleSpacing={props.coverSubtitleSpacing}
           onLayout={props.onCoverLayout}
           onVertical={props.onCoverVertical}
+          onSubtitleSpacing={props.onCoverSubtitleSpacing}
         />
 
         <CoverColorFields
@@ -604,7 +610,7 @@ function PageInspector(props: Props) {
             onValueChange={(value) => props.onDensity(value as DensityLevel)}
           />
         </Field>
-        <Field label="H1 宽度">
+        <Field label="全篇 H1 宽度">
           <SimpleSelect
             value={props.h1Width}
             options={H1_WIDTH_OPTIONS}
@@ -673,13 +679,17 @@ function PageInspector(props: Props) {
 function CoverSlotFields({
   layout,
   vertical,
+  subtitleSpacing,
   onLayout,
   onVertical,
+  onSubtitleSpacing,
 }: {
   layout: CoverLayout
   vertical: CoverVertical
+  subtitleSpacing: CoverSubtitleSpacing
   onLayout: (layout: CoverLayout) => void
   onVertical: (vertical: CoverVertical) => void
+  onSubtitleSpacing: (spacing: CoverSubtitleSpacing) => void
 }) {
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
@@ -718,6 +728,27 @@ function CoverSlotFields({
             </button>
           ))}
         </div>
+      </div>
+      <div className="inspector-field">
+        <div className="inspector-field-label">副标题字距</div>
+        <div className="segmented-control" role="group" aria-label="副标题字距">
+          {COVER_SUBTITLE_SPACING_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={
+                subtitleSpacing === option.value ? 'is-active' : undefined
+              }
+              aria-pressed={subtitleSpacing === option.value}
+              onClick={() => onSubtitleSpacing(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="m-0 text-[11px] leading-4 text-neutral-500">
+          实验能力 · 只影响封面副标题
+        </p>
       </div>
     </fieldset>
   )

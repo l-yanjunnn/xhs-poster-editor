@@ -79,6 +79,7 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     coverSubtitleColor: theme.coverSubtitleColor,
     coverLayout: theme.coverLayout,
     coverVertical: theme.coverVertical,
+    coverSubtitleSpacing: theme.coverSubtitleSpacing,
   }
 }
 

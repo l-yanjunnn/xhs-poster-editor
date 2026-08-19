@@ -240,6 +240,53 @@ describe('deterministic typography DOM snapshot', () => {
     ).toBe(true)
   })
 
+  it('逐字保留真实副标题里的单个有意空格、NBSP 和 Shift+Enter 软换行', () => {
+    const page = pageWithContent()
+    const firstLine = '「看起来」高分和 「实际高分」是两件事情'
+    const secondLine = '2026\u00a0真题'
+    const result = layout(
+      page,
+      `<p style="width: 900px; font-size: 20px; line-height: 30px">${firstLine}<br>${secondLine}</p>`,
+    )
+    const block = page.querySelector<HTMLElement>('p')!
+    const atoms = Array.from(
+      block.querySelectorAll<HTMLElement>(':scope > .dtl-atom'),
+    )
+
+    expect(result.issues).toEqual([])
+    expect(block.textContent).toBe(`${firstLine}${secondLine}`)
+    expect(atoms.map((atom) => atom.textContent ?? '').join('')).toBe(
+      `${firstLine}${secondLine}`,
+    )
+    expect(atoms.filter((atom) => atom.textContent === ' ')).toHaveLength(1)
+    expect(atoms.filter((atom) => atom.textContent === '\u00a0')).toHaveLength(
+      1,
+    )
+    expect(block.querySelectorAll('[data-layout-explicit-break]')).toHaveLength(
+      1,
+    )
+  })
+
+  it('实际字距变化会改写副标题 atom 横坐标与快照 ID', () => {
+    const source = (letterSpacing: string) =>
+      `<p style="width: 900px; font-size: 20px; line-height: 30px; letter-spacing: ${letterSpacing}">「看起来」高分和「实际高分」是两件事情</p>`
+    const standardPage = pageWithContent()
+    const standard = layout(standardPage, source('0.02em'))
+    const relaxedPage = pageWithContent()
+    const relaxed = layout(relaxedPage, source('0.08em'))
+    const lastAtomX = (page: HTMLElement) => {
+      const atoms = Array.from(
+        page.querySelectorAll<HTMLElement>('p > .dtl-atom'),
+      )
+      return Number(atoms.at(-1)?.dataset.layoutX)
+    }
+
+    expect(standard.issues).toEqual([])
+    expect(relaxed.issues).toEqual([])
+    expect(relaxed.snapshotId).not.toBe(standard.snapshotId)
+    expect(lastAtomX(relaxedPage)).toBeGreaterThan(lastAtomX(standardPage))
+  })
+
   it('centers short lines when the block computed text-align is center', () => {
     const page = pageWithContent()
     const result = layout(

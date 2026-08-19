@@ -44,6 +44,7 @@ import {
   replaceCoverLayoutExampleHtml,
   replaceDefaultTutorialCoverHtml,
   type CoverLayout,
+  type CoverSubtitleSpacing,
 } from '@/lib/coverSlots'
 import { newUserThemeId, putUserTheme } from '@/lib/themeStore'
 import {
@@ -129,6 +130,8 @@ function App() {
   const [coverVertical, setCoverVertical] = useState(
     DEFAULT_THEME.coverVertical,
   )
+  const [coverSubtitleSpacing, setCoverSubtitleSpacing] =
+    useState<CoverSubtitleSpacing>(DEFAULT_THEME.coverSubtitleSpacing)
 
   // 资源同时持有 id（用于主题序列化）和 src（用于渲染）
   const [pageBackground, setPageBackground] = useState<PageBackgroundState>(() => ({
@@ -311,6 +314,7 @@ function App() {
       coverSubtitleColor,
       coverLayout,
       coverVertical,
+      coverSubtitleSpacing,
     }),
     [
       themeClass,
@@ -333,6 +337,7 @@ function App() {
       coverSubtitleColor,
       coverLayout,
       coverVertical,
+      coverSubtitleSpacing,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -361,6 +366,7 @@ function App() {
     fontSize,
     density,
     h1Width,
+    coverSubtitleSpacing,
     userFontFamilies.join(','),
     fontRegistryRevision,
   ].join('|')
@@ -499,6 +505,7 @@ function App() {
     setCoverSubtitleColor(document.style.coverSubtitleColor)
     setCoverLayout(document.style.coverLayout)
     setCoverVertical(document.style.coverVertical)
+    setCoverSubtitleSpacing(document.style.coverSubtitleSpacing)
     setLogoAssetId(document.style.logoAssetId)
     setPageBackground({
       coverAssetId: document.style.coverBgAssetId,
@@ -713,6 +720,7 @@ function App() {
     setCoverSubtitleColor(theme.coverSubtitleColor)
     setCoverLayout(theme.coverLayout)
     setCoverVertical(theme.coverVertical)
+    setCoverSubtitleSpacing(theme.coverSubtitleSpacing)
     setLogoAssetId(theme.logoAssetId)
     setPageBackground({
       coverAssetId: theme.coverBgAssetId,
@@ -767,6 +775,7 @@ function App() {
       coverSubtitleColor,
       coverLayout,
       coverVertical,
+      coverSubtitleSpacing,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
@@ -1234,6 +1243,7 @@ function App() {
                   themeClass={themeClass}
                   coverLayout={coverLayout}
                   coverVertical={coverVertical}
+                  coverSubtitleSpacing={coverSubtitleSpacing}
                   bgSrc={index === 0 ? coverSrc : bgSrc}
                   logoSrc={logoSrc}
                   showLogo={shouldShowLogo(index, pages.length)}
@@ -1286,6 +1296,7 @@ function App() {
               coverSubtitleColor={coverSubtitleColor}
               coverLayout={coverLayout}
               coverVertical={coverVertical}
+              coverSubtitleSpacing={coverSubtitleSpacing}
               userFontFamilies={userFontFamilies}
               onFontH1={customize(setFontH1)}
               onFontH2={customize(setFontH2)}
@@ -1304,6 +1315,7 @@ function App() {
               onRestoreCoverColors={handleRestoreCoverColors}
               onCoverLayout={handleCoverLayout}
               onCoverVertical={customize(setCoverVertical)}
+              onCoverSubtitleSpacing={customize(setCoverSubtitleSpacing)}
               onOpenAssetLibrary={() => {
                 setReplaceImageId(null)
                 setAssetLibInitialKind(undefined)

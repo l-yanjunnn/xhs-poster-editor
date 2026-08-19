@@ -314,6 +314,34 @@
   background: currentColor;
 }
 
+/* v1.11.0 封面副标题字距实验：standard 故意没有规则，继续继承
+ * v1.10.2 各主题/版式自己的 0 / 0.02em / 0.18em，保证旧稿零漂移。
+ * 通用档位写在主题、居中与 kicker 规则之后；kicker 特化最后覆盖。 */
+.page--first[data-cover-subtitle-spacing="compact"]
+  .content
+  > h1:first-of-type
+  + p {
+  letter-spacing: 0em;
+}
+.page--first[data-cover-subtitle-spacing="relaxed"]
+  .content
+  > h1:first-of-type
+  + p {
+  letter-spacing: 0.08em;
+}
+.page--first[data-cover-layout="kicker-above"][data-cover-subtitle-spacing="compact"]
+  .content
+  > h1:first-of-type
+  + p {
+  letter-spacing: 0.1em;
+}
+.page--first[data-cover-layout="kicker-above"][data-cover-subtitle-spacing="relaxed"]
+  .content
+  > h1:first-of-type
+  + p {
+  letter-spacing: 0.26em;
+}
+
 /* 首页仍输出 9:15，但信息流封面会中心裁成竖版 3:4：
  * 9:15 = 1080×1800，中心 3:4 = 1080×1440，上下各裁 180px。
  * 本轮先把 Logo 和正文起点放入可见区；正文末端仍由用户按遮罩手动检查。

@@ -142,6 +142,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     theme.themeClass,
     theme.coverLayout,
     theme.coverVertical,
+    theme.coverSubtitleSpacing,
   ])
 
   return (
@@ -166,7 +167,12 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
           ref={pageRef}
           className={`page page--first ${theme.themeClass}`}
           style={{ boxShadow: 'none' }}
-          {...coverSlotDataset(true, theme.coverLayout, theme.coverVertical)}
+          {...coverSlotDataset(
+            true,
+            theme.coverLayout,
+            theme.coverVertical,
+            theme.coverSubtitleSpacing,
+          )}
         >
           {bgSrc && <img className="bg" src={bgSrc} alt="" />}
           <div className="overlay" />

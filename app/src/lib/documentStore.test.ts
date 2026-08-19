@@ -60,6 +60,7 @@ function makeDocument(
       coverSubtitleColor: '#5A465F',
       coverLayout: 'stack-left',
       coverVertical: 'top',
+      coverSubtitleSpacing: 'standard',
     },
   }
 }
@@ -75,6 +76,9 @@ function makeLegacyDocument(
   delete legacyStyle.coverBgAssetId
   delete legacyStyle.coverTitleColor
   delete legacyStyle.coverSubtitleColor
+  delete legacyStyle.coverLayout
+  delete legacyStyle.coverVertical
+  delete legacyStyle.coverSubtitleSpacing
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION_V1,
@@ -102,6 +106,7 @@ function migratedLegacyDocument(document: EditorDocumentV1): EditorDocumentV2 {
       coverSubtitleColor: primaryColor,
       coverLayout: 'stack-left',
       coverVertical: 'top',
+      coverSubtitleSpacing: 'standard',
     },
   }
 }
@@ -239,6 +244,7 @@ describe('documentStore', () => {
       expect(restored?.style.coverSubtitleColor).toBe(primaryColor)
       expect(restored?.style.coverLayout).toBe('stack-left')
       expect(restored?.style.coverVertical).toBe('top')
+      expect(restored?.style.coverSubtitleSpacing).toBe('standard')
       expect(await listEditorDocuments()).toEqual([
         migratedLegacyDocument(legacy),
       ])
@@ -314,11 +320,12 @@ describe('documentStore', () => {
     },
   )
 
-  it('旧 V2 缺封面槽位字段时按 A · 上兼容，不升 schema', async () => {
+  it('旧 V2 缺封面控制字段时按 A · 上 + standard 兼容，不升 schema', async () => {
     const document = makeDocument('legacy-cover-slots', 678)
     const style = { ...document.style } as Partial<EditorDocumentV2['style']>
     delete style.coverLayout
     delete style.coverVertical
+    delete style.coverSubtitleSpacing
 
     await putEditorDocument({
       ...document,
@@ -329,25 +336,86 @@ describe('documentStore', () => {
     expect(restored?.schemaVersion).toBe(EDITOR_DOCUMENT_SCHEMA_VERSION)
     expect(restored?.style.coverLayout).toBe('stack-left')
     expect(restored?.style.coverVertical).toBe('top')
+    expect(restored?.style.coverSubtitleSpacing).toBe('standard')
   })
 
-  it('保存并恢复用户选择的封面槽位', async () => {
-    const document = makeDocument('slot-roundtrip', 679)
+  it('非法副标题字距按 standard 恢复，不把旧 V2 判为损坏', async () => {
+    const document = makeDocument('invalid-subtitle-spacing', 678)
     await putEditorDocument({
+      ...document,
+      style: {
+        ...document.style,
+        coverSubtitleSpacing: 'tracking-12',
+      },
+    } as unknown as EditorDocumentV2)
+
+    expect(
+      (await getEditorDocument(document.id))?.style.coverSubtitleSpacing,
+    ).toBe('standard')
+  })
+
+  it('保存并恢复用户选择的封面槽位与副标题字距', async () => {
+    const document = makeDocument('slot-roundtrip', 679)
+    const customized: EditorDocumentV2 = {
       ...document,
       style: {
         ...document.style,
         coverLayout: 'poster-center',
         coverVertical: 'bottom',
+        coverSubtitleSpacing: 'compact',
       },
-    })
+    }
+    await putEditorDocument(customized)
 
     expect(await getEditorDocument(document.id)).toMatchObject({
       style: {
         coverLayout: 'poster-center',
         coverVertical: 'bottom',
+        coverSubtitleSpacing: 'compact',
       },
     })
+    expect(writeEditorDocumentRecovery(customized)).toBe(true)
+    expect(readEditorDocumentRecovery()).toMatchObject({
+      style: {
+        coverLayout: 'poster-center',
+        coverVertical: 'bottom',
+        coverSubtitleSpacing: 'compact',
+      },
+    })
+  })
+
+  it('真实副标题的有意空格、NBSP 与软换行在 IDB/WAL 往返中逐字不变', async () => {
+    const document = makeDocument('subtitle-unicode', 680, '副标题保真')
+    document.contentJSON = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: '封面标题' }],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '「看起来」高分和 「实际高分」是两件事情',
+            },
+            { type: 'hardBreak' },
+            { type: 'text', text: '2026\u00a0真题' },
+          ],
+        },
+      ],
+    }
+
+    await putEditorDocument(document)
+    expect((await getEditorDocument(document.id))?.contentJSON).toEqual(
+      document.contentJSON,
+    )
+    expect(writeEditorDocumentRecovery(document)).toBe(true)
+    expect(readEditorDocumentRecovery()?.contentJSON).toEqual(
+      document.contentJSON,
+    )
   })
 
   it('拒绝损坏的样式枚举和不合理字号', async () => {

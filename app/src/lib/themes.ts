@@ -3,10 +3,13 @@
 
 import {
   DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_SUBTITLE_SPACING,
   DEFAULT_COVER_VERTICAL,
   normalizeCoverLayout,
+  normalizeCoverSubtitleSpacing,
   normalizeCoverVertical,
   type CoverLayout,
+  type CoverSubtitleSpacing,
   type CoverVertical,
 } from './coverSlots'
 import { normalizeHexColor } from './hexColor'
@@ -57,6 +60,7 @@ export interface Theme {
   coverSubtitleColor: string
   coverLayout: CoverLayout
   coverVertical: CoverVertical
+  coverSubtitleSpacing: CoverSubtitleSpacing
 
   // 正文（可选）— null = 仅样式；object = 含 Tiptap doc JSON
   contentJSON: object | null
@@ -111,6 +115,7 @@ export const BUILTIN_THEMES: Theme[] = [
     coverSubtitleColor: '#1A1A1A',
     coverLayout: DEFAULT_COVER_LAYOUT,
     coverVertical: DEFAULT_COVER_VERTICAL,
+    coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     contentJSON: null,
   },
   {
@@ -138,6 +143,7 @@ export const BUILTIN_THEMES: Theme[] = [
     coverSubtitleColor: '#111111',
     coverLayout: DEFAULT_COVER_LAYOUT,
     coverVertical: DEFAULT_COVER_VERTICAL,
+    coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     contentJSON: null,
   },
   {
@@ -165,6 +171,7 @@ export const BUILTIN_THEMES: Theme[] = [
     coverSubtitleColor: '#F0F0F0',
     coverLayout: DEFAULT_COVER_LAYOUT,
     coverVertical: DEFAULT_COVER_VERTICAL,
+    coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     contentJSON: null,
   },
   {
@@ -192,6 +199,7 @@ export const BUILTIN_THEMES: Theme[] = [
     coverSubtitleColor: '#5A465F',
     coverLayout: DEFAULT_COVER_LAYOUT,
     coverVertical: DEFAULT_COVER_VERTICAL,
+    coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     contentJSON: null,
   },
 ]
@@ -300,6 +308,9 @@ export function normalizeTheme(value: unknown): Theme | null {
       normalizeHexColor(theme.coverSubtitleColor) ?? fallbackColors.subtitle,
     coverLayout: normalizeCoverLayout(theme.coverLayout),
     coverVertical: normalizeCoverVertical(theme.coverVertical),
+    coverSubtitleSpacing: normalizeCoverSubtitleSpacing(
+      theme.coverSubtitleSpacing,
+    ),
     contentJSON: theme.contentJSON as object | null,
   }
 }

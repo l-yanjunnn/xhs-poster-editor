@@ -13,6 +13,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverSubtitleColor
   delete legacy.coverLayout
   delete legacy.coverVertical
+  delete legacy.coverSubtitleSpacing
   return legacy
 }
 
@@ -33,6 +34,7 @@ describe('normalizeTheme', () => {
     expect(normalized?.coverSubtitleColor).toBe(color)
     expect(normalized?.coverLayout).toBe('stack-left')
     expect(normalized?.coverVertical).toBe('top')
+    expect(normalized?.coverSubtitleSpacing).toBe('standard')
   })
 
   it("preserves an explicit empty cover asset instead of falling back with '||'", () => {
@@ -97,6 +99,7 @@ describe('built-in themes V2', () => {
       coverSubtitleColor: '#5A465F',
       coverLayout: 'stack-left',
       coverVertical: 'top',
+      coverSubtitleSpacing: 'standard',
       logoStrategy: 'none',
       contentJSON: null,
     })
@@ -112,26 +115,46 @@ describe('built-in themes V2', () => {
     })
   })
 
-  it('keeps a stored cover slot pair and falls back unsafe values to A · 上', () => {
+  it('keeps stored cover controls and falls back unsafe values to A · 上 + standard', () => {
     expect(
       normalizeTheme({
         ...BUILTIN_THEMES[0],
         coverLayout: 'poster-center',
         coverVertical: 'bottom',
+        coverSubtitleSpacing: 'relaxed',
       }),
     ).toMatchObject({
       coverLayout: 'poster-center',
       coverVertical: 'bottom',
+      coverSubtitleSpacing: 'relaxed',
     })
     expect(
       normalizeTheme({
         ...BUILTIN_THEMES[0],
         coverLayout: 'free-drag',
         coverVertical: 'y-420',
+        coverSubtitleSpacing: 'tracking-12',
       }),
     ).toMatchObject({
       coverLayout: 'stack-left',
       coverVertical: 'top',
+      coverSubtitleSpacing: 'standard',
     })
   })
+
+  it.each(['compact', 'standard', 'relaxed'] as const)(
+    'round-trips the %s subtitle spacing without changing another theme field',
+    (coverSubtitleSpacing) => {
+      const source = {
+        ...BUILTIN_THEMES[3],
+        id: `user-${coverSubtitleSpacing}`,
+        isBuiltin: false,
+        coverLayout: 'kicker-above' as const,
+        coverVertical: 'middle' as const,
+        coverSubtitleSpacing,
+      }
+
+      expect(normalizeTheme(source)).toEqual(source)
+    },
+  )
 })

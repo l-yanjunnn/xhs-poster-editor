@@ -41,9 +41,11 @@ import {
 } from '@/lib/deterministicTypography'
 import {
   DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_SUBTITLE_SPACING,
   DEFAULT_COVER_VERTICAL,
   coverSlotDataset,
   type CoverLayout,
+  type CoverSubtitleSpacing,
   type CoverVertical,
 } from '@/lib/coverSlots'
 import type { ThemeKey } from '@/lib/themes'
@@ -53,6 +55,7 @@ interface Props {
   themeClass: ThemeKey
   coverLayout?: CoverLayout
   coverVertical?: CoverVertical
+  coverSubtitleSpacing?: CoverSubtitleSpacing
   bgSrc?: string
   logoSrc?: string
   showLogo?: boolean
@@ -293,6 +296,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     themeClass,
     coverLayout = DEFAULT_COVER_LAYOUT,
     coverVertical = DEFAULT_COVER_VERTICAL,
+    coverSubtitleSpacing = DEFAULT_COVER_SUBTITLE_SPACING,
     bgSrc,
     logoSrc,
     showLogo = true,
@@ -350,6 +354,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     themeClass,
     coverLayout,
     coverVertical,
+    coverSubtitleSpacing,
   ])
 
   const findSelectedImage = useCallback(() => {
@@ -639,6 +644,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     // 页面永远停在 pending、导出静默挂死（v1.10.0 开发期真实翻过车）
     coverLayout,
     coverVertical,
+    coverSubtitleSpacing,
   ])
 
   useLayoutEffect(() => {
@@ -974,7 +980,12 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
             ref={setPageNode}
             className={cn('page', themeClass, isFirstPage && 'page--first')}
             data-page-number={pageIndex + 1}
-            {...coverSlotDataset(isFirstPage, coverLayout, coverVertical)}
+            {...coverSlotDataset(
+              isFirstPage,
+              coverLayout,
+              coverVertical,
+              coverSubtitleSpacing,
+            )}
             onClick={handlePageClick}
             onKeyDown={handlePageKeyDown}
           >

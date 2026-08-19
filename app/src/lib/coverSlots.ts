@@ -1,5 +1,5 @@
 // 封面槽位是主题/草稿样式，不是 Tiptap 节点。
-// 缺省必须是 stack-left + top，旧草稿外观才能贴近现状。
+// 缺省必须是 stack-left + top + standard，旧草稿外观才能保持现状。
 
 export const COVER_LAYOUTS = [
   'stack-left',
@@ -9,11 +9,20 @@ export const COVER_LAYOUTS = [
 
 export const COVER_VERTICALS = ['top', 'middle', 'bottom'] as const
 
+export const COVER_SUBTITLE_SPACINGS = [
+  'compact',
+  'standard',
+  'relaxed',
+] as const
+
 export type CoverLayout = (typeof COVER_LAYOUTS)[number]
 export type CoverVertical = (typeof COVER_VERTICALS)[number]
+export type CoverSubtitleSpacing =
+  (typeof COVER_SUBTITLE_SPACINGS)[number]
 
 export const DEFAULT_COVER_LAYOUT: CoverLayout = 'stack-left'
 export const DEFAULT_COVER_VERTICAL: CoverVertical = 'top'
+export const DEFAULT_COVER_SUBTITLE_SPACING: CoverSubtitleSpacing = 'standard'
 
 export const COVER_LAYOUT_OPTIONS: {
   value: CoverLayout
@@ -44,6 +53,15 @@ export const COVER_VERTICAL_OPTIONS: {
   { value: 'top', label: '上' },
   { value: 'middle', label: '中' },
   { value: 'bottom', label: '下' },
+]
+
+export const COVER_SUBTITLE_SPACING_OPTIONS: {
+  value: CoverSubtitleSpacing
+  label: string
+}[] = [
+  { value: 'compact', label: '紧凑' },
+  { value: 'standard', label: '标准' },
+  { value: 'relaxed', label: '舒展' },
 ]
 
 /** 与 `docs/design/cover-slots-demo-2026-08-13/01-三套版式总览` 逐字对齐的示例封面。 */
@@ -194,7 +212,16 @@ export function isCoverVertical(value: unknown): value is CoverVertical {
   )
 }
 
-/** 缺省或非法值都回到 A · 上，避免坏主题/旧草稿砖化自动保存。 */
+export function isCoverSubtitleSpacing(
+  value: unknown,
+): value is CoverSubtitleSpacing {
+  return (
+    typeof value === 'string' &&
+    (COVER_SUBTITLE_SPACINGS as readonly string[]).includes(value)
+  )
+}
+
+/** 缺省或非法值都回到安全默认，避免坏主题/旧草稿砖化自动保存。 */
 export function normalizeCoverLayout(value: unknown): CoverLayout {
   return isCoverLayout(value) ? value : DEFAULT_COVER_LAYOUT
 }
@@ -203,17 +230,28 @@ export function normalizeCoverVertical(value: unknown): CoverVertical {
   return isCoverVertical(value) ? value : DEFAULT_COVER_VERTICAL
 }
 
+export function normalizeCoverSubtitleSpacing(
+  value: unknown,
+): CoverSubtitleSpacing {
+  return isCoverSubtitleSpacing(value)
+    ? value
+    : DEFAULT_COVER_SUBTITLE_SPACING
+}
+
 export function coverSlotDataset(
   isFirstPage: boolean,
   layout: CoverLayout,
   vertical: CoverVertical,
+  subtitleSpacing: CoverSubtitleSpacing,
 ): {
   'data-cover-layout'?: CoverLayout
   'data-cover-vertical'?: CoverVertical
+  'data-cover-subtitle-spacing'?: CoverSubtitleSpacing
 } {
   if (!isFirstPage) return {}
   return {
     'data-cover-layout': layout,
     'data-cover-vertical': vertical,
+    'data-cover-subtitle-spacing': subtitleSpacing,
   }
 }

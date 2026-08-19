@@ -64,6 +64,7 @@ function createProps(
     coverSubtitleColor: '#5A465F',
     coverLayout: DEFAULT_THEME.coverLayout,
     coverVertical: DEFAULT_THEME.coverVertical,
+    coverSubtitleSpacing: DEFAULT_THEME.coverSubtitleSpacing,
     userFontFamilies: [],
     onFontH1: vi.fn(),
     onFontH2: vi.fn(),
@@ -82,6 +83,7 @@ function createProps(
     onRestoreCoverColors: vi.fn(),
     onCoverLayout: vi.fn(),
     onCoverVertical: vi.fn(),
+    onCoverSubtitleSpacing: vi.fn(),
     onOpenAssetLibrary: vi.fn(),
     onOpenFontLibrary: vi.fn(),
     onOpenThemeLibrary: vi.fn(),
@@ -290,13 +292,16 @@ describe('ContextInspector cover colors', () => {
 })
 
 describe('ContextInspector cover slots', () => {
-  it('把版式和垂直位置提交给页面样式，不改正文', async () => {
+  it('把版式、垂直位置和副标题字距提交给页面样式，不改正文', async () => {
     const onCoverLayout = vi.fn()
     const onCoverVertical = vi.fn()
-    const { host } = await mountInspector({
+    const onCoverSubtitleSpacing = vi.fn()
+    const item = await mountInspector({
       onCoverLayout,
       onCoverVertical,
+      onCoverSubtitleSpacing,
     })
+    const { host } = item
 
     const poster = Array.from(
       host.querySelectorAll<HTMLButtonElement>('button'),
@@ -304,15 +309,77 @@ describe('ContextInspector cover slots', () => {
     const bottom = Array.from(
       host.querySelectorAll<HTMLButtonElement>('[aria-label="垂直位置"] button'),
     ).find((button) => button.textContent === '下')
+    const relaxed = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[aria-label="副标题字距"] button'),
+    ).find((button) => button.textContent === '舒展')
     await act(async () => poster?.click())
     await act(async () => bottom?.click())
+    await act(async () => relaxed?.click())
 
     expect(onCoverLayout).toHaveBeenCalledWith('poster-center')
     expect(onCoverVertical).toHaveBeenCalledWith('bottom')
+    expect(onCoverSubtitleSpacing).toHaveBeenCalledOnce()
+    expect(onCoverSubtitleSpacing).toHaveBeenCalledWith('relaxed')
+    expect(host.textContent).toContain('实验能力 · 只影响封面副标题')
     const activeLayout = host.querySelector(
       '[aria-label="封面版式"] button[aria-pressed="true"]',
     )
     expect(activeLayout?.textContent).toContain('左对齐叠排')
+
+    await item.rerender({ coverSubtitleSpacing: 'relaxed' })
+    expect(
+      host.querySelector(
+        '[aria-label="副标题字距"] button[aria-pressed="true"]',
+      )?.textContent,
+    ).toBe('舒展')
+  })
+
+  it('只在页面态显示字距入口，图片和文字选中态不重复出现', async () => {
+    const item = await mountInspector()
+    const spacingControl = () =>
+      item.host.querySelector('[aria-label="副标题字距"]')
+
+    expect(spacingControl()).not.toBeNull()
+
+    await item.rerender({
+      imageState: {
+        active: true,
+        imageId: 'image-1',
+        width: '50%',
+        align: 'center',
+        src: 'blob:image',
+        assetId: 'asset-1',
+      },
+    })
+    expect(spacingControl()).toBeNull()
+
+    await item.rerender({
+      imageState: {
+        active: false,
+        imageId: null,
+        width: null,
+        align: 'center',
+        src: null,
+        assetId: null,
+      },
+      textSelectionState: {
+        active: true,
+        highlighted: false,
+        opacity: 0.5,
+      },
+    })
+    expect(spacingControl()).toBeNull()
+  })
+
+  it('把旧的 H1 宽度入口澄清为全篇作用，不改其控件', async () => {
+    const { host } = await mountInspector()
+    const labels = Array.from(
+      host.querySelectorAll<HTMLElement>('.inspector-field-label'),
+      (element) => element.textContent?.trim(),
+    )
+
+    expect(labels).toContain('全篇 H1 宽度')
+    expect(labels).not.toContain('H1 宽度')
   })
 })
 

@@ -2,48 +2,70 @@ import { describe, expect, it } from 'vitest'
 import {
   COVER_LAYOUT_EXAMPLES,
   COVER_LAYOUTS,
+  COVER_SUBTITLE_SPACINGS,
   COVER_VERTICALS,
   DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_SUBTITLE_SPACING,
   DEFAULT_COVER_VERTICAL,
   coverSlotDataset,
   isCoverLayout,
+  isCoverSubtitleSpacing,
   isCoverVertical,
   matchCoverLayoutExample,
   normalizeCoverLayout,
+  normalizeCoverSubtitleSpacing,
   normalizeCoverVertical,
   replaceCoverLayoutExampleHtml,
   replaceDefaultTutorialCoverHtml,
 } from './coverSlots'
 
 describe('coverSlots', () => {
-  it('accepts the three locked layout and vertical values', () => {
+  it('accepts the three locked layout, vertical, and subtitle-spacing values', () => {
     expect(COVER_LAYOUTS).toEqual([
       'stack-left',
       'poster-center',
       'kicker-above',
     ])
     expect(COVER_VERTICALS).toEqual(['top', 'middle', 'bottom'])
+    expect(COVER_SUBTITLE_SPACINGS).toEqual([
+      'compact',
+      'standard',
+      'relaxed',
+    ])
     expect(isCoverLayout('poster-center')).toBe(true)
     expect(isCoverVertical('bottom')).toBe(true)
+    expect(isCoverSubtitleSpacing('relaxed')).toBe(true)
     expect(isCoverLayout('free-drag')).toBe(false)
     expect(isCoverVertical('y-420')).toBe(false)
+    expect(isCoverSubtitleSpacing('tracking-12')).toBe(false)
   })
 
-  it('defaults missing or unsafe values to stack-left + top', () => {
+  it('defaults missing or unsafe values to stack-left + top + standard', () => {
     expect(normalizeCoverLayout(undefined)).toBe(DEFAULT_COVER_LAYOUT)
     expect(normalizeCoverLayout('')).toBe('stack-left')
     expect(normalizeCoverLayout('absolute')).toBe('stack-left')
     expect(normalizeCoverVertical(null)).toBe(DEFAULT_COVER_VERTICAL)
+    expect(normalizeCoverSubtitleSpacing(undefined)).toBe(
+      DEFAULT_COVER_SUBTITLE_SPACING,
+    )
+    expect(normalizeCoverSubtitleSpacing('')).toBe('standard')
+    expect(normalizeCoverSubtitleSpacing('tracking-12')).toBe('standard')
     expect(normalizeCoverVertical(1)).toBe('top')
     expect(normalizeCoverLayout('kicker-above')).toBe('kicker-above')
     expect(normalizeCoverVertical('middle')).toBe('middle')
+    expect(normalizeCoverSubtitleSpacing('compact')).toBe('compact')
   })
 
   it('only stamps dataset attributes on the cover page', () => {
-    expect(coverSlotDataset(false, 'poster-center', 'middle')).toEqual({})
-    expect(coverSlotDataset(true, 'kicker-above', 'bottom')).toEqual({
+    expect(
+      coverSlotDataset(false, 'poster-center', 'middle', 'relaxed'),
+    ).toEqual({})
+    expect(
+      coverSlotDataset(true, 'kicker-above', 'bottom', 'compact'),
+    ).toEqual({
       'data-cover-layout': 'kicker-above',
       'data-cover-vertical': 'bottom',
+      'data-cover-subtitle-spacing': 'compact',
     })
   })
 

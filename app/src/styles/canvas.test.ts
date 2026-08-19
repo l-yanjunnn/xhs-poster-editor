@@ -299,3 +299,97 @@ describe('封面槽位 CSS 契约', () => {
     expect(property(bar, 'left')).toBe('-20px')
   })
 })
+
+describe('v1.11.0 封面副标题字距 CSS 契约', () => {
+  const genericCompact =
+    '.page--first[data-cover-subtitle-spacing="compact"] .content > h1:first-of-type + p'
+  const genericRelaxed =
+    '.page--first[data-cover-subtitle-spacing="relaxed"] .content > h1:first-of-type + p'
+  const kickerCompact =
+    '.page--first[data-cover-layout="kicker-above"][data-cover-subtitle-spacing="compact"] .content > h1:first-of-type + p'
+  const kickerRelaxed =
+    '.page--first[data-cover-layout="kicker-above"][data-cover-subtitle-spacing="relaxed"] .content > h1:first-of-type + p'
+
+  it('只有四条候选值规则，数值与首轮视觉标定候选一致', () => {
+    expect(property(findRule(genericCompact), 'letter-spacing')).toBe('0em')
+    expect(property(findRule(genericRelaxed), 'letter-spacing')).toBe('0.08em')
+    expect(property(findRule(kickerCompact), 'letter-spacing')).toBe('0.1em')
+    expect(property(findRule(kickerRelaxed), 'letter-spacing')).toBe('0.26em')
+
+    const spacingRules = rules.filter((rule) =>
+      rule.selectorText.includes('[data-cover-subtitle-spacing='),
+    )
+    expect(spacingRules.map((rule) => rule.selectorText)).toEqual([
+      genericCompact,
+      genericRelaxed,
+      kickerCompact,
+      kickerRelaxed,
+    ])
+  })
+
+  it('严格限定首页第一个 H1 的紧邻 p，不会命中 H1、内页或其他正文', () => {
+    const spacingRules = rules.filter((rule) =>
+      rule.selectorText.includes('[data-cover-subtitle-spacing='),
+    )
+
+    expect(spacingRules).toHaveLength(4)
+    for (const rule of spacingRules) {
+      expect(rule.selectorText).toContain('.page--first')
+      expect(rule.selectorText).toContain(
+        '.content > h1:first-of-type + p',
+      )
+      expect(rule.selectorText).not.toContain('.content > h1:first-of-type {')
+    }
+    expect(
+      editorRules.some((rule) =>
+        rule.selectorText.includes('data-cover-subtitle-spacing'),
+      ),
+    ).toBe(false)
+  })
+
+  it('standard 不写任何新覆盖，仍继承 v1.10.2 各主题与版式值', () => {
+    expect(
+      rules.some((rule) =>
+        rule.selectorText.includes('data-cover-subtitle-spacing="standard"'),
+      ),
+    ).toBe(false)
+  })
+
+  it('排在公考主题、居中与 kicker 基线之后，kicker 特化最后覆盖', () => {
+    const publicExamSubtitleIndex = rules.findIndex(
+      (rule) =>
+        rule.selectorText ===
+        '.theme-public-exam-landscape.page--first .content > h1:first-of-type + p',
+    )
+    const posterSubtitleIndex = rules.findIndex(
+      (rule) =>
+        rule.selectorText ===
+        '.page--first[data-cover-layout="poster-center"] .content > h1:first-of-type + p',
+    )
+    const kickerBaseIndex = rules.findIndex(
+      (rule) =>
+        rule.selectorText ===
+        '.page--first[data-cover-layout="kicker-above"] .content > h1:first-of-type + p',
+    )
+    const genericCompactIndex = rules.findIndex(
+      (rule) => rule.selectorText === genericCompact,
+    )
+    const genericRelaxedIndex = rules.findIndex(
+      (rule) => rule.selectorText === genericRelaxed,
+    )
+    const kickerCompactIndex = rules.findIndex(
+      (rule) => rule.selectorText === kickerCompact,
+    )
+    const kickerRelaxedIndex = rules.findIndex(
+      (rule) => rule.selectorText === kickerRelaxed,
+    )
+
+    expect(publicExamSubtitleIndex).toBeGreaterThanOrEqual(0)
+    expect(posterSubtitleIndex).toBeGreaterThan(publicExamSubtitleIndex)
+    expect(kickerBaseIndex).toBeGreaterThan(posterSubtitleIndex)
+    expect(genericCompactIndex).toBeGreaterThan(kickerBaseIndex)
+    expect(genericRelaxedIndex).toBeGreaterThan(genericCompactIndex)
+    expect(kickerCompactIndex).toBeGreaterThan(genericRelaxedIndex)
+    expect(kickerRelaxedIndex).toBeGreaterThan(kickerCompactIndex)
+  })
+})
