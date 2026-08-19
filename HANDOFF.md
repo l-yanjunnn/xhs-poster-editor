@@ -147,7 +147,7 @@
 - 公考视觉矩阵：`tools/export-race-repro/test_v1110_cover_subtitle_local.py` 完成 3 版式×3 档共 9 组；9 张 PNG 均为 2160×3600，导出前后文字/折行/snapshot 未变，poster-center 仍居中，kicker 竖条仍存在。standard 的 sealed geometry/snapshot/画布截图与 v1.10.2 real-fixture 严格相同；3 张 PNG 分别只有 98 / 63 / 48 个像素的 1 色阶抗锯齿差异（最高 0.00127%），均低于 0.002% 门槛。候选证据在 `docs/screenshots/v1.11.0/candidate-real-fixture-v1/`。
 - 非公考旧主题：`tools/export-race-repro/test_v1110_nonpublic_local.py` 已跑「极简白」三档，standard 与真 v1.10.2 画布逐像素一致；其旧字距本为零，compact 保持相同，relaxed 会改变 sealed 几何，未为制造差异引入负字距。证据在 `docs/screenshots/v1.11.0/nonpublic-minimal-white-v1/`。
 - 锁值备注：左叠排/居中三档差异故意保持克制；长真实副标题在 kicker standard 中的窄栏多行是 v1.10.2 原视觉，compact 明显收拢，relaxed 仍保留窄栏特征。详见 `docs/screenshots/v1.11.0/README.md` 与联系表。
-- 发布边界：产品提交 `919802a` 已落地；`app/package.json` 在 release commit 前仍为 1.10.2，push/tag/归档/双轨部署/生产回归尚未完成。工作树中用户的 `docs/飞书使用说明-文档封面.png` 仍未跟踪，未纳入、移动、覆盖或删除。
+- 发布边界：产品提交 `919802a` 与视觉证据提交 `2052473` 已落地；`app/package.json` 已 bump 为 1.11.0，本地四门禁、真实 Chrome 10 场景、3 主题 PNG 深回归和 3×3 全尺寸矩阵均全绿。当前构建为 `index-CStU0xGT.js` / `index-gRCFVCH5.css`；push/tag/归档/双轨部署/生产回归尚未完成。工作树中用户的 `docs/飞书使用说明-文档封面.png` 仍未跟踪，未纳入、移动、覆盖或删除。
 
 ##### 六、新窗口开工提示
 
