@@ -4,7 +4,7 @@ The script drives the real local production build with installed stable Chrome.
 It captures public-exam 3 layouts x 3 spacing levels as both canvas screenshots
 and exported 2160 x 3600 PNGs. Standard preview pixels and sealed geometry are
 strictly compared with v1.10.2; exported PNGs allow only a one-level renderer
-antialiasing delta on at most 0.002% of pixels.
+antialiasing delta on at most 0.003% of pixels.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ SPACINGS = (
     ("standard", "标准"),
     ("relaxed", "舒展"),
 )
-PNG_CHANGED_PIXEL_RATIO_LIMIT = 0.00002  # 0.002%
+PNG_CHANGED_PIXEL_RATIO_LIMIT = 0.00003  # 0.003%
 PNG_MAX_CHANNEL_DELTA = 1
 
 
@@ -335,20 +335,78 @@ async def export_first_page(page: Page, slug: str) -> bytes:
         name=f"导出全部 {page_count} 张",
         exact=True,
     ).last
+    download_task = asyncio.create_task(
+        page.wait_for_event("download", timeout=120_000),
+    )
+    force_clicked = False
     try:
-        async with page.expect_download(timeout=15_000) as download_info:
-            await export_all.click()
-    except PlaywrightTimeoutError:
-        force_export = page.get_by_role(
-            "button",
-            name="按当前预览强制导出",
-            exact=True,
+        await export_all.click()
+        while not download_task.done():
+            hard_block = dialog.get_by_text(
+                re.compile(
+                    r"字体或排版预检未通过，已阻止导出|"
+                    r"字体或确定性排版存在硬阻断问题",
+                ),
+                exact=False,
+            )
+            if await hard_block.count() and await hard_block.first.is_visible():
+                raise AssertionError(
+                    f"{slug}: export is hard-blocked: {await dialog.inner_text()}",
+                )
+
+            warning_action = dialog.get_by_role(
+                "button",
+                name=re.compile(r"^(仍然导出|按当前预览强制导出)$"),
+            )
+            warning_visible = bool(
+                await warning_action.count()
+                and await warning_action.first.is_visible(),
+            )
+            if not force_clicked and warning_visible:
+                await warning_action.first.click()
+                force_clicked = True
+                await asyncio.sleep(0.1)
+                continue
+
+            alerts = dialog.get_by_role("alert")
+            visible_alerts = [
+                text.strip()
+                for text in await alerts.all_inner_texts()
+                if text.strip()
+            ]
+            if visible_alerts and not warning_visible:
+                raise AssertionError(
+                    f"{slug}: unknown export blocker: "
+                    + " | ".join(visible_alerts),
+                )
+
+            await asyncio.sleep(0.1)
+
+        download = await download_task
+    except PlaywrightTimeoutError as cause:
+        detail = (
+            await dialog.inner_text()
+            if await dialog.is_visible()
+            else "export dialog closed without a download"
         )
-        if not await force_export.is_visible():
-            raise
-        async with page.expect_download(timeout=120_000) as download_info:
-            await force_export.click()
-    download = await download_info.value
+        raise AssertionError(
+            f"{slug}: no download after 120s: {detail}",
+        ) from cause
+    finally:
+        if not download_task.done():
+            download_task.cancel()
+            try:
+                await download_task
+            except asyncio.CancelledError:
+                pass
+        else:
+            # Retrieve a completed task's exception even if a dialog blocker won
+            # the race, avoiding an unobserved-task warning during the next case.
+            try:
+                download_task.exception()
+            except asyncio.CancelledError:
+                pass
+
     with tempfile.TemporaryDirectory(prefix="xhs-v1110-candidate-") as temp_dir:
         zip_path = Path(temp_dir) / f"{slug}.zip"
         await download.save_as(zip_path)

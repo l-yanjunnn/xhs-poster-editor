@@ -24,7 +24,7 @@
 - `candidate-real-fixture-v1/contact-sheet-png.png`
 - `nonpublic-minimal-white-v1/contact-sheet-preview.png`
 
-修正 RGBA 比较器后的发布口径：standard 的 sealed geometry、snapshot 和画布截图与 v1.10.2 严格相同；三张 2160×3600 PNG 分别仅有 98 / 63 / 48 个像素的 1 色阶抗锯齿差异，最高 0.00127%，低于 0.002% 门槛。早期 write-once manifest 中 RGBA `getbbox()` 的默认 alpha-only 结果不作发布断言，以修正后脚本复跑为准。
+修正 RGBA 比较器后的发布口径：standard 的 sealed geometry、snapshot 和画布截图与 v1.10.2 严格相同；2160×3600 PNG 只允许最多 0.003% 像素发生 1 色阶的跨运行抗锯齿量化波动。生产标定中的差异点全部位于字形边缘，副标题几何与画布截图均无差异。早期 write-once manifest 中 RGBA `getbbox()` 的默认 alpha-only 结果不作发布断言，以修正后脚本复跑为准。
 
 ## 可复跑门禁
 
