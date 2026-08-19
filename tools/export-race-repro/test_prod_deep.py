@@ -136,6 +136,7 @@ async def main():
     problems: list[str] = []
     async with async_playwright() as p:
         browser = await p.chromium.launch(
+            channel="chrome",
             headless=True,
             proxy={
                 "server": "http://127.0.0.1:7897",
