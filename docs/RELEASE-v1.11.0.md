@@ -47,7 +47,7 @@
 - 最终本地门禁：`tsc -b`、ESLint、Vite build 全绿；Vitest **45 文件 / 481 测试**；真实 Chrome 状态链 **10/10**、`test_prod_deep.py` 三主题/用户字体、三主题 2160×3600 PNG 深回归及公考 3 版式×3 档全尺寸矩阵全部通过。
 - 双入口生产回归：两端均显示 v1.11.0，`test_prod_deep.py` 和公考 3×3 真导出矩阵全部通过；geometry、snapshot 与 preview 严格一致。按左对齐叠排 / 居中海报 / 小字在上的顺序，standard PNG 相对权威基线的跨运行差异像素数分别为 Cloudflare **75 / 40 / 151**、大陆通道 **74 / 40 / 175**；最大色阶差为 **1**，且变化比例均低于 **0.003%** 阈值。
 - 不覆盖归档：`archive/dist-v1.11.0/` 已建立，大小 **9.6M**，含 **15 个归档文件**（14 个应用文件 + 1 份字体 manifest），并按约定排除 **3337 个字体文件**；完整复原可从 `v1.11.0` tag 运行 `bash ci.sh` 重建。
-- 公告：2026-08-20 12:19（北京时间）已核对 `default` profile、app `cli_a92bb2ebb1795bd2`「Claude聊天助手」和刘彦君既有 1v1 私聊 `oc_9e2813855736a171c86c8df2b13e1048`，随后回复 v1.10.2 公告发送并回读全文；新消息 ID 为 `om_x100b675c4a2154a0c326e72ea070b91`。12:26 已在原公告下补充回复权威使用说明链接，回复消息 `om_x100b675c505348a0c49f0c4a6532e82` 已回读确认；用户自行转发群聊。
+- 公告：2026-08-20 12:19（北京时间）已核对 `default` profile、app `cli_a92bb2ebb1795bd2`「Claude聊天助手」和刘彦君既有 1v1 私聊 `oc_9e2813855736a171c86c8df2b13e1048`，随后回复 v1.10.2 公告发送并回读全文；新消息 ID 为 `om_x100b675c4a2154a0c326e72ea070b91`。12:26 已在原公告下补充回复权威文档「小红书排版编辑器 · 使用说明」链接，回复消息 `om_x100b675c505348a0c49f0c4a6532e82` 已回读确认；用户自行转发群聊。
 
 ## 发版公告（已发送）
 
@@ -80,7 +80,7 @@
 > · Cloudflare：https://xhs-poster-editor.l-yanjunnn.workers.dev
 > · 大陆通道：https://xhsposter.tshzchen.cn
 >
-> 📖 使用说明（飞书云文档）
+> 📖 小红书排版编辑器 · 使用说明（飞书云文档）
 >
 > https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd
 >
