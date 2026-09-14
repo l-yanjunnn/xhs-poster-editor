@@ -1,0 +1,248 @@
+{
+  "version": "1.12.0",
+  "releasedCommit": "f4787846db83bb933203fbeb9e613cdd3b0bd9e5",
+  "tag": "v1.12.0",
+  "verifiedAt": "2026-09-14 19:01 北京时间",
+  "archive": "archive/dist-v1.12.0-final",
+  "localChecks": "build / lint / 490 unit tests passed",
+  "production": {
+    "oss": {
+      "build": [
+        {
+          "url": "https://xhsposter.tshzchen.cn/",
+          "bytes": 1766,
+          "sha256": "6988645da9d2462adfcfd271d0b84fdac1adccbef042c03b4dca0afc447b5430",
+          "expectedSha256": "6988645da9d2462adfcfd271d0b84fdac1adccbef042c03b4dca0afc447b5430",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-C2uIX3-f.js",
+          "bytes": 1320439,
+          "sha256": "e61f8a9272b919e63531dde6d3b380d003626d68bf13786570102c4e4e1ee588",
+          "expectedSha256": "e61f8a9272b919e63531dde6d3b380d003626d68bf13786570102c4e4e1ee588",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-E9HUD_py.css",
+          "bytes": 2117853,
+          "sha256": "990a49620ce9cc6cdab1274faa068c7b8040f07dd124e81386ccd154854ab309",
+          "expectedSha256": "990a49620ce9cc6cdab1274faa068c7b8040f07dd124e81386ccd154854ab309",
+          "equal": true
+        }
+      ],
+      "templateRoundtrip": true,
+      "undoRedoRefresh": true,
+      "previewPngHashes": [
+        "939bc1237e0a6bba83b2eb7489d512ccff4da676d07aef261843cd8403ac2c38",
+        "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+        "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604"
+      ],
+      "zipPngHashes": [
+        "939bc1237e0a6bba83b2eb7489d512ccff4da676d07aef261843cd8403ac2c38",
+        "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+        "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604"
+      ],
+      "verifiedGlyphs": [
+        {
+          "pageNumber": 1,
+          "snapshot": "87c53e72",
+          "geometryHash": "ed50038a",
+          "pngSha256": "939bc1237e0a6bba83b2eb7489d512ccff4da676d07aef261843cd8403ac2c38",
+          "glyphCount": 17,
+          "pixelCheckedGlyphs": 17
+        },
+        {
+          "pageNumber": 2,
+          "snapshot": "bb4b8583",
+          "geometryHash": "affaa97f",
+          "pngSha256": "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+          "glyphCount": 28,
+          "pixelCheckedGlyphs": 28
+        },
+        {
+          "pageNumber": 3,
+          "snapshot": "05a6c84f",
+          "geometryHash": "dfbc52b3",
+          "pngSha256": "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604",
+          "glyphCount": 21,
+          "pixelCheckedGlyphs": 21
+        }
+      ],
+      "threeThemesAndUserFont": true,
+      "longExport": {
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "dimensions": [
+          2160,
+          3600
+        ],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    "cloudflare": {
+      "build": [
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+          "bytes": 1766,
+          "sha256": "6988645da9d2462adfcfd271d0b84fdac1adccbef042c03b4dca0afc447b5430",
+          "expectedSha256": "6988645da9d2462adfcfd271d0b84fdac1adccbef042c03b4dca0afc447b5430",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-C2uIX3-f.js",
+          "bytes": 1320439,
+          "sha256": "e61f8a9272b919e63531dde6d3b380d003626d68bf13786570102c4e4e1ee588",
+          "expectedSha256": "e61f8a9272b919e63531dde6d3b380d003626d68bf13786570102c4e4e1ee588",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-E9HUD_py.css",
+          "bytes": 2117853,
+          "sha256": "990a49620ce9cc6cdab1274faa068c7b8040f07dd124e81386ccd154854ab309",
+          "expectedSha256": "990a49620ce9cc6cdab1274faa068c7b8040f07dd124e81386ccd154854ab309",
+          "equal": true
+        }
+      ],
+      "templateRoundtrip": true,
+      "undoRedoRefresh": true,
+      "previewPngHashes": [
+        "cd887dd434d7dc8c8011a0f1422f719907ca16519a7be4353e110b1ae40586b7",
+        "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+        "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604"
+      ],
+      "zipPngHashes": [
+        "cd887dd434d7dc8c8011a0f1422f719907ca16519a7be4353e110b1ae40586b7",
+        "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+        "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604"
+      ],
+      "verifiedGlyphs": [
+        {
+          "pageNumber": 1,
+          "snapshot": "87c53e72",
+          "geometryHash": "9147c568",
+          "pngSha256": "cd887dd434d7dc8c8011a0f1422f719907ca16519a7be4353e110b1ae40586b7",
+          "glyphCount": 17,
+          "pixelCheckedGlyphs": 17
+        },
+        {
+          "pageNumber": 2,
+          "snapshot": "bb4b8583",
+          "geometryHash": "3e54c857",
+          "pngSha256": "90ace5401f428ac535971f2a58a317afa8c6f4a2c07ed750ce4377816e15fd8b",
+          "glyphCount": 28,
+          "pixelCheckedGlyphs": 28
+        },
+        {
+          "pageNumber": 3,
+          "snapshot": "05a6c84f",
+          "geometryHash": "f0e0fcab",
+          "pngSha256": "7652eedd1465a2611d19fb67b2ee60006a9eb3f3359e8ef2b029557094683604",
+          "glyphCount": 21,
+          "pixelCheckedGlyphs": 21
+        }
+      ],
+      "threeThemesAndUserFont": true,
+      "longExport": {
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "dimensions": [
+          2160,
+          3600
+        ],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    }
+  },
+  "usageDocument": "https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd",
+  "announcementMessageId": "om_x100b6549745b24a0c1664d4f69d03f5",
+  "announcementReadback": true,
+  "limits": [
+    "Z5/Z6 original nine-page document and faulty PNG remain unavailable; not declared fixed",
+    "Native OS directory chooser UI and other browser/platform combinations remain unverified in this round"
+  ],
+  "crossOriginPngComparison": [
+    {
+      "page": 1,
+      "byteEqual": false,
+      "pixelEqual": false,
+      "differenceBounds": [
+        270,
+        693,
+        1204,
+        1049
+      ],
+      "meanChannelDifference": [
+        1.286008230452675e-07,
+        5.1440329218107e-07,
+        6.430041152263375e-07
+      ],
+      "totalPixels": 7776000,
+      "differentPixels": 5,
+      "maximumChannelDifference": 1
+    },
+    {
+      "page": 2,
+      "byteEqual": true,
+      "pixelEqual": true,
+      "differenceBounds": null,
+      "meanChannelDifference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "page": 3,
+      "byteEqual": true,
+      "pixelEqual": true,
+      "differenceBounds": null,
+      "meanChannelDifference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 把文字 + 背景图 + Logo 排成小红书风格的 9:15（3:5）全屏长图，一键导出 2160×3600 PNG。
 
-🌐 **本仓库版本 v1.12.0**（部署状态见 [HANDOFF](HANDOFF.md)）：
+🌐 **线上版本 v1.12.0**（双轨已发布，验证记录见 [HANDOFF](HANDOFF.md)）：
 
 - Cloudflare：https://xhs-poster-editor.l-yanjunnn.workers.dev
 - 大陆通道：https://xhsposter.tshzchen.cn

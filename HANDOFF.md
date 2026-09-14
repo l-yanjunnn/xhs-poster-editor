@@ -1,13 +1,16 @@
 # 小红书排版编辑器 · Handoff 文档
 
-## 2026-09-14 v1.12.0 正式发布执行中（最新）
+## v1.12.0 上线闭环已完成（2026-09-14 19:01 北京时间，最新）
 
-用户已完成候选 `ea9a57e` 的实际 review，并明确要求走上线闭环；本机 GitHub 已重新认证为仓库所有者 `l-yanjunnn`。产品范围已冻结，不重做已通过的本地验收。
+用户已完成 `ea9a57e` 实际 review 并授权上线。本版已完成 main 推送、Cloudflare + OSS/CDN 双轨部署、两个真实入口验收、精确 tag、不可覆盖归档、使用说明同步和固定机器人私聊公告。以下历史候选中的「等待 review / 等待认证 / 尚未上线」状态均已被本节替代。
 
-- 正式归档：`archive/dist-v1.12.0-final/`，保存本轮用户确认构建；旧 `archive/dist-v1.12.0/` 仅为未发布准备快照，保留不覆盖。两者不得混用。
-- 当前 JS `index-C2uIX3-f.js`、CSS `index-E9HUD_py.css`，重新构建与用户 review 的版本逐字节一致。
-- 正在执行 main 推送、Cloudflare 与 OSS/CDN 双轨发布，随后做两个真实生产入口的 PNG/ZIP、字体及模板位置回归。通过后再记录精确 tag 和公告回执；此段本身不代表生产已通过。
-- 本轮发布证据：`/Users/a0000/Codex_YJ/tasks/xhs-editor-production-20260914/`。Z5/Z6 原稿缺口仍保留。
+- **发布提交 / 精确 tag**：`f4787846db83bb933203fbeb9e613cdd3b0bd9e5` / `v1.12.0`。后续仅文档提交不改变该发布身份；不要移动 tag。
+- **两入口**：https://xhsposter.tshzchen.cn ／ https://xhs-poster-editor.l-yanjunnn.workers.dev 。两者 HTML/JS/CSS 与用户 review 构建逐字节一致：`index-C2uIX3-f.js`、`index-E9HUD_py.css`。
+- **验证**：本地 build / lint / 490 单测；两生产入口均通过三主题与自定义字体、模板默认保存/应用、逐页覆盖、撤销重做/刷新、3 页实际 PNG 预览与 ZIP 字节一致、18/19 页导入及完整 19 张 2160×3600 PNG ZIP。长文浏览器 console/page error 均为 0。
+- **归档**：`archive/dist-v1.12.0-final/` 是正式构建。`archive/dist-v1.12.0/` 是此前未发布准备快照，保留不覆盖，不能混作正式产物。
+- **使用说明与公告**：[权威说明](https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd) 已补齐模板默认、顶部/居中和两步成品导出，并修正预检解释，写后回读通过。已核验 `default` / `cli_a92bb2ebb1795bd2`「Claude聊天助手」与刘彦君既有 1v1；正式公告 `om_x100b6549745b24a0c1664d4f69d03f5` 全文回读一致，含双入口与使用说明，无群发。
+- **证据**：[生产摘要](docs/PRODUCTION-v1.12.0.json)；完整脚本、截图、PNG/ZIP、构建日志与回执位于 `/Users/a0000/Codex_YJ/tasks/xhs-editor-production-20260914/`。原工作目录 main 已 fast-forward，39 个既有未跟踪文件保留；锁定依赖已离线同步。
+- **边界**：Z5/Z6 原作者九页原稿、异常原图及完整环境仍缺，未关闭；原生目录选择器 UI 和其他平台未新增验收。备用入口首轮字体测试完成后卡在浏览器清理阶段，调整测试的 context 关闭顺序后完整复跑通过，无产品代码改动。跨入口独立重渲染的封面有 5/7776000 像素、单通道最多 1 级差异；两内页像素完全相同，每个入口内成品预览与下载均逐字节相同。
 
 ---
 
@@ -61,8 +64,8 @@
 
 | 项 | 值 |
 |---|---|
-| 线上版本 | **v1.11.0**。发布提交与精确 tag `v1.11.0` 均指向 `5c6ccf928fcb8c9b5f5b273a95005e86f3c70c32`。Cloudflare 与 OSS/CDN 双入口与本地构建逐字节同构，均加载 `index.html` + `assets/index-CStU0xGT.js` + `assets/index-gRCFVCH5.css`；SHA-256 依次为 `98dc770ff971b8af93fea0ea77ff01531af644066a96ba24637b4eb5fa527476` / `cf9da655b9a2e70f060b84123fdc1d5b987e4e645e7706d4889b31640e76daf6` / `1dc5e06d171ae90fd8e8ff91d05107d2dcfc23407799383ba88f4c7dfb816cac`。两入口的 `test_prod_deep.py` 三主题/用户字体与 v1.11.0 公考 3×3 真导出矩阵均全绿 |
-| 本地归档 | 当前完整构建在 `app/dist/`；v1.11.0 不覆盖快照在 `archive/dist-v1.11.0/`（9.6M，15 个归档文件＝14 个应用文件 + 1 份字体 manifest，排除字体 3337 个）；v1.10.2 快照在 `archive/dist-v1.10.2/`；v1.10.1 快照在 `archive/dist-v1.10.1/`；v1.10.0 快照在 `archive/dist-v1.10.0/`；v1.9.0 快照在 `archive/dist-v1.9.0/`（发版时漏交 git，2026-08-14 已补交 `0e9bb1e`）；更旧归档继续保留，完整复原走对应 tag + `bash ci.sh` |
+| 线上版本 | **v1.12.0**，发布提交/tag `f4787846db83bb933203fbeb9e613cdd3b0bd9e5` / `v1.12.0`。双轨、生产回归和公告全部完成，见本文顶部与 docs/PRODUCTION-v1.12.0.json。 |
+| 本地归档 | 正式构建 `archive/dist-v1.12.0-final/`；未发布准备快照 `archive/dist-v1.12.0/` 及全部旧归档保留不覆盖。完整复原走 v1.12.0 tag + bash ci.sh。 |
 | 状态 | **线上 v1.11.0 双轨稳定，发布闭环完成，无未完成发版步骤**。新增封面副标题紧凑/标准/舒展三档，且只影响首图第一个 H1 紧邻副标题；「全篇 H1 宽度」只是右栏命名澄清。旧 V1/V2 草稿和旧主题回落 standard，确定性算法、分页、安全区和导出算法未改 |
 | v1.10.1 迭代记录 | **v1.10.1「删光草稿回开箱教程态」2026-08-14 深夜已双轨上线**（用户反馈当日修复并授权走闭环）。根因：删除最后一份草稿时自动新建的草稿装的是空段落（`EMPTY_DOCUMENT_JSON`，v1.10.0 之前就存在），用户删光草稿后画布空白、找不到教程。修复：该路径改为 `createEditorDocumentJSON(DEFAULT_CONTENT)` + 雅致默认样式，与首次开箱一致；`EMPTY_DOCUMENT_JSON` 常量随之删除。门禁四连全绿（Vitest 43/435）；真实浏览器回归（本地+两生产入口）：编辑落盘→删光全部草稿→教程 5 页回归→刷新仍在。发布提交/tag `927175f` / `v1.10.1`，`archive/dist-v1.10.1/` 已归档。**公告已发**：核对 `default` 租户「Claude聊天助手」后回复刘彦君既有发布会话，消息 `om_x100b68c7929024a0b24dbdb9c2277a7`。**v1.10.1 无未完成步骤**。v1.10.0 记录如下（历史） |
 | 上一迭代 | **v1.10.2「用户反馈可靠性修复」2026-08-16 已双轨上线并完成全部闭环**。产品工作包提交为 `3b93160` / `9879dca` / `ff85779`，发布提交与 tag 为 `0b2d6468c9f8aa4db9cdf6d88533b7eaff47f267` / `v1.10.2`。反馈 1/3/4 已通过 TDD、全量 CI、真实 Chromium/PNG 本地回归与双入口生产回归；反馈 2 不改产品或代码，`Enter` 仍表示分段，同一标题内换行用 `Shift+Enter`。`archive/dist-v1.10.2/` 已归档。按用户最终决定，公告仅合并 v1.10.1 与 v1.10.2；已使用「Claude聊天助手」回复刘彦君既有发布会话，消息 `om_x100b673d13ea44a0b4af0de2ed1ccd4` 已回读确认，用户自行转发群聊 |
