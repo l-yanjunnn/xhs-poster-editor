@@ -160,7 +160,7 @@ function cssNumber(element: HTMLElement, name: string): number {
 }
 
 function installRectMock(
-  options: { lastBottom?: number; scale?: number } = {},
+  options: { lastBottom?: number; scale?: number; contentShift?: number } = {},
 ) {
   const scale = options.scale ?? PREVIEW_SCALE
   return vi
@@ -173,7 +173,7 @@ function installRectMock(
       if (this.classList.contains('page') || this.classList.contains('content')) {
         return domRect(
           0,
-          0,
+          this.classList.contains('content') ? (options.contentShift ?? 0) * scale : 0,
           CANVAS_WIDTH * scale,
           CANVAS_HEIGHT * scale,
         )
@@ -283,6 +283,14 @@ afterEach(async () => {
 })
 
 describe('Preview page-role geometry', () => {
+  it.each([-180, 120])('keeps the bottom theme reference fixed when content moves %s px', async (contentShift) => {
+    installRectMock({ contentShift })
+    const { host } = await mountPreview({ x: 80, top: 300, bottom: 160 }, {
+      pageIndex: 1, pageTotal: 2, layoutGuidesOn: true,
+    })
+    expect(host.querySelector<HTMLElement>('.layout-guide--bottom')?.style.bottom).toBe('160px')
+    expect(host.querySelector<HTMLElement>('.layout-guide--top')?.style.top).toBe(`${300 + contentShift}px`)
+  })
   it.each([
     {
       name: '公考封面',

@@ -12,6 +12,18 @@ export function resolvePageVertical(value: unknown, templateDefault: unknown): I
   const override = normalizePageVertical(value)
   return override === 'inherit' ? normalizeInnerPagePosition(templateDefault) : override
 }
+export const INNER_PAGE_OFFSET_LIMIT = 360
+export function normalizeInnerPageOffset(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.round(Math.max(-INNER_PAGE_OFFSET_LIMIT, Math.min(INNER_PAGE_OFFSET_LIMIT, value))) : 0
+}
+export function resolveInnerPageOffset(value: unknown, templateDefault: unknown): number {
+  return normalizeInnerPageOffset(value == null ? templateDefault : value)
+}
+export function parsePageOffset(value: string | null): number | null {
+  return value == null || value.trim() === '' ? null : normalizeInnerPageOffset(Number(value))
+}
+
 export function normalizeCoverTopOffset(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(-120, Math.min(120, value)) : 0
 }
@@ -35,7 +47,7 @@ export function alignInnerPage(page: HTMLElement): void {
     ? (logo.top - bounds.top) / scale
     : parseFloat(getComputedStyle(page).getPropertyValue('--logo-offset-y'))
   if (!Number.isFinite(anchor)) return
-  page.style.setProperty('--inner-top-shift', `${anchor - (first.top - bounds.top) / scale}px`)
+  page.style.setProperty('--inner-top-shift', `${anchor - (first.top - bounds.top) / scale + normalizeInnerPageOffset(Number(page.dataset.innerOffset))}px`)
   // Reserve any remainder of the logo row as spacing, without stretching a
   // short heading's own box or its optical decorations.
   if (logo?.height) {
@@ -44,11 +56,11 @@ export function alignInnerPage(page: HTMLElement): void {
 }
 
 /** The preceding break owns the following page. Unconfigured legacy pages need no migration. */
-export function readPageLayouts(html: string): Array<{ id: string | null; vertical: PageVertical }> {
+export function readPageLayouts(html: string): Array<{ id: string | null; vertical: PageVertical; offset: number | null }> {
   const root = new DOMParser().parseFromString(html, 'text/html').body
-  return [{ id: 'cover', vertical: 'inherit' }, ...Array.from(root.children)
+  return [{ id: 'cover', vertical: 'inherit', offset: null }, ...Array.from(root.children)
     .filter(node => node.matches('hr.page-break'))
-    .map(node => ({ id: node.getAttribute('data-page-id'), vertical: normalizePageVertical(node.getAttribute('data-page-vertical')) }))]
+    .map(node => ({ id: node.getAttribute('data-page-id'), vertical: normalizePageVertical(node.getAttribute('data-page-vertical')), offset: parsePageOffset(node.getAttribute('data-page-offset')) }))]
 }
 
 /** Copies keep their setting but get a fresh identity; mapping preserves the original even when pasted before it. */

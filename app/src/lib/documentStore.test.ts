@@ -63,6 +63,7 @@ function makeDocument(
       coverSubtitleSpacing: 'standard',
       coverTopOffset: 0,
       innerVerticalDefault: 'middle',
+      innerOffsetDefault: 0,
       whitespaceMode: 'legacy',
     },
   }

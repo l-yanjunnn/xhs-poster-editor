@@ -1,3 +1,4 @@
+import { normalizeInnerPageOffset } from '@/lib/pageLayout'
 import {
   useEditor,
   useEditorState,
@@ -103,6 +104,7 @@ export interface EditorHandle {
     options?: { resetHistory?: boolean },
   ) => void
   setPageVertical: (pageIndex: number, vertical: string) => void
+  setPageOffset: (pageIndex: number, offset: number, newHistoryGroup?: boolean) => void
   getJSON: () => object | null
   insertImage: (src: string, assetId?: string) => void
   setImageWidth: (width: string | null) => void
@@ -512,7 +514,21 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
           editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(position, undefined, {
             ...node.attrs, pageId: node.attrs.pageId || crypto.randomUUID(),
             pageVertical: ['top', 'middle'].includes(vertical) ? vertical : null,
+            pageOffset: vertical === 'inherit' ? null : 0,
           })))
+        })
+      },
+      setPageOffset: (pageIndex, offset, newHistoryGroup = true) => {
+        if (!editor || pageIndex < 1 || !editor.isEditable) return
+        let index = 0
+        editor.state.doc.forEach((node, position) => {
+          if (node.type.name !== 'horizontalRule' || ++index !== pageIndex) return
+          const value = normalizeInnerPageOffset(offset)
+          if (node.attrs.pageOffset === value) return
+          const transaction = editor.state.tr.setNodeMarkup(position, undefined, {
+            ...node.attrs, pageId: node.attrs.pageId || crypto.randomUUID(), pageOffset: value,
+          })
+          editor.view.dispatch(newHistoryGroup ? closeHistory(transaction) : transaction)
         })
       },
       getJSON: () => editor?.getJSON() ?? null,

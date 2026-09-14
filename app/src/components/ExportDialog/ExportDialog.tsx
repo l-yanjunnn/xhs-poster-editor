@@ -731,7 +731,7 @@ export function ExportDialog({
               appVersion: __APP_VERSION__, createdAt: new Date().toISOString(), browser: navigator.userAgent,
               style: document.documentElement.getAttribute('style'),
               fonts: [...document.fonts].map(font => ({ family: font.family, weight: font.weight, style: font.style, status: font.status })),
-              pages: pages.map(page => ({ number: page.dataset.pageNumber, whitespaceMode: page.dataset.whitespaceMode, coverLayout: page.dataset.coverLayout, coverVertical: page.dataset.coverVertical, innerVertical: page.dataset.innerVertical, coverTopOffset: page.style.getPropertyValue('--cover-top-offset'), state: page.dataset.layoutState })),
+              pages: pages.map(page => ({ number: page.dataset.pageNumber, whitespaceMode: page.dataset.whitespaceMode, coverLayout: page.dataset.coverLayout, coverVertical: page.dataset.coverVertical, innerVertical: page.dataset.innerVertical, innerOffset: page.dataset.innerOffset, coverTopOffset: page.style.getPropertyValue('--cover-top-offset'), state: page.dataset.layoutState })),
               issues: readinessIssues.map(issue => ({ kind: issue.kind, severity: issue.severity, code: issue.code, pageNumber: issue.pageNumber, blockIndex: issue.blockIndex })),
               verified: prepared?.metadata ?? null,
             }

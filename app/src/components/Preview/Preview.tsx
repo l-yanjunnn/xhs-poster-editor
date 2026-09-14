@@ -58,6 +58,7 @@ interface Props {
   whitespaceMode?: 'legacy' | 'preserve'
   coverTopOffset?: number
   innerVertical?: string
+  innerOffset?: number
   coverLayout?: CoverLayout
   coverVertical?: CoverVertical
   coverSubtitleSpacing?: CoverSubtitleSpacing
@@ -197,13 +198,12 @@ function measurePreviewCanvasGeometry(
   const contentBorderTop = hasContentHeight
     ? (contentRect.top - pageRect.top) / scale
     : 0
-  const contentBorderBottom = hasContentHeight
-    ? (contentRect.bottom - pageRect.top) / scale
-    : CANVAS_HEIGHT
   const contentLeft = contentBorderLeft + paddingX
   const contentRight = contentBorderRight - paddingX
   const contentTop = contentBorderTop + paddingTop
-  const contentBottom = contentBorderBottom - paddingBottom
+  // The bottom reference belongs to the canvas's theme margin. Moving the
+  // content to the top or fine-tuning it must not move this fixed boundary.
+  const contentBottom = CANVAS_HEIGHT - paddingBottom
   const contentWidth = contentRight - contentLeft
   if (
     !Number.isFinite(contentWidth) ||
@@ -302,6 +302,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     whitespaceMode = 'legacy',
     coverTopOffset = 0,
     innerVertical = 'inherit',
+    innerOffset = 0,
     coverLayout = DEFAULT_COVER_LAYOUT,
     coverVertical = DEFAULT_COVER_VERTICAL,
     coverSubtitleSpacing = DEFAULT_COVER_SUBTITLE_SPACING,
@@ -364,7 +365,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
-    whitespaceMode, coverTopOffset, innerVertical,
+    whitespaceMode, coverTopOffset, innerVertical, innerOffset,
   ])
 
   const findSelectedImage = useCallback(() => {
@@ -656,7 +657,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
-    whitespaceMode, coverTopOffset, innerVertical,
+    whitespaceMode, coverTopOffset, innerVertical, innerOffset,
   ])
 
   useLayoutEffect(() => {
@@ -994,7 +995,8 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
             data-page-number={pageIndex + 1}
             data-whitespace-mode={whitespaceMode}
             data-inner-vertical={!isFirstPage ? innerVertical : undefined}
-            style={{ '--cover-top-offset': `${coverTopOffset}px` } as CSSProperties}
+            data-inner-offset={!isFirstPage ? innerOffset : undefined}
+            style={{ '--cover-top-offset': `${coverTopOffset}px`, '--inner-offset': `${innerOffset}px` } as CSSProperties}
             {...coverSlotDataset(
               isFirstPage,
               coverLayout,

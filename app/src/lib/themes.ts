@@ -1,4 +1,4 @@
-import { normalizeCoverTopOffset, normalizeInnerPagePosition, type InnerPagePosition } from './pageLayout'
+import { normalizeCoverTopOffset, normalizeInnerPagePosition, normalizeInnerPageOffset, type InnerPagePosition } from './pageLayout'
 // 主题数据模型 + 内置主题 + 共享映射表
 // 主题里只存 assetId（不存 blob URL），apply 时再 resolve，避免 session 间失效
 
@@ -63,6 +63,7 @@ export interface Theme {
   coverVertical: CoverVertical
   /** Default for inner pages whose own setting is inherit. */
   innerVerticalDefault?: InnerPagePosition
+  innerOffsetDefault?: number
   coverTopOffset?: number
   coverSubtitleSpacing: CoverSubtitleSpacing
 
@@ -312,6 +313,7 @@ export function normalizeTheme(value: unknown): Theme | null {
     coverSubtitleColor:
       normalizeHexColor(theme.coverSubtitleColor) ?? fallbackColors.subtitle,
     innerVerticalDefault: normalizeInnerPagePosition(theme.innerVerticalDefault),
+    innerOffsetDefault: normalizeInnerPageOffset(theme.innerOffsetDefault),
     coverTopOffset: normalizeCoverTopOffset(theme.coverTopOffset),
     coverLayout: normalizeCoverLayout(theme.coverLayout),
     coverVertical: normalizeCoverVertical(theme.coverVertical),

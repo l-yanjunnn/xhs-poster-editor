@@ -975,7 +975,7 @@
   top: var(--cover-top-offset, 0px);
 }
 .page:not(.page--first) .content {
-  top: var(--inner-top-shift, 0px);
+  top: calc(var(--inner-top-shift, 0px) + var(--inner-offset, 0px));
 }
 
 /* Top mode shares its first row with the logo. Reserve that row before the

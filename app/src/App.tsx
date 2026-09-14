@@ -1,4 +1,4 @@
-import { readPageLayouts, resolvePageVertical, normalizeInnerPagePosition, type InnerPagePosition } from '@/lib/pageLayout'
+import { readPageLayouts, resolvePageVertical, normalizeInnerPagePosition, normalizeInnerPageOffset, resolveInnerPageOffset, type InnerPagePosition } from '@/lib/pageLayout'
 import { PageLayoutControls } from '@/components/Inspector/PageLayoutControls'
 import {
   useCallback,
@@ -132,6 +132,7 @@ function App() {
   const [coverTopOffset, setCoverTopOffset] = useState(0)
   const [layoutPageIndex, setLayoutPageIndex] = useState(0)
   const [innerVerticalDefault, setInnerVerticalDefault] = useState<InnerPagePosition>('middle')
+  const [innerOffsetDefault, setInnerOffsetDefault] = useState(0)
   const [coverLayout, setCoverLayout] = useState(DEFAULT_THEME.coverLayout)
   const [coverVertical, setCoverVertical] = useState(
     DEFAULT_THEME.coverVertical,
@@ -324,6 +325,7 @@ function App() {
       coverSubtitleSpacing,
       coverTopOffset,
       innerVerticalDefault,
+      innerOffsetDefault,
     }),
     [
       whitespaceMode,
@@ -350,6 +352,7 @@ function App() {
       coverSubtitleSpacing,
       coverTopOffset,
       innerVerticalDefault,
+      innerOffsetDefault,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -518,6 +521,7 @@ function App() {
     setWhitespaceMode(document.style.whitespaceMode ?? 'legacy')
     setCoverTopOffset(document.style.coverTopOffset ?? 0)
     setInnerVerticalDefault(normalizeInnerPagePosition(document.style.innerVerticalDefault))
+    setInnerOffsetDefault(normalizeInnerPageOffset(document.style.innerOffsetDefault))
     setCoverLayout(document.style.coverLayout)
     setCoverVertical(document.style.coverVertical)
     setCoverSubtitleSpacing(document.style.coverSubtitleSpacing)
@@ -735,6 +739,7 @@ function App() {
     setCoverSubtitleColor(theme.coverSubtitleColor)
     setCoverTopOffset(theme.coverTopOffset ?? 0)
     setInnerVerticalDefault(normalizeInnerPagePosition(theme.innerVerticalDefault))
+    setInnerOffsetDefault(normalizeInnerPageOffset(theme.innerOffsetDefault))
     setCoverLayout(theme.coverLayout)
     setCoverVertical(theme.coverVertical)
     setCoverSubtitleSpacing(theme.coverSubtitleSpacing)
@@ -771,6 +776,10 @@ function App() {
     ? resolvePageVertical(pageLayouts[Math.min(layoutPageIndex, pages.length - 1)]?.vertical, innerVerticalDefault)
     : innerVerticalDefault
 
+  const innerOffsetForSave = layoutPageIndex > 0
+    ? resolveInnerPageOffset(pageLayouts[Math.min(layoutPageIndex, pages.length - 1)]?.offset, innerOffsetDefault)
+    : innerOffsetDefault
+
   // 把当前 App state 打包成新主题保存
   async function saveCurrentAsTheme(name: string) {
     const applyRevision = themeApplyRevisionRef.current
@@ -802,6 +811,7 @@ function App() {
       coverSubtitleSpacing,
       coverTopOffset,
       innerVerticalDefault: innerPositionForSave,
+      innerOffsetDefault: innerOffsetForSave,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
@@ -809,8 +819,9 @@ function App() {
     await putUserTheme(theme)
     // A completed save may belong to a draft/theme the user has since left.
     if (applyRevision !== themeApplyRevisionRef.current) return
-    if (innerPositionForSave !== innerVerticalDefault) dirtyDocumentRef.current = true
+    if (innerPositionForSave !== innerVerticalDefault || innerOffsetForSave !== innerOffsetDefault) dirtyDocumentRef.current = true
     setInnerVerticalDefault(innerPositionForSave)
+    setInnerOffsetDefault(innerOffsetForSave)
     setCurrentThemeId(theme.id)
   }
 
@@ -1190,6 +1201,7 @@ function App() {
           onOpenChange={setThemeLibOpen}
           userThemes={userThemes}
           innerPositionForSave={innerPositionForSave}
+          innerOffsetForSave={innerOffsetForSave}
           currentThemeId={currentThemeId}
           onApply={applyTheme}
           onSaveCurrent={saveCurrentAsTheme}
@@ -1273,6 +1285,7 @@ function App() {
                   whitespaceMode={whitespaceMode}
                   coverTopOffset={coverTopOffset}
                   innerVertical={resolvePageVertical(pageLayouts[index]?.vertical, innerVerticalDefault)}
+                  innerOffset={resolveInnerPageOffset(pageLayouts[index]?.offset, innerOffsetDefault)}
                   ref={getPageRefCallback(index)}
                   html={pageHtml}
                   themeClass={themeClass}
@@ -1305,6 +1318,8 @@ function App() {
                   pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
                   layouts={pageLayouts}
                   templateDefault={innerVerticalDefault}
+                  templateOffset={innerOffsetDefault}
+                  onInnerOffset={(offset, newHistoryGroup) => editorRef.current?.setPageOffset(Math.min(layoutPageIndex, pages.length - 1), offset, newHistoryGroup)}
                   onPage={index => {
                     setLayoutPageIndex(index)
                     const panel = canvasPanelRef.current

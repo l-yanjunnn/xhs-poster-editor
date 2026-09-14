@@ -1,6 +1,6 @@
 import Paragraph from '@tiptap/extension-paragraph'
 import Heading from '@tiptap/extension-heading'
-import { normalizePageVertical, deduplicatePageIdentities } from '@/lib/pageLayout'
+import { normalizePageVertical, normalizeInnerPageOffset, parsePageOffset, deduplicatePageIdentities } from '@/lib/pageLayout'
 import { Extension, Node } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Plugin } from '@tiptap/pm/state'
@@ -45,6 +45,11 @@ export const RootPageBreak = Node.create({
         default: null,
         parseHTML: element => normalizePageVertical(element.getAttribute('data-page-vertical')),
         renderHTML: attrs => attrs.pageVertical ? { 'data-page-vertical': attrs.pageVertical } : {},
+      },
+      pageOffset: {
+        default: null,
+        parseHTML: element => parsePageOffset(element.getAttribute('data-page-offset')),
+        renderHTML: attrs => attrs.pageOffset == null ? {} : { 'data-page-offset': normalizeInnerPageOffset(attrs.pageOffset) },
       },
       continuation: {
         default: false,

@@ -14,6 +14,7 @@ import { ThemePreview } from '@/components/ThemePreview/ThemePreview'
 
 interface Props {
   innerPositionForSave?: InnerPagePosition
+  innerOffsetForSave?: number
   open: boolean
   onOpenChange: (open: boolean) => void
   // 用户主题由 App 持有（同时供 Toolbar 下拉用），这里只读
@@ -96,6 +97,7 @@ export function ThemeLibrary(p: Props) {
           <TabsContent value="user" className="mt-4">
             <SaveForm
               innerPosition={p.innerPositionForSave ?? 'middle'}
+              innerOffset={p.innerOffsetForSave ?? 0}
               newName={newName}
               saving={saving}
               onNewName={setNewName}
@@ -201,12 +203,14 @@ function ThemeGrid({
 
 function SaveForm({
   innerPosition,
+  innerOffset,
   newName,
   saving,
   onNewName,
   onSave,
 }: {
   innerPosition: InnerPagePosition
+  innerOffset: number
   newName: string
   saving: boolean
   onNewName: (v: string) => void
@@ -231,7 +235,7 @@ function SaveForm({
         </Button>
       </div>
       <div className="mt-2 text-[11px] text-neutral-500">
-        内页默认位置：{innerPosition === 'top' ? '顶部' : '居中'}（取当前内页设置；选封面时沿用模板默认）。主题不保存正文，逐页覆盖由草稿保存。
+        内页默认位置：{innerPosition === 'top' ? '顶部' : '居中'}，微调 {innerOffset > 0 ? '+' : ''}{innerOffset} px（取当前内页设置；选封面时沿用模板默认）。主题不保存正文，逐页覆盖由草稿保存。
       </div>
     </div>
   )
