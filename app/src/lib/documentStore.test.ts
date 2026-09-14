@@ -61,6 +61,8 @@ function makeDocument(
       coverLayout: 'stack-left',
       coverVertical: 'top',
       coverSubtitleSpacing: 'standard',
+      coverTopOffset: 0,
+      whitespaceMode: 'legacy',
     },
   }
 }

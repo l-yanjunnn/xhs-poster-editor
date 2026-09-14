@@ -1,3 +1,4 @@
+import { storageTransactionDone } from './storageTransaction'
 // 用户主题的 IndexedDB 存储层
 // 独立 DB（xhs-poster-themes），与素材/字体 DB 解耦
 // Theme.contentJSON 直接存对象，IndexedDB 原生支持结构化克隆
@@ -40,11 +41,10 @@ export async function putUserTheme(theme: Theme): Promise<void> {
   if (!normalized) throw new Error('主题数据损坏：缺少必要字段')
 
   const db = await openDB()
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').put(normalized)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.put(normalized)
+  await committed
 }
 
 export async function listUserThemes(): Promise<Theme[]> {
@@ -64,11 +64,10 @@ export async function listUserThemes(): Promise<Theme[]> {
 
 export async function deleteUserTheme(id: string): Promise<void> {
   const db = await openDB()
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').delete(id)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.delete(id)
+  await committed
 }
 
 export function newUserThemeId(): string {

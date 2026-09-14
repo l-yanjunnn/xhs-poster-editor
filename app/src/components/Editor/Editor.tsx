@@ -102,6 +102,7 @@ export interface EditorHandle {
     content: object | string,
     options?: { resetHistory?: boolean },
   ) => void
+  setPageVertical: (pageIndex: number, vertical: string) => void
   getJSON: () => object | null
   insertImage: (src: string, assetId?: string) => void
   setImageWidth: (width: string | null) => void
@@ -126,6 +127,7 @@ export interface EditorHandle {
 }
 
 interface Props {
+  editable?: boolean
   onUpdate?: (html: string) => void
   initialContent?: string
   // 编辑器内点「插入图片」时通知 App 打开素材库到 image tab
@@ -142,7 +144,7 @@ export const DEFAULT_CONTENT = `
 <h1>小红书长图排版工具</h1>
 <p>使用指南 · 给非技术朋友的开箱即用工具</p>
 <hr class="divider">
-<p>写正文 → 挑主题 → 一键导出，三步做出小红书图文长图。</p>
+<p>写正文 → 挑主题 → 确认 PNG 成品并下载，做出小红书图文长图。</p>
 <blockquote>左侧写正文，中央看 9:15 成品，右侧只显示当前对象的设置。所见即所得，不用懂代码。</blockquote>
 <p>这份五页教程带你认识整个工作台。</p>
 
@@ -170,7 +172,7 @@ export const DEFAULT_CONTENT = `
 </ul>
 <p>选中 1–12 个字后点「短语不拆」，关键词就不会被换行拆开。</p>
 <p>选中文字可以加紫色荧光笔，透明度 0% 到 100% 随意调。</p>
-<blockquote>正文自动两端对齐，预览与导出逐像素一致；「分隔线」负责装饰，「插入分页」才会切页。</blockquote>
+<blockquote>正文自动两端对齐；导出前会显示实际 PNG，确认后下载同一份成品。「分隔线」负责装饰，「插入分页」才会切页。</blockquote>
 
 <hr class="page-break">
 
@@ -251,6 +253,7 @@ function findImageById(editor: Editor, imageId: string): FoundImage | null {
 export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   {
     onUpdate,
+    editable = true,
     initialContent,
     onInsertImageClick,
     onImageStateChange,
@@ -329,11 +332,11 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   }, [onHistoryStateChange, onImageStateChange, onTextSelectionStateChange])
 
   const editor = useEditor({
+    editable,
     extensions: createEditorExtensions(),
     content: normalizeIncomingContent(initialContent ?? DEFAULT_CONTENT),
     editorProps: {
-      // 富文本粘贴是异常空格的主要来源。只清理可判定的中文粗体边界，
-      // 不对纯文本、英文、URL 或 code/pre 做激进重写。
+      // 粘贴与恢复保留用户空白；这里只规范分页结构。
       transformPastedHTML: (html) =>
         normalizePageBreakHtml(normalizeChineseBoldBoundaryWhitespaceHtml(html)),
       transformPasted: stripPastedImageIds,
@@ -355,6 +358,10 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       })
     },
   })
+
+  useEffect(() => {
+    editor?.setEditable(editable, false)
+  }, [editor, editable])
 
   function replaceContent(
     content: object | string,
@@ -497,6 +504,17 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     () => ({
       setContent: (content, options) =>
         replaceContent(content, options?.resetHistory ?? false),
+      setPageVertical: (pageIndex, vertical) => {
+        if (!editor || pageIndex < 1 || !editor.isEditable) return
+        let index = 0
+        editor.state.doc.forEach((node, position) => {
+          if (node.type.name !== 'horizontalRule' || ++index !== pageIndex) return
+          editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(position, undefined, {
+            ...node.attrs, pageId: node.attrs.pageId || crypto.randomUUID(),
+            pageVertical: ['top', 'middle', 'bottom'].includes(vertical) ? vertical : null,
+          })))
+        })
+      },
       getJSON: () => editor?.getJSON() ?? null,
       insertImage: (src, assetId) => {
         // setImage 的类型签名不含自定义 attrs，走 insertContent 直接给节点 JSON

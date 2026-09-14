@@ -37,10 +37,13 @@ export function subscribeFontRegistryRevision(listener: () => void): () => void 
 export async function registerFontFromBlob(
   family: string,
   blob: Blob,
+  beforeCommit?: () => Promise<unknown>,
 ): Promise<void> {
   const ab = await blob.arrayBuffer()
   const face = new FontFace(family, ab)
   await face.load()
+  // Validate first, persist second, expose the new face only after commit.
+  await beforeCommit?.()
   const old = registered.get(family)
   if (old) document.fonts.delete(old)
   document.fonts.add(face)
@@ -103,4 +106,9 @@ export async function loadAllUserFontsWithReport(): Promise<UserFontLoadReport> 
     .filter((_, i) => results[i].status === 'rejected')
     .map((f) => f.family)
   return { families, failedFamilies }
+}
+
+/** Current immutable Blob URLs are included when freezing an export's font resources. */
+export function getUserFontResourceUrls(): string[] {
+  return [...fontUrls.values()]
 }

@@ -45,6 +45,7 @@ export function AssetLibrary(p: Props) {
   )
   const [userAssets, setUserAssets] = useState<Asset[]>([])
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   // Why: 用 label htmlFor 关联 input 触发 file picker，比 ref.click() 稳。
   // Radix Dialog 的 Portal + focus trap 在某些场景会让 hidden input.click() 静默失败
   const fileInputId = useId()
@@ -52,26 +53,40 @@ export function AssetLibrary(p: Props) {
   // 切到「我的」或换素材类型时拉一次列表
   useEffect(() => {
     if (!p.open || source !== 'user') return
-    listUserAssets(kind).then(setUserAssets)
+    listUserAssets(kind).then(setUserAssets).catch(e => setError(String(e)))
   }, [p.open, source, kind])
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploading(true)
+    setError(null)
     try {
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) continue
-        await addUserAsset(kind, file)
+        try {
+          await addUserAsset(kind, file)
+        } catch (e) {
+          throw new Error(`${file.name} 保存失败：${String(e)}。请重新选择文件重试。`, { cause: e })
+        }
       }
       setUserAssets(await listUserAssets(kind))
+    } catch (e) {
+      setError(String(e))
     } finally {
+      setUserAssets(await listUserAssets(kind).catch(() => userAssets))
       setUploading(false)
     }
   }
 
   async function handleDelete(id: string) {
-    await deleteUserAsset(id)
-    setUserAssets(await listUserAssets(kind as AssetKind))
+    setError(null)
+    try {
+      await deleteUserAsset(id)
+      setUserAssets(await listUserAssets(kind as AssetKind))
+    } catch (e) {
+      const name = userAssets.find(asset => asset.id === id)?.name ?? id
+      setError(`${name} 删除失败：${String(e)}。可再次点击删除重试。`)
+    }
   }
 
   function handlePick(asset: Asset) {
@@ -110,6 +125,7 @@ export function AssetLibrary(p: Props) {
         </DialogHeader>
 
         {/* 一级 Tab：素材类型 */}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <Tabs
           value={kind}
           onValueChange={handleKindChange}

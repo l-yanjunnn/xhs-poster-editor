@@ -1,3 +1,4 @@
+import { inspectPageGeometry, inspectPageSafeArea } from './pageGeometry'
 import {
   collectLayoutFontRequests,
   DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
@@ -134,6 +135,12 @@ export async function checkExportReadiness(
   const issues = [...imageIssues]
 
   for (const [index, page] of pages.entries()) {
+    issues.push(...inspectPageGeometry(page).map(issue => ({
+      ...issue, kind: 'layout' as const, severity: 'blocking' as const,
+      pageNumber: Number(page.dataset.pageNumber) || index + 1,
+      label: `第 ${page.dataset.pageNumber ?? index + 1} 页第 ${issue.blockIndex + 1} 段`,
+    })))
+    issues.push(...inspectPageSafeArea(page).map(issue => ({ ...issue, kind: 'layout' as const, severity: 'warning' as const, pageNumber: Number(page.dataset.pageNumber) || index + 1, label: `第 ${page.dataset.pageNumber ?? index + 1} 页第 ${issue.blockIndex + 1} 段` })))
     const state = page.dataset.layoutState
     const issueCount = Number(page.dataset.layoutIssueCount ?? '0')
     const hasSnapshot = Boolean(page.dataset.layoutSnapshot)

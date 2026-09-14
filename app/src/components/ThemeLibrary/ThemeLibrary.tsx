@@ -31,6 +31,7 @@ export function ThemeLibrary(p: Props) {
   const [source, setSource] = useState<Source>('builtin')
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function handleApply(theme: Theme) {
     p.onApply(theme)
@@ -38,19 +39,27 @@ export function ThemeLibrary(p: Props) {
   }
 
   async function handleDelete(id: string) {
-    await deleteUserTheme(id)
-    await p.onReload()
+    setError(null)
+    try {
+      await deleteUserTheme(id)
+      await p.onReload()
+    } catch (e) {
+      setError(`主题删除失败：${String(e)}。可再次点击删除重试。`)
+    }
   }
 
   async function handleSave() {
     const name = newName.trim()
     if (!name) return
     setSaving(true)
+    setError(null)
     try {
       await p.onSaveCurrent(name)
       await p.onReload()
       setNewName('')
       setSource('user') // 切到「我的」让用户立即看到新主题
+    } catch (e) {
+      setError(`${name} 保存失败：${String(e)}。可再次点击保存重试。`)
     } finally {
       setSaving(false)
     }
@@ -63,6 +72,7 @@ export function ThemeLibrary(p: Props) {
           <DialogTitle>主题</DialogTitle>
         </DialogHeader>
 
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <Tabs
           value={source}
           onValueChange={(v) => setSource(v as Source)}

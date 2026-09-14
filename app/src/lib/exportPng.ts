@@ -1,3 +1,6 @@
+import { captureExpectedGlyphPaints, observeCanvasGlyphPaints } from './canvasPaintContract'
+import { captureRenderContract, assertRenderContract } from './renderContract'
+import { inspectPageGeometry, inspectPageSafeArea } from './pageGeometry'
 import html2canvas from 'html2canvas-pro'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, EXPORT_SCALE } from './canvas'
 import { getUserFontFaceCss } from './fontRegistry'
@@ -38,16 +41,23 @@ import {
 // 收集当前 document 的全部 CSS 规则成一段 text，用于在 cloned iframe 里 inline
 function collectAllCss(): string {
   const parts: string[] = []
-  for (const sheet of Array.from(document.styleSheets)) {
+  const visit = (sheet: CSSStyleSheet) => {
     try {
       for (const rule of Array.from(sheet.cssRules)) {
-        parts.push(rule.cssText)
+        if (rule instanceof CSSImportRule) {
+          if (rule.styleSheet) visit(rule.styleSheet)
+          continue
+        }
+        parts.push(rule.cssText.replace(/url\(([^)]+)\)/g, (_whole, value: string) => {
+          const raw = value.trim().replace(/^["']|["']$/g, '')
+          return `url("${new URL(raw, sheet.href || document.baseURI).href}")`
+        }))
       }
-    } catch (e) {
-      // 跨域 stylesheet 不可读时跳过（我们的应用只有同源 CSS，正常不会触发）
-      console.warn('[exportPng] skipping cross-origin stylesheet:', e)
+    } catch (cause) {
+      throw new Error('导出无法读取当前样式，不能固定渲染版本，请检查样式资源后重试', { cause })
     }
   }
+  for (const sheet of Array.from(document.styleSheets)) visit(sheet)
   return parts.join('\n')
 }
 
@@ -62,35 +72,6 @@ export function buildExportBatchCss(): string {
 }
 
 const stableRenderHash = fnv1a32Hex
-
-function exportRenderStateHash(
-  page: HTMLElement,
-  sourceSnapshot: string,
-): string {
-  const h2 = Array.from(
-    page.querySelectorAll<HTMLElement>('.content h2'),
-    (heading) => ({
-      center: heading.style.getPropertyValue('--h2-optical-center-y'),
-      height: heading.style.getPropertyValue('--h2-optical-bar-height'),
-      state: heading.dataset.opticalH2 ?? '',
-    }),
-  )
-  const markers = Array.from(
-    page.querySelectorAll<HTMLElement>('[data-optical-list-marker]'),
-    (marker) => ({
-      text: marker.textContent ?? '',
-      style: marker.getAttribute('style') ?? '',
-    }),
-  )
-  return stableRenderHash(
-    JSON.stringify({
-      sourceSnapshot,
-      baseline: page.dataset.layoutExportBaselineHash ?? '',
-      h2,
-      markers,
-    }),
-  )
-}
 
 // 所有只用于编辑预览的覆盖层统一从导出副本中剥离。
 // 保留 `.guide` 兼容 v1.2.0 之前没有 data 属性的旧参考线节点。
@@ -107,6 +88,12 @@ export interface RenderPageOptions {
    * 仍然拒绝渲染。这不是宽泛的 skip：快照必须已封存。
    */
   allowWarnings?: boolean
+  /** Immutable input prepared before rendering any page in the batch. */
+  frozen?: {
+    contract: ReturnType<typeof captureRenderContract>
+    paints: ReturnType<typeof captureExpectedGlyphPaints>
+    rootStyle: string
+  }
   /**
    * 批级 CSS 缓存：交付层用 `buildExportBatchCss()` 在批开头算一次后
    * 透传。缺省时单页渲染自行现算，语义完全一致。
@@ -123,6 +110,9 @@ function assertPageExportable(
   page: HTMLElement,
   options?: RenderPageOptions,
 ): void {
+  const geometryIssues = inspectPageGeometry(page)
+  if (geometryIssues.length) throw new Error(geometryIssues.map(issue => `第 ${issue.blockIndex + 1} 段：${issue.message}`).join('；'))
+  if (!options?.allowWarnings && inspectPageSafeArea(page).length) throw new Error('内容超出安全区，请先确认裁切告警再导出')
   const sealed = page.dataset.layoutSnapshotPhase === 'sealed'
   const issueCount = Number(page.dataset.layoutIssueCount ?? '0')
   const state = page.dataset.layoutState
@@ -149,6 +139,8 @@ export async function pageToPngCanvas(
     throw new Error('页面的确定性排版快照尚未生成')
   }
   assertPageExportable(page, options)
+  const sourceContract = options?.frozen?.contract ?? captureRenderContract(page)
+  const expectedPaints = options?.frozen?.paints ?? captureExpectedGlyphPaints(page)
   // 1. 离屏 stage：body 直接子节点 + fixed + 屏外，无 transform 祖先
   const stage = document.createElement('div')
   stage.setAttribute('data-export-stage', '')
@@ -163,6 +155,7 @@ export async function pageToPngCanvas(
     'z-index:-1',
     'background:transparent',
   ].join(';')
+  if (options?.frozen?.rootStyle) stage.style.cssText += `;${options.frozen.rootStyle}`
   document.body.appendChild(stage)
 
   try {
@@ -171,6 +164,17 @@ export async function pageToPngCanvas(
     cloned.style.transform = 'none'
     cloned.style.width = `${CANVAS_WIDTH}px`
     cloned.style.height = `${CANVAS_HEIGHT}px`
+    // Resolve inherited typography before removing the workspace ancestors.
+    // Copy per node: freezing a unitless parent line-height as px alone would
+    // change a smaller child's used line-height (for example the page number).
+    const sourceNodes = [page, ...page.querySelectorAll<HTMLElement>('*')]
+    const cloneNodes = [cloned, ...cloned.querySelectorAll<HTMLElement>('*')]
+    if (!options?.frozen) sourceNodes.forEach((node, index) => {
+      const inherited = getComputedStyle(node)
+      for (const property of ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'color']) {
+        cloneNodes[index].style.setProperty(property, inherited.getPropertyValue(property))
+      }
+    })
     removePreviewOnlyElements(cloned)
     if (cloned.dataset.layoutSnapshot !== sourceSnapshot) {
       throw new Error('导出副本与预览的排版快照不一致')
@@ -190,6 +194,8 @@ export async function pageToPngCanvas(
         })
       }),
     )
+
+    assertRenderContract(sourceContract, captureRenderContract(cloned), '离屏副本')
 
     // 先把 html2canvas 的 Range.top + fontSize baseline 修正回
     // 行级快照记录的真实 baseline。只移动离屏 deep clone，绝不
@@ -221,7 +227,8 @@ export async function pageToPngCanvas(
     // 对了但装饰条错位”的第二份布局。这里唯一允许的 renderer 适配是
     // 上面的 atom-local baseline 位移；其余光学状态原样克隆。
     void cloned.offsetHeight
-    const renderHash = exportRenderStateHash(cloned, sourceSnapshot)
+    const rendererContract = captureRenderContract(cloned)
+    const renderHash = stableRenderHash(JSON.stringify(rendererContract))
     cloned.dataset.layoutRenderHash = renderHash
 
     // 4. 在 onclone 钩子里注入完整 CSS + 拷贝 :root 的 inline CSS vars
@@ -231,17 +238,31 @@ export async function pageToPngCanvas(
     // collectAllCss() 覆盖不到（v8 上线后发现的盲区）。
     // 批量导出时交付层预先算好 cssText 传入，单页/E2E 路径缺省现算。
     const cssText = options?.cssText ?? buildExportBatchCss()
-    const rootInlineStyle = document.documentElement.getAttribute('style') ?? ''
+    const rootInlineStyle = options?.frozen?.rootStyle ?? document.documentElement.getAttribute('style') ?? ''
 
-    const canvas = await html2canvas(cloned, {
+    const targetCanvas = document.createElement('canvas')
+    targetCanvas.width = CANVAS_WIDTH * EXPORT_SCALE
+    targetCanvas.height = CANVAS_HEIGHT * EXPORT_SCALE
+    const paintObserver = observeCanvasGlyphPaints(targetCanvas, expectedPaints)
+    let canvas: HTMLCanvasElement
+    try {
+      canvas = await html2canvas(cloned, {
+      canvas: targetCanvas,
       scale: EXPORT_SCALE,
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
+      // Prune before recursion: the iframe contains one page, its stage and styles.
+      ignoreElements: (element) => !(
+        element === stage || stage.contains(element) || element.contains(stage) ||
+        element === document.head || document.head.contains(element)
+      ),
       onclone: async (clonedDoc, clonedPage) => {
         // 注入完整 CSS：iframe 不需要从网络加载 stylesheet 就能拿到所有规则
+        // Remove original stylesheets: only this batch's pinned CSS may define the render.
+        clonedDoc.head.querySelectorAll('style, link[rel="stylesheet"]').forEach(node => node.remove())
         const styleEl = clonedDoc.createElement('style')
         styleEl.textContent = cssText
         clonedDoc.head.appendChild(styleEl)
@@ -286,8 +307,13 @@ export async function pageToPngCanvas(
           )
         }
         void clonedPage.offsetHeight
+        assertRenderContract(rendererContract, captureRenderContract(clonedPage, true), '最终渲染页面')
       },
     })
+      paintObserver.verify()
+    } finally {
+      paintObserver.restore()
+    }
     canvas.dataset.layoutSnapshot = sourceSnapshot
     canvas.dataset.layoutRenderHash = renderHash
     canvas.dataset.layoutExportBaselineHash = baselineHash
@@ -295,24 +321,6 @@ export async function pageToPngCanvas(
   } finally {
     if (stage.parentNode) stage.parentNode.removeChild(stage)
   }
-}
-
-// 检测 race artifact：v1/v2 修法下偶发的"宣纸+右黑带"race，特征是 canvas 右侧
-// 约 1/5 区域是纯黑。在 x=95% 位置纵向采样 5 个点，全黑判定为 race。
-//
-// 误判风险：用户使用纯黑背景主题时整张 canvas 都是黑色，会被误判。但 .page 背景
-// 默认是宣纸/白色，纯黑主题极少见，最多多 retry 几次浪费几秒
-function hasRaceArtifact(canvas: HTMLCanvasElement): boolean {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return false
-  const x = Math.floor(canvas.width * 0.95)
-  let blackCount = 0
-  for (let i = 1; i <= 5; i++) {
-    const y = Math.floor(canvas.height * (i / 6))
-    const p = ctx.getImageData(x, y, 1, 1).data
-    if (p[0] === 0 && p[1] === 0 && p[2] === 0) blackCount++
-  }
-  return blackCount === 5
 }
 
 async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -324,29 +332,15 @@ async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   })
 }
 
-// 截图 + 检测 race + 最多 retry 2 次。
-// v2 修法基础上单次成功率 ~80%；3 次重试理论成功率 = 1 - 0.2^3 = 99.2%
-/**
- * 把单个成品页渲染为 PNG Blob。
- * 目录导出、页码自选和兼容 ZIP 共用这一条已验证的渲染链。
+/** Only a page with verified geometry, fonts and actual glyph paints becomes a PNG.
+ * A black edge is valid artwork, not a sufficient corruption signal.
+ * Failed validation rejects; the user can retry after correcting its cause.
  */
 export async function renderPagePngBlob(
   page: HTMLElement,
   options?: RenderPageOptions,
 ): Promise<Blob> {
-  const maxAttempts = 3
-  let lastCanvas: HTMLCanvasElement | null = null
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const canvas = await pageToPngCanvas(page, options)
-    lastCanvas = canvas
-    if (!hasRaceArtifact(canvas)) {
-      return canvasToBlob(canvas)
-    }
-    // 检测到 race，等下一帧再试（让浏览器重排）
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-  }
-  // 3 次都 race，接受最后一次让用户至少能看到结果（可手动重试导出）
-  return canvasToBlob(lastCanvas!)
+  return canvasToBlob(await pageToPngCanvas(page, options))
 }
 
 // 从 Tiptap HTML 里提取首个 H1 文本作为默认文件名；没有 H1 则回退到日期

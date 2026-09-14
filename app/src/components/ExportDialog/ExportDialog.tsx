@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import type { VerifiedExport } from '@/lib/verifiedExport'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -45,6 +46,8 @@ import {
 } from '@/lib/exportDelivery'
 
 export interface ExportRequest {
+  prepareOnly?: boolean
+  prepared?: VerifiedExport
   filename: string
   selectedPages: number[]
   deliveryMode: ExportDeliveryMode
@@ -56,6 +59,7 @@ export interface ExportRequest {
 }
 
 interface Props {
+  inputVersion: string
   open: boolean
   onOpenChange: (value: boolean) => void
   defaultFilename: string
@@ -64,13 +68,14 @@ interface Props {
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
     options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
-  ) => Promise<void>
+  ) => Promise<VerifiedExport | void>
 }
 
 type PageMode = 'all' | 'selection'
 
 export function ExportDialog({
   open,
+  inputVersion,
   onOpenChange,
   defaultFilename,
   pageCount,
@@ -89,6 +94,11 @@ export function ExportDialog({
   const [confirmAll, setConfirmAll] = useState(false)
   const [confirmedAll, setConfirmedAll] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [includeDocumentDiagnostic, setIncludeDocumentDiagnostic] = useState(false)
+  const primaryButtonRef = useRef<HTMLButtonElement>(null)
+  const exportGeneration = useRef(0)
+  const previousInputVersion = useRef(inputVersion)
+  const [prepared, setPrepared] = useState<VerifiedExport | null>(null)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [readinessIssues, setReadinessIssues] = useState<
     ExportResourceIssue[]
@@ -100,9 +110,16 @@ export function ExportDialog({
   const saveFileHandleRef = useRef<ExportFileHandle | null>(null)
   const collisionByTopicRef = useRef<Map<string, number>>(new Map())
 
+  const reportInvalidation = useEffectEvent((changed: boolean) => {
+    setExportError(changed && (prepared || resumeToken) ? '文稿或样式已修改，旧成品已失效，请重新生成。' : null)
+  })
+
   /* eslint-disable react-hooks/set-state-in-effect -- controlled open defines a new export transaction and resets all prepared handles. */
   useEffect(() => {
-    if (!open) return
+    if (!open) { exportGeneration.current += 1; setPrepared(null); return }
+    exportGeneration.current += 1
+    const inputChanged = previousInputVersion.current !== inputVersion
+    previousInputVersion.current = inputVersion
     const allPages = Array.from({ length: pageCount }, (_, index) => index + 1)
     setFilename(defaultFilename)
     setPageMode('all')
@@ -116,12 +133,16 @@ export function ExportDialog({
     setExporting(false)
     setProgress({ current: 0, total: 0 })
     setReadinessIssues([])
-    setExportError(null)
+    reportInvalidation(inputChanged)
+    setIncludeDocumentDiagnostic(false)
     setResumeToken(null)
+    setPrepared(null)
     directoryParentRef.current = null
     saveFileHandleRef.current = null
-  }, [capabilities.directory, defaultFilename, open, pageCount])
+  }, [capabilities.directory, defaultFilename, open, pageCount, inputVersion])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => () => prepared?.dispose(), [prepared])
 
   const pages = pageMode === 'all'
     ? Array.from({ length: pageCount }, (_, index) => index + 1)
@@ -153,6 +174,7 @@ export function ExportDialog({
   const exampleEnd = `${formatPageNumber(exampleLastPage, Math.max(1, pageCount))}_${topic}_${exampleLastPage === 1 ? 'cover' : 'inner'}.png`
 
   function invalidatePreparedDestination() {
+    setPrepared(null)
     directoryParentRef.current = null
     saveFileHandleRef.current = null
     setResumeToken(null)
@@ -257,11 +279,12 @@ export function ExportDialog({
       return
     }
 
+    const generation = exportGeneration.current
     let destination: Awaited<ReturnType<typeof prepareDestination>> = {}
-    if (!resume) {
+    if (!resume && prepared) {
       try {
         destination = await prepareDestination()
-        if (!destination) return
+        if (!destination || generation !== exportGeneration.current) return
       } catch (cause) {
         setExportError(cause instanceof Error ? cause.message : '无法打开导出位置。')
         return
@@ -274,8 +297,10 @@ export function ExportDialog({
     if (!skipReadiness) setReadinessIssues([])
     try {
       const collisionIndex = collisionByTopicRef.current.get(topic) ?? 1
-      await onExport(
+      const result = await onExport(
         {
+          prepareOnly: !prepared && !resume,
+          prepared: prepared ?? undefined,
           filename: trimmedFilename,
           selectedPages: resume?.plan.pages ?? pages,
           deliveryMode: resume
@@ -290,12 +315,20 @@ export function ExportDialog({
         (current, total) => setProgress({ current, total }),
         { skipReadiness, allowLayoutWarnings },
       )
+      if (result) {
+        if (generation !== exportGeneration.current) { result.dispose(); return }
+        setPrepared(result)
+        window.requestAnimationFrame(() => primaryButtonRef.current?.focus())
+        setReadinessIssues([])
+        return
+      }
       collisionByTopicRef.current.set(topic, collisionIndex + 1)
       directoryParentRef.current = null
       saveFileHandleRef.current = null
       setResumeToken(null)
       onOpenChange(false)
     } catch (cause) {
+      if (generation !== exportGeneration.current) return
       if (cause instanceof ExportReadinessError) {
         setReadinessIssues(cause.issues)
       } else if (cause instanceof DirectoryExportInterruptedError) {
@@ -320,7 +353,7 @@ export function ExportDialog({
         )
       }
     } finally {
-      setExporting(false)
+      if (generation === exportGeneration.current) setExporting(false)
     }
   }
 
@@ -334,6 +367,7 @@ export function ExportDialog({
       }}
     >
       <DialogContent
+        onCloseAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('.topbar-export')?.focus() }}
         className="grid max-h-[calc(100dvh-56px)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 sm:max-w-[1080px]"
         description="选择全部或自选页码，导出到独立文件夹或单个兼容 ZIP"
       >
@@ -362,6 +396,21 @@ export function ExportDialog({
         </DialogHeader>
 
         <div className="min-h-0 overflow-y-auto px-6 py-5">
+          <label className="mb-3 flex items-center gap-2 text-xs text-neutral-600">
+            <input type="checkbox" checked={includeDocumentDiagnostic} onChange={event => setIncludeDocumentDiagnostic(event.target.checked)} />
+            本地诊断附上当前文稿文字和样式（默认不含原文，不含字体或图片文件）
+          </label>
+        {prepared?.inputVersion === inputVersion && (
+          <section aria-label="已验证 PNG 成品" className="flex max-h-[45vh] gap-3 overflow-auto rounded-lg border p-3">
+            {prepared.pages.map(page => (
+              <figure key={page.pageNumber} className="w-48 shrink-0">
+                <a href={page.previewUrl} target="_blank" rel="noreferrer" aria-label={`查看第 ${page.pageNumber} 页完整 PNG`}><img src={page.previewUrl} alt={`第 ${page.pageNumber} 页实际 PNG 成品`} className="w-full" /></a>
+                <figcaption className="text-center text-xs">第 {page.pageNumber} 页 · 下载复用此 PNG</figcaption>
+              </figure>
+            ))}
+          </section>
+        )}
+
           {confirmAll ? (
             <AllPagesConfirmation
               pageCount={pageCount}
@@ -601,6 +650,25 @@ export function ExportDialog({
               ? '返回修改'
               : '取消'}
           </Button>
+          <Button variant="outline" disabled={exporting} onClick={() => {
+            const pages = [...document.querySelectorAll<HTMLElement>('.page')]
+            let includedDocument: unknown
+            if (includeDocumentDiagnostic) {
+              try { const input = JSON.parse(inputVersion); includedDocument = { html: input[1], style: input[2], publication: input[3] } } catch { includedDocument = undefined }
+            }
+            const diagnostics = {
+              ...(includedDocument ? { document: includedDocument } : {}),
+              appVersion: __APP_VERSION__, createdAt: new Date().toISOString(), browser: navigator.userAgent,
+              style: document.documentElement.getAttribute('style'),
+              fonts: [...document.fonts].map(font => ({ family: font.family, weight: font.weight, style: font.style, status: font.status })),
+              pages: pages.map(page => ({ number: page.dataset.pageNumber, whitespaceMode: page.dataset.whitespaceMode, coverLayout: page.dataset.coverLayout, coverVertical: page.dataset.coverVertical, innerVertical: page.dataset.innerVertical, coverTopOffset: page.style.getPropertyValue('--cover-top-offset'), state: page.dataset.layoutState })),
+              issues: readinessIssues.map(issue => ({ kind: issue.kind, severity: issue.severity })),
+              verified: prepared?.metadata ?? null,
+            }
+            const url = URL.createObjectURL(new Blob([JSON.stringify(diagnostics, null, 2)], { type: 'application/json' }))
+            const link = document.createElement('a'); link.href = url; link.download = 'xhs-local-diagnostics.json'; link.click()
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+          }}>保存本地诊断</Button>
           {resumeToken ? (
             <Button
               onClick={() => void handleExport(true, resumeToken)}
@@ -643,12 +711,12 @@ export function ExportDialog({
               </Button>
             </>
           ) : confirmAll ? null : (
-            <Button onClick={() => void handleExport(false)} disabled={!canExport}>
+            <Button ref={primaryButtonRef} onClick={() => void handleExport(false)} disabled={!canExport}>
               {exporting
                 ? '导出中…'
-                : pageMode === 'all'
-                  ? `导出全部 ${pageCount} 张`
-                  : `导出所选 ${pages.length} 张`}
+                : prepared
+                  ? `下载已验证成品 ${pages.length} 张`
+                  : `生成成品预览 ${pages.length} 张`}
             </Button>
           )}
         </DialogFooter>

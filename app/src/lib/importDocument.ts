@@ -433,8 +433,9 @@ function looksBinary(source: string): boolean {
 function scanStructuralLines(lines: string[]): {
   cover: number[]
   release: number[]
+  headings: Array<{ index: number; level: number; text: string }>
 } {
-  const result = { cover: [] as number[], release: [] as number[] }
+  const result = { cover: [] as number[], release: [] as number[], headings: [] as Array<{ index: number; level: number; text: string }> }
   let fence: { character: string; minimumLength: number } | null = null
 
   lines.forEach((line, index) => {
@@ -453,6 +454,8 @@ function scanStructuralLines(lines: string[]): {
       return
     }
     if (/^\s*>/.test(line)) return
+    const heading = line.match(/^(#{1,3})\s+(.+)$/)
+    if (heading && stripInlineMarkdown(heading[2])) result.headings.push({ index, level: heading[1].length, text: stripInlineMarkdown(heading[2]) })
     if (COVER_MARKER.test(line)) result.cover.push(index)
     if (RELEASE_MARKER.test(line)) result.release.push(index)
   })
@@ -513,13 +516,7 @@ function buildPageSources(source: string, mode: SeparatorMode): string[] {
 
 function extractCoverMeta(source: string): ImportCover {
   const lines = source.split('\n')
-  const headings: Array<{ index: number; text: string }> = []
-  lines.forEach((line, index) => {
-    const match = line.match(/^##\s+(.+)$/)
-    if (match && headings.length < 2) {
-      headings.push({ index, text: stripInlineMarkdown(match[1]) })
-    }
-  })
+  const headings = scanStructuralLines(lines).headings.filter(heading => heading.level === 2).slice(0, 2)
   const consumed = new Set(headings.map((heading) => heading.index))
   return {
     title: headings[0]?.text ?? null,
@@ -531,9 +528,9 @@ function extractCoverMeta(source: string): ImportCover {
 }
 
 function extractOrdinaryTitle(source: string): ImportCover {
-  const heading = source.match(/^#{1,3}\s+(.+)$/m)
+  const heading = scanStructuralLines(source.split('\n')).headings[0]
   return {
-    title: heading ? stripInlineMarkdown(heading[1]) : '未命名文稿',
+    title: heading?.text ?? '未命名文稿',
     subtitle: null,
     bodySource: source,
   }

@@ -2,6 +2,15 @@ import type { DensityLevel } from './themes'
 
 // 间距密度：4 档预设。CSS 变量名沿用 editor.html 约定。
 export const DENSITY_MAP: Record<DensityLevel, Record<string, string>> = {
+  'ultra-compact': {
+    '--gap-paragraph': '10px',
+    '--gap-h1-after': '28px',
+    '--gap-h2-before': '32px',
+    '--gap-h2-after': '12px',
+    '--gap-h3-before': '20px',
+    '--gap-h3-after': '8px',
+    '--gap-block': '14px',
+  },
   compact: {
     '--gap-paragraph': '20px',
     '--gap-h1-after': '40px',
@@ -41,6 +50,7 @@ export const DENSITY_MAP: Record<DensityLevel, Record<string, string>> = {
 }
 
 export const DENSITY_OPTIONS: { value: DensityLevel; label: string }[] = [
+  { value: 'ultra-compact', label: '超级紧凑' },
   { value: 'compact', label: '紧凑' },
   { value: 'normal', label: '标准' },
   { value: 'relaxed', label: '宽松' },

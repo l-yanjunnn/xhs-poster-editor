@@ -14,6 +14,7 @@ import { DEFAULT_CONTENT } from '@/components/Editor/Editor'
 import type { DraftSaveStatus } from '@/components/Toolbar/Toolbar'
 import {
   clearEditorDocumentRecovery,
+  DocumentConflictError,
   deleteEditorDocument,
   describeDocumentStoreError,
   discardEditorDocumentRecovery,
@@ -79,6 +80,8 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     coverSubtitleColor: theme.coverSubtitleColor,
     coverLayout: theme.coverLayout,
     coverVertical: theme.coverVertical,
+    whitespaceMode: 'preserve',
+    coverTopOffset: theme.coverTopOffset ?? 0,
     coverSubtitleSpacing: theme.coverSubtitleSpacing,
   }
 }
@@ -144,7 +147,7 @@ export function useDraftPersistence(
     content,
     documentStyle,
     publication,
-    hydrateDocument,
+    hydrateDocument: hydrateDocumentInput,
     resourceOperationRevisionRef,
     setResourceRetrying,
     recordRecentAction,
@@ -169,6 +172,12 @@ export function useDraftPersistence(
   const dirtyDocumentRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
   const hydratingDocumentRef = useRef(false)
+  const committedVersionsRef = useRef(new Map<string, number>())
+  const lifecycleRevisionRef = useRef(0)
+  const hydrateDocument = useCallback(async (document: EditorDocumentV2) => {
+    committedVersionsRef.current.set(document.id, document.revision)
+    await hydrateDocumentInput(document)
+  }, [hydrateDocumentInput])
 
   const selectActiveDraft = useCallback((identity: DraftIdentity) => {
     // 草稿身份是资源操作的提交边界。另存为可能发生在异步重试返回前；
@@ -193,6 +202,7 @@ export function useDraftPersistence(
         ...identity,
         recoveryId: newEditorDocumentRecoveryId(),
         revision: ++documentRevisionRef.current,
+        baseRevision: committedVersionsRef.current.get(identity.id) ?? null,
         updatedAt: Date.now(),
         contentJSON,
         style: style ?? documentStyleRef.current,
@@ -215,9 +225,14 @@ export function useDraftPersistence(
 
       // IndexedDB writes are serialized so a slower old snapshot can never
       // finish after and overwrite a newer edit.
+      const lifecycleRevision = lifecycleRevisionRef.current
       const operation = saveQueueRef.current
         .catch(() => undefined)
-        .then(() => putEditorDocument(document))
+        .then(async () => {
+          if (lifecycleRevision !== lifecycleRevisionRef.current) throw new Error('页面已离开，待写内容保留在恢复日志中')
+          await putEditorDocument(document, true, committedVersionsRef.current.get(document.id) ?? null)
+          committedVersionsRef.current.set(document.id, document.revision)
+        })
       saveQueueRef.current = operation.catch(() => undefined)
 
       try {
@@ -240,6 +255,11 @@ export function useDraftPersistence(
         }
         return true
       } catch (error) {
+        if (error instanceof DocumentConflictError) {
+          clearEditorDocumentRecovery(document.id, document.recoveryId)
+          if (pendingSnapshotRef.current?.recoveryId === document.recoveryId) pendingSnapshotRef.current = null
+          setDraftDocuments(await listEditorDocuments())
+        }
         lastStorageErrorRef.current = describeDocumentStoreError(error)
         if (revision === editRevisionRef.current) {
           setDraftStorageError(lastStorageErrorRef.current)
@@ -256,6 +276,10 @@ export function useDraftPersistence(
   // 等 Tiptap 真正就绪后再读取 IndexedDB。在恢复完成前 draftReady=false，
   // 避免编辑器默认教程被自动保存后覆盖用户上次草稿。
   useEffect(() => {
+    if (writerLeaseState !== 'owned') {
+      bootstrapStartedRef.current = false
+      return
+    }
     if (
       !editorReady ||
       writerLeaseState !== 'owned' ||
@@ -284,9 +308,10 @@ export function useDraftPersistence(
         } else if (recovery && matchingPersisted) {
           if (recovery.recoveryId === matchingPersisted.recoveryId) {
             clearEditorDocumentRecovery(recovery.id, recovery.recoveryId)
-          } else if (recovery.revision > matchingPersisted.revision) {
-            shouldRecover = true
-          } else if (recovery.revision === matchingPersisted.revision) {
+          } else if (
+            (recovery.baseRevision !== undefined && recovery.baseRevision !== matchingPersisted.revision) ||
+            recovery.revision === matchingPersisted.revision
+          ) {
             // 同 revision 不同 recoveryId 只能来自另一标签页/异常写入。
             // 不覆盖正式草稿，另存冲突副本，保证两边内容都不丢。
             const now = Date.now()
@@ -304,6 +329,8 @@ export function useDraftPersistence(
             setDraftStorageError(
               '检测到另一页面的同版编辑，已另存为“冲突恢复”草稿，未覆盖当前内容。',
             )
+          } else if (recovery.revision > matchingPersisted.revision) {
+            shouldRecover = true
           } else {
             // WAL revision 更旧，说明它是已经被更新 IDB 取代的残留。
             discardEditorDocumentRecovery(recovery.id)
@@ -326,7 +353,7 @@ export function useDraftPersistence(
           hydratingDocumentRef.current = true
           await hydrateDocument(document)
           if (shouldRecover) {
-            await putEditorDocument(document)
+            await putEditorDocument(document, true, document.baseRevision)
             clearEditorDocumentRecovery(document.id, document.recoveryId)
           } else if (!activeDocument) {
             await setActiveDocumentId(document.id)
@@ -410,7 +437,7 @@ export function useDraftPersistence(
         if (pendingSnapshotRef.current?.recoveryId !== snapshot.recoveryId) {
           return
         }
-        if (!writeEditorDocumentRecovery(snapshot)) {
+        if (!writeEditorDocumentRecovery({ ...snapshot, baseRevision: committedVersionsRef.current.get(snapshot.id) ?? null })) {
           setDraftStorageError(
             '草稿内容过大或浏览器限制了临时保护；请等待“已保存”后再关闭页面。',
           )
@@ -448,7 +475,7 @@ export function useDraftPersistence(
     function captureLastChanceSnapshot(): EditorDocumentV2 | null {
       if (!draftReady || writerLeaseState !== 'owned') return null
       if (pendingSnapshotRef.current && !dirtyDocumentRef.current) {
-        writeEditorDocumentRecovery(pendingSnapshotRef.current)
+        writeEditorDocumentRecovery({ ...pendingSnapshotRef.current, baseRevision: committedVersionsRef.current.get(pendingSnapshotRef.current.id) ?? null })
         return pendingSnapshotRef.current
       }
       if (!dirtyDocumentRef.current) return null
@@ -458,7 +485,7 @@ export function useDraftPersistence(
       if (snapshot) {
         pendingSnapshotRef.current = snapshot
         dirtyDocumentRef.current = false
-        writeEditorDocumentRecovery(snapshot)
+        writeEditorDocumentRecovery({ ...snapshot, baseRevision: committedVersionsRef.current.get(snapshot.id) ?? null })
       }
       return snapshot
     }
@@ -475,6 +502,12 @@ export function useDraftPersistence(
     function handlePageHide() {
       // pagehide 生命周期内只做同步日志；浏览器可能取消任何异步 IDB 请求。
       captureLastChanceSnapshot()
+      clearAutosaveTimer()
+      lifecycleRevisionRef.current += 1
+      bootstrapStartedRef.current = false
+      pendingSnapshotRef.current = null
+      dirtyDocumentRef.current = false
+      setDraftReady(false)
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)

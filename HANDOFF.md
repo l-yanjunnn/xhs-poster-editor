@@ -1,5 +1,19 @@
 # 小红书排版编辑器 · Handoff 文档
 
+## 2026-09-14 本地候选接力（优先读取）
+
+本工作树已形成 **v1.12.0-rc.1 本地候选**，基线实际为 `2c98247aceb9db59b339167e4415fb4a274a4680`，分支 `codex/xhs-reliability-layout-20260914`。下文旧生产记录保留为历史，不能将候选当作已上线。
+
+- 工作树：`/Users/a0000/Codex_YJ/tasks/xhs-editor-20260914/candidate`。原坚果云仓库未覆盖，已有未跟踪截图保留。
+- [交付报告](/Users/a0000/Codex_YJ/tasks/xhs-editor-20260914/REPORT.md)、[构建/提交清单](/Users/a0000/Codex_YJ/tasks/xhs-editor-20260914/BUILD-MANIFEST.json)、[本地候选说明](docs/LOCAL-CANDIDATE-v1.12.0-rc.1.md)。正式预览 `http://127.0.0.1:4185/`，重启使用任务目录 START-LOCAL.command。
+- A1–A5 已按故障回放修复；ARCH-01–03 实施并验收，ARCH-04 暂保留 html2canvas-pro 隔离方案。UX-01–05 已实施，保留旧稿默认、稳定分页身份、撤销重做和保存恢复。
+- 类型/构建、lint、488 单测通过；真实 Chrome 153 完成 BFCache/双标签、资源事务中止、字体异常、最终字形/几何、19 页 ZIP、真实目录流续传与实际 PNG 字节一致回归。证据和脚本全在任务目录 evidence/ 与 checks/。
+- **Z5/Z6 仍待原始九页带格式稿、完整设置、异常原始 PNG、浏览器/系统版本**；本轮只读核实未发现到达，不催问、不发送。不能用两页重建通过关闭，也不能认定磁吸为根因。
+- 原生系统目录选择器 UI、原作者浏览器及 Safari/Edge/Windows/线上入口未完成验证，报告明确记录。ZIP 正式 UI 和实际 FileSystem writable stream 的失败/续传已通过，二者不混称。
+- 本轮授权仅本地候选：无合并、发布、部署、对外发送或上传。后续先读任务报告、构建清单和实际 git 状态，不重复运行脚本默认的线上 URL，不覆盖用户草稿。
+
+---
+
 > 给下一个会话窗口的 Claude 看的项目交接文档。
 > 🌐 **生产 URL：Cloudflare `https://xhs-poster-editor.l-yanjunnn.workers.dev`｜大陆通道 `https://xhsposter.tshzchen.cn`**
 > 最后更新：2026-08-20（**v1.11.0「封面副标题微排版」已完成 main/精确 tag、Cloudflare + OSS/CDN 双轨部署、双入口真实 Chrome / 2160×3600 PNG 生产回归、不覆盖归档与机器人私聊公告**。发布提交/tag 均指向 `5c6ccf928fcb8c9b5f5b273a95005e86f3c70c32` / `v1.11.0`；两入口与本地同一构建 `index-CStU0xGT.js` / `index-gRCFVCH5.css`。2026-08-20 12:33（北京时间）已使用 `default` 租户「Claude聊天助手」向刘彦君既有 1v1 私聊独立发送带双工具地址与权威使用说明链接的完整公告，消息 `om_x100b675c77e87ca8debe2118f437412` 已回读确认，是本版唯一可转发的正式公告；12:19 的不完整消息及 12:26 的补充回复仅保留为纠错记录。v1.11.0 上线闭环已完成，无未完成发版步骤；旧版全文在 git 历史，`git log -- HANDOFF.md` / `git show <commit>:HANDOFF.md` 可考古）

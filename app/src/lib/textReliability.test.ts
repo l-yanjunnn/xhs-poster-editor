@@ -6,8 +6,8 @@ import {
   NO_WRAP_PHRASE_MAX_LENGTH,
 } from './textReliability'
 
-describe('中文粗体边界空白清理', () => {
-  it('删除中文与粗体边界的 ASCII 空格和换行', () => {
+describe('中文粗体边界空白保留', () => {
+  it('保留中文与粗体边界的 ASCII 空格和换行', () => {
     const input = [
       '<p><strong>2025年10月</strong> 的一天，鲁师傅 ',
       '<strong>经营</strong> 了三家门店。</p>',
@@ -15,8 +15,7 @@ describe('中文粗体边界空白清理', () => {
     ].join('')
 
     expect(normalizeChineseBoldBoundaryWhitespaceHtml(input)).toBe(
-      '<p><strong>2025年10月</strong>的一天，鲁师傅<strong>经营</strong>了三家门店。</p>' +
-        '<p>工商局<strong>百日整治</strong>行动。</p>',
+      input,
     )
   })
 
@@ -25,18 +24,17 @@ describe('中文粗体边界空白清理', () => {
       '<p>举行 <span style="font-weight: 700">百日整治</span> 行动。</p>'
 
     expect(normalizeChineseBoldBoundaryWhitespaceHtml(input)).toBe(
-      '<p>举行<span style="font-weight: 700">百日整治</span>行动。</p>',
+      input,
     )
   })
 
-  it('清理中文日期/数量粗体边界的数字空格与 NBSP', () => {
+  it('保留中文日期/数量粗体边界的数字空格与 NBSP', () => {
     const input =
       '<p><strong>2026</strong> 年国考，全国约<strong>100</strong> 家企业，' +
       '<strong>100</strong>&nbsp;家门店。</p>'
 
     expect(normalizeChineseBoldBoundaryWhitespaceHtml(input)).toBe(
-      '<p><strong>2026</strong>年国考，全国约<strong>100</strong>家企业，' +
-        '<strong>100</strong>家门店。</p>',
+      input,
     )
   })
 
@@ -63,7 +61,7 @@ describe('中文粗体边界空白清理', () => {
     expect(output).toContain('<pre><code>中文   粗体\n  缩进</code></pre>')
   })
 
-  it('同样清理 setContent 使用的 Tiptap JSON，且不修改入参', () => {
+  it('保留 setContent 使用的 Tiptap JSON，且不修改入参', () => {
     const input = {
       type: 'doc',
       content: [
@@ -79,7 +77,7 @@ describe('中文粗体边界空白清理', () => {
     }
 
     const output = normalizeChineseBoldBoundaryWhitespaceJson(input)
-    expect(output.content[0].content[1].text).toBe('国考申论')
+    expect(output.content[0].content[1].text).toBe(' \n国考申论')
     expect(output.content[0].content[2].text).toBe(' keeps English space')
     expect(input.content[0].content[1].text).toBe(' \n国考申论')
   })

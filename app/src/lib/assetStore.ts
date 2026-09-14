@@ -1,3 +1,4 @@
+import { storageTransactionDone } from './storageTransaction'
 // 用户上传素材的 IndexedDB 存储层
 // 设计：图片以 Blob 原样存（IndexedDB 支持二进制，比 base64 体积小 33%），
 // 取用时转 object URL 给 <img src> 用。注意 URL 在会话内有效，组件卸载要 revoke。
@@ -71,11 +72,10 @@ export async function addUserAsset(
     blob: file,
     createdAt: Date.now(),
   }
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').add(stored)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.add(stored)
+  await committed
   return {
     id,
     name: file.name,
@@ -126,11 +126,10 @@ export async function getUserAssetById(id: string): Promise<Asset | null> {
 
 export async function deleteUserAsset(id: string): Promise<void> {
   const db = await openDB()
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').delete(id)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.delete(id)
+  await committed
   // 故意不 revoke object URL：被删素材可能仍被当前背景/Logo 或正文图片引用，
   // 立即 revoke 会让画布和导出裂图。会话内泄漏一张图的内存可接受，刷新即回收
 }

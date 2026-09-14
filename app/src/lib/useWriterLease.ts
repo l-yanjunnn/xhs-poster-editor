@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { useEffect, useState } from 'react'
 
 export type WriterLeaseState = 'checking' | 'owned' | 'conflict' | 'unsupported'
@@ -17,6 +18,8 @@ export function useWriterLease(): WriterLeaseState {
 
   useEffect(() => {
     let disposed = false
+    let suspended = false
+    let generation = 0
     let retryTimer: number | null = null
     let releaseCurrentLock: (() => void) | null = null
 
@@ -25,7 +28,7 @@ export function useWriterLease(): WriterLeaseState {
     }
 
     function scheduleRetry() {
-      if (disposed || retryTimer !== null) return
+      if (disposed || suspended || retryTimer !== null) return
       retryTimer = window.setTimeout(() => {
         retryTimer = null
         requestWriterLock()
@@ -33,7 +36,8 @@ export function useWriterLease(): WriterLeaseState {
     }
 
     function requestWriterLock() {
-      if (disposed) return
+      if (disposed || suspended) return
+      const requestGeneration = generation
       if (!('locks' in navigator)) {
         console.error('当前浏览器不支持 Web Locks，已禁止写入以保护草稿')
         transition('unsupported')
@@ -45,7 +49,7 @@ export function useWriterLease(): WriterLeaseState {
           WRITER_LOCK_NAME,
           { mode: 'exclusive', ifAvailable: true },
           async (lock) => {
-            if (disposed) return
+            if (disposed || suspended || requestGeneration !== generation) return
             if (!lock) {
               transition('conflict')
               scheduleRetry()
@@ -62,7 +66,7 @@ export function useWriterLease(): WriterLeaseState {
           },
         )
         .catch((error) => {
-          if (disposed) return
+          if (disposed || suspended || requestGeneration !== generation) return
           console.error('无法建立浏览器原子写锁，已禁止写入以保护草稿', error)
           transition('unsupported')
         })
@@ -73,12 +77,31 @@ export function useWriterLease(): WriterLeaseState {
       releaseCurrentLock = null
     }
 
+    function handlePageHide() {
+      suspended = true
+      generation += 1
+      if (retryTimer !== null) window.clearTimeout(retryTimer)
+      retryTimer = null
+      transition('checking')
+      releaseLock()
+    }
+
+    function handlePageShow(event: PageTransitionEvent) {
+      if (!event.persisted) return
+      suspended = false
+      // React remains mounted in BFCache: commit read-only before requesting anew.
+      flushSync(() => transition('checking'))
+      requestWriterLock()
+    }
+
     requestWriterLock()
-    window.addEventListener('pagehide', releaseLock)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('pageshow', handlePageShow)
     return () => {
       disposed = true
       if (retryTimer !== null) window.clearTimeout(retryTimer)
-      window.removeEventListener('pagehide', releaseLock)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('pageshow', handlePageShow)
       releaseLock()
     }
   }, [])

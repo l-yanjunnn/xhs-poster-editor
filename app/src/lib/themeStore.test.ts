@@ -35,7 +35,12 @@ function createIndexedDbStub(): IDBFactory {
 
   const database = {
     objectStoreNames: { contains: () => true },
-    transaction: () => ({ objectStore: () => objectStore }),
+    transaction: () => {
+      const transaction = new EventTarget()
+      Object.assign(objectStore, { transaction })
+      queueMicrotask(() => queueMicrotask(() => transaction.dispatchEvent(new Event('complete'))))
+      return Object.assign(transaction, { objectStore: () => objectStore })
+    },
   } as unknown as IDBDatabase
 
   return {

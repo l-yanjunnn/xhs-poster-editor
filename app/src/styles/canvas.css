@@ -225,12 +225,17 @@
 .page--first[data-cover-vertical="middle"] .content {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
 }
 .page--first[data-cover-vertical="bottom"] .content {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: safe flex-end;
+}
+
+/* Fixed deterministic lines own their height; flex must never shrink blocks. */
+.page--first .content > * {
+  flex-shrink: 0;
 }
 
 .page--first[data-cover-layout="poster-center"] .content > h1:first-of-type {
@@ -961,4 +966,12 @@
 .content > * + hr,
 .content > hr + * {
   margin-top: var(--gap-block);
+}
+
+/* Additive layout controls. Missing attributes preserve legacy geometry. */
+.page--first .content {
+  padding-top: calc(var(--page-padding-top) + var(--cover-top-offset, 0px));
+}
+.page:not(.page--first) .content {
+  padding-top: calc(var(--page-padding-top) + var(--inner-top-shift, 0px));
 }

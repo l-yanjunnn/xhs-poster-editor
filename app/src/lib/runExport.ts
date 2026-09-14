@@ -1,3 +1,5 @@
+import { inspectPageSafeArea } from './pageGeometry'
+import { prepareVerifiedExport, type VerifiedExport } from './verifiedExport'
 import type { ExportRequest } from '@/components/ExportDialog/ExportDialog'
 import {
   hasBlockingDeterministicLayoutIssues,
@@ -41,6 +43,7 @@ export interface RunExportOptions {
 }
 
 export interface RunExportContext {
+  inputVersion?: string
   canvasGestureActive: boolean
   themeApplying: boolean
   /** App 的 pageRefs.current：与渲染中的 .page DOM 同一数组引用 */
@@ -66,7 +69,7 @@ export async function runExport(
   onProgress: (current: number, total: number) => void,
   options: RunExportOptions | undefined,
   context: RunExportContext,
-): Promise<void> {
+): Promise<VerifiedExport | void> {
   const {
     canvasGestureActive,
     themeApplying,
@@ -194,12 +197,12 @@ export async function runExport(
     // warning（如 unsatisfied-line）需要用户在弹窗里明确确认
     // 「按当前预览强制导出」后才放行。
     assertNoBlockingExportIssues(issues, {
-      allowWarnings: options?.allowLayoutWarnings,
+      allowWarnings: options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings,
     })
   }
   // 强制导出的 warning 记录以页面 DOM 为准写入导出清单；快照 ID 与
   // 实际渲染使用同一 sealed snapshot。
-  const confirmedWarnings = options?.allowLayoutWarnings
+  const confirmedWarnings = (options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings)
     ? selectedElements.flatMap((page, index) => {
         if (page.dataset.layoutState !== 'ready-with-warnings') return []
         const parsed = readDeterministicLayoutIssues(page)
@@ -219,7 +222,16 @@ export async function runExport(
         }))
       })
     : []
-  const allowWarnings = Boolean(options?.allowLayoutWarnings)
+  if (options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings) {
+    confirmedWarnings.push(...selectedElements.flatMap((page, index) => inspectPageSafeArea(page).map(issue => ({ pageNumber: plan.pages[index], code: issue.code, blockText: issue.blockText, message: issue.message, snapshotId: page.dataset.layoutSnapshot ?? '' }))))
+  }
+  const allowWarnings = Boolean(options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings)
+  const inputVersion = context.inputVersion ?? allPageElements.map(page => page.dataset.layoutSnapshot).join(':')
+  const existing = request.prepared ?? request.resumeToken?.prepared
+  if (existing && existing.inputVersion !== inputVersion) throw new Error('文稿已修改，旧成品已失效，请重新生成')
+  const prepared = existing ?? await prepareVerifiedExport(allPageElements, plan.pages, inputVersion, allowWarnings, onProgress)
+  prepared.assertCurrent()
+  if (request.prepareOnly) return prepared
   if (request.resumeToken) {
     await resumeDirectoryExport(
       request.resumeToken,
@@ -249,6 +261,7 @@ export async function runExport(
       onProgress,
       allowWarnings,
       startCollisionIndex: request.collisionIndex,
+      prepared,
     })
     recordRecentAction(`已导出 ${completedPlan.pages.length} 张到独立文件夹`)
     return
@@ -274,6 +287,7 @@ export async function runExport(
     saveFileHandle: request.saveFileHandle,
     onProgress,
     allowWarnings,
+    prepared,
   })
   recordRecentAction(`已导出 ${zipPlan.pages.length} 张到单个兼容 ZIP`)
 }

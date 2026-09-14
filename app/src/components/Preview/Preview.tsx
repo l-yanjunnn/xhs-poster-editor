@@ -1,3 +1,5 @@
+import { alignInnerPage } from '@/lib/pageLayout'
+import { inspectPageGeometry } from '@/lib/pageGeometry'
 import {
   forwardRef,
   memo,
@@ -53,6 +55,9 @@ import type { ThemeKey } from '@/lib/themes'
 interface Props {
   html: string
   themeClass: ThemeKey
+  whitespaceMode?: 'legacy' | 'preserve'
+  coverTopOffset?: number
+  innerVertical?: string
   coverLayout?: CoverLayout
   coverVertical?: CoverVertical
   coverSubtitleSpacing?: CoverSubtitleSpacing
@@ -138,15 +143,15 @@ function cssPadding(
   fallbackProperty: 'paddingLeft' | 'paddingTop' | 'paddingBottom',
 ): number {
   return (
-    parseCssLength(pageStyle.getPropertyValue(variable)) ??
     parseCssLength(contentStyle[fallbackProperty]) ??
+    parseCssLength(pageStyle.getPropertyValue(variable)) ??
     0
   )
 }
 
 /**
  * 把当前 `.page` 的 CSS 安全区转成 1080×1800 画布坐标。
- * 优先读页面角色上的 `--page-padding-*`，并结合真实 content rect；
+ * 优先读实际 padding（包含封面偏移），再回退到主题变量，并结合真实 content rect；
  * 因此 Cover / Inner / 旧主题不需要在交互层重复一套常量。
  */
 function measurePreviewCanvasGeometry(
@@ -294,6 +299,9 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
   {
     html,
     themeClass,
+    whitespaceMode = 'legacy',
+    coverTopOffset = 0,
+    innerVertical = 'inherit',
     coverLayout = DEFAULT_COVER_LAYOUT,
     coverVertical = DEFAULT_COVER_VERTICAL,
     coverSubtitleSpacing = DEFAULT_COVER_SUBTITLE_SPACING,
@@ -344,6 +352,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
       makeContentImagesKeyboardAccessible(contentRef.current)
     }
     calibratePageTypographyNow(page, true)
+    alignInnerPage(page)
   }, [
     html,
     isFirstPage,
@@ -355,6 +364,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
+    whitespaceMode, coverTopOffset, innerVertical,
   ])
 
   const findSelectedImage = useCallback(() => {
@@ -430,7 +440,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
       const lastRect = last.getBoundingClientRect()
       const safeBottom =
         geometry.pageTop + geometry.contentBottom * geometry.scale
-      setOverflowing(lastRect.bottom > safeBottom + 1)
+      setOverflowing(lastRect.bottom > safeBottom + 1 || Boolean(pageRef.current && inspectPageGeometry(pageRef.current).length))
     },
     [refreshCanvasGeometry],
   )
@@ -593,6 +603,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
           throw new Error('列表序号字体就绪后列宽仍不稳定')
         }
 
+        alignInnerPage(page)
         sealDeterministicTypographySnapshot(page)
         page.removeAttribute('data-layout-font-issues')
         // warning-only（如 unsatisfied-line）的页面同样封存快照：
@@ -645,6 +656,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
+    whitespaceMode, coverTopOffset, innerVertical,
   ])
 
   useLayoutEffect(() => {
@@ -980,6 +992,9 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
             ref={setPageNode}
             className={cn('page', themeClass, isFirstPage && 'page--first')}
             data-page-number={pageIndex + 1}
+            data-whitespace-mode={whitespaceMode}
+            data-inner-vertical={!isFirstPage ? innerVertical : undefined}
+            style={{ '--cover-top-offset': `${coverTopOffset}px` } as CSSProperties}
             {...coverSlotDataset(
               isFirstPage,
               coverLayout,

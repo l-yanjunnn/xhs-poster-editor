@@ -1,3 +1,4 @@
+import { normalizeCoverTopOffset } from './pageLayout'
 // 主题数据模型 + 内置主题 + 共享映射表
 // 主题里只存 assetId（不存 blob URL），apply 时再 resolve，避免 session 间失效
 
@@ -22,7 +23,7 @@ export type OverlayKey =
   | 'dark-30'
   | 'dark-60'
   | 'dark-80'
-export type DensityLevel = 'compact' | 'normal' | 'relaxed' | 'loose'
+export type DensityLevel = 'ultra-compact' | 'compact' | 'normal' | 'relaxed' | 'loose'
 export type H1Width = '50%' | '66%' | '80%' | '100%'
 // 决定 .page div 的色彩 CSS class
 export type ThemeKey =
@@ -60,6 +61,7 @@ export interface Theme {
   coverSubtitleColor: string
   coverLayout: CoverLayout
   coverVertical: CoverVertical
+  coverTopOffset?: number
   coverSubtitleSpacing: CoverSubtitleSpacing
 
   // 正文（可选）— null = 仅样式；object = 含 Tiptap doc JSON
@@ -220,6 +222,7 @@ const VALID_OVERLAYS = new Set<OverlayKey>([
 ])
 const VALID_H1_WIDTHS = new Set<H1Width>(['50%', '66%', '80%', '100%'])
 const VALID_DENSITIES = new Set<DensityLevel>([
+  'ultra-compact',
   'compact',
   'normal',
   'relaxed',
@@ -306,6 +309,7 @@ export function normalizeTheme(value: unknown): Theme | null {
       normalizeHexColor(theme.coverTitleColor) ?? fallbackColors.title,
     coverSubtitleColor:
       normalizeHexColor(theme.coverSubtitleColor) ?? fallbackColors.subtitle,
+    coverTopOffset: normalizeCoverTopOffset(theme.coverTopOffset),
     coverLayout: normalizeCoverLayout(theme.coverLayout),
     coverVertical: normalizeCoverVertical(theme.coverVertical),
     coverSubtitleSpacing: normalizeCoverSubtitleSpacing(

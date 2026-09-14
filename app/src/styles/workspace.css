@@ -15,7 +15,7 @@
   overflow: hidden;
   background: var(--workspace-canvas);
   color: var(--workspace-ink);
-  font-family: "Geist Variable", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .workspace-topbar {
@@ -1003,5 +1003,19 @@
   }
   .topbar-save-status.is-working .topbar-save-dot {
     animation: none;
+  }
+}
+
+.page-layout-controls { margin: 12px; padding: 12px; border: 1px solid var(--border, #ddd); border-radius: 10px; display: grid; gap: 10px; font: inherit; }
+.page-layout-controls legend { font-weight: 600; padding: 0 5px; }
+.page-layout-controls label { display: grid; gap: 5px; font-size: 12px; }
+.page-layout-controls select { width: 100%; min-width: 0; padding: 6px; border: 1px solid #ddd; border-radius: 5px; background: var(--background, #fff); color: inherit; font: inherit; }
+.page-layout-controls small { font-size: 11px; color: #686868; }
+.page-layout-controls :is(select,input):focus-visible { outline: 2px solid #795548; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="dialog-content"], [data-slot="dialog-overlay"], .animate-spin {
+    animation: none !important;
+    transition: none !important;
   }
 }

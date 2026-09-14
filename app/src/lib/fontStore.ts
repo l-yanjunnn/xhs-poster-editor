@@ -1,3 +1,4 @@
+import { storageTransactionDone } from './storageTransaction'
 // 用户字体的 IndexedDB 存储层
 // 设计：用单独 DB（xhs-poster-fonts）避免动到 xhs-poster 已有的素材 DB 版本号。
 // keyPath = family，同 family 上传会直接覆盖（put 语义），符合直觉。
@@ -53,11 +54,10 @@ export async function putUserFont(family: string, file: File): Promise<StoredFon
     blob: file,
     createdAt: Date.now(),
   }
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').put(stored)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.put(stored)
+  await committed
   return stored
 }
 
@@ -77,9 +77,8 @@ export async function listUserFonts(): Promise<StoredFont[]> {
 
 export async function deleteUserFont(family: string): Promise<void> {
   const db = await openDB()
-  await new Promise<void>((resolve, reject) => {
-    const req = tx(db, 'readwrite').delete(family)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
+  const store = tx(db, 'readwrite')
+  const committed = storageTransactionDone(store.transaction)
+  store.delete(family)
+  await committed
 }

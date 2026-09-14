@@ -229,13 +229,13 @@ describe('封面槽位 CSS 契约', () => {
     const middle = findRule(
       '.page--first[data-cover-vertical="middle"] .content',
     )
-    expect(property(middle, 'justify-content')).toBe('center')
+    expect(property(middle, 'justify-content')).toBe('safe center')
     expect(
       property(
         findRule('.page--first[data-cover-vertical="bottom"] .content'),
         'justify-content',
       ),
-    ).toBe('flex-end')
+    ).toBe('safe flex-end')
     expect(
       rules.some((rule) =>
         rule.selectorText.includes('[data-cover-') &&

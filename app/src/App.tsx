@@ -1,3 +1,5 @@
+import { readPageLayouts } from '@/lib/pageLayout'
+import { PageLayoutControls } from '@/components/Inspector/PageLayoutControls'
 import {
   useCallback,
   useEffect,
@@ -126,6 +128,9 @@ function App() {
   const [coverSubtitleColor, setCoverSubtitleColor] = useState(
     DEFAULT_THEME.coverSubtitleColor,
   )
+  const [whitespaceMode, setWhitespaceMode] = useState<'legacy' | 'preserve'>('preserve')
+  const [coverTopOffset, setCoverTopOffset] = useState(0)
+  const [layoutPageIndex, setLayoutPageIndex] = useState(0)
   const [coverLayout, setCoverLayout] = useState(DEFAULT_THEME.coverLayout)
   const [coverVertical, setCoverVertical] = useState(
     DEFAULT_THEME.coverVertical,
@@ -294,6 +299,7 @@ function App() {
 
   const documentStyle = useMemo<EditorDocumentStyleV2>(
     () => ({
+      whitespaceMode,
       themeClass,
       overlay,
       h1Width,
@@ -315,8 +321,10 @@ function App() {
       coverLayout,
       coverVertical,
       coverSubtitleSpacing,
+      coverTopOffset,
     }),
     [
+      whitespaceMode,
       themeClass,
       overlay,
       h1Width,
@@ -338,6 +346,7 @@ function App() {
       coverLayout,
       coverVertical,
       coverSubtitleSpacing,
+      coverTopOffset,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -503,6 +512,8 @@ function App() {
     setLogoStrategy(document.style.logoStrategy)
     setCoverTitleColor(document.style.coverTitleColor)
     setCoverSubtitleColor(document.style.coverSubtitleColor)
+    setWhitespaceMode(document.style.whitespaceMode ?? 'legacy')
+    setCoverTopOffset(document.style.coverTopOffset ?? 0)
     setCoverLayout(document.style.coverLayout)
     setCoverVertical(document.style.coverVertical)
     setCoverSubtitleSpacing(document.style.coverSubtitleSpacing)
@@ -718,6 +729,7 @@ function App() {
     setLogoStrategy(theme.logoStrategy)
     setCoverTitleColor(theme.coverTitleColor)
     setCoverSubtitleColor(theme.coverSubtitleColor)
+    setCoverTopOffset(theme.coverTopOffset ?? 0)
     setCoverLayout(theme.coverLayout)
     setCoverVertical(theme.coverVertical)
     setCoverSubtitleSpacing(theme.coverSubtitleSpacing)
@@ -776,6 +788,7 @@ function App() {
       coverLayout,
       coverVertical,
       coverSubtitleSpacing,
+      coverTopOffset,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
@@ -1019,6 +1032,7 @@ function App() {
   ])
 
   const pages = useMemo(() => splitIntoPages(content), [content])
+  const pageLayouts = useMemo(() => readPageLayouts(content), [content])
 
   // v1.8 长文双向滚动联动：只写两个容器的 scrollTop，不碰正文/选区/导出 DOM。
   // 图片手势期间暂停；草稿切换/导入即清零，首次人工滚动前保持静止。
@@ -1044,7 +1058,8 @@ function App() {
     onProgress: (current: number, total: number) => void,
     options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
   ) {
-    await runExport(request, onProgress, options, {
+    return runExport(request, onProgress, options, {
+      inputVersion: JSON.stringify([activeDraft?.id, content, documentStyle, publication]),
       canvasGestureActive,
       themeApplying,
       pageElements: pageRefs.current,
@@ -1182,6 +1197,7 @@ function App() {
           onGenerate={handleGenerateImportedDraft}
         />
         <ExportDialog
+          inputVersion={JSON.stringify([activeDraft?.id, content, documentStyle, publication])}
           open={exportOpen}
           onOpenChange={setExportOpen}
           defaultFilename={suggestFilename(content)}
@@ -1192,6 +1208,7 @@ function App() {
         <main className="workspace-grid">
           <section className="workspace-editor-panel" aria-label="正文编辑">
             <EditorPane
+              editable={!interactionBlocked}
               ref={editorRef}
               onUpdate={handleEditorUpdate}
               onInsertImageClick={() => {
@@ -1209,11 +1226,11 @@ function App() {
           <section
             ref={canvasPanelRef}
             className="workspace-canvas-panel"
-            aria-label="9:15 成品画布"
+            aria-label="9:15 编辑预览"
           >
             <div className="workspace-canvas-heading" ref={canvasHeadingRef}>
               <div className="workspace-canvas-heading-info">
-                <strong>成品画布</strong>
+                <strong>编辑预览</strong>
                 <span>
                   {pages.length} 页 · 导出 {EXPORT_WIDTH} × {EXPORT_HEIGHT}
                 </span>
@@ -1224,7 +1241,7 @@ function App() {
                 aria-checked={scrollSyncOn}
                 className="topbar-switch canvas-heading-switch"
                 onClick={() => setScrollSyncOn((value) => !value)}
-                title={`${scrollSyncOn ? '关闭' : '开启'}滚动联动：编辑区与成品画布互相定位`}
+                title={`${scrollSyncOn ? '关闭' : '开启'}滚动联动：编辑区与预览互相定位`}
               >
                 <span>滚动联动</span>
                 <span className="topbar-switch-track" aria-hidden="true">
@@ -1237,7 +1254,10 @@ function App() {
               {/* eslint-disable-next-line react-hooks/refs */}
               {pages.map((pageHtml, index) => (
                 <Preview
-                  key={index}
+                  key={pageLayouts[index]?.id ?? index}
+                  whitespaceMode={whitespaceMode}
+                  coverTopOffset={coverTopOffset}
+                  innerVertical={pageLayouts[index]?.vertical ?? 'inherit'}
                   ref={getPageRefCallback(index)}
                   html={pageHtml}
                   themeClass={themeClass}
@@ -1264,6 +1284,16 @@ function App() {
           </section>
 
           <section className="workspace-inspector-panel">
+            <PageLayoutControls
+              pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
+              layouts={pageLayouts}
+              onPage={setLayoutPageIndex}
+              whitespaceMode={whitespaceMode}
+              onWhitespace={setWhitespaceMode}
+              coverTopOffset={coverTopOffset}
+              onCoverTopOffset={customize(setCoverTopOffset)}
+              onVertical={value => editorRef.current?.setPageVertical(Math.min(layoutPageIndex, pages.length - 1), value)}
+            />
             <ContextInspector
               releaseCopy={publication.releaseCopy}
               releaseCopySourceName={publication.sourceName}

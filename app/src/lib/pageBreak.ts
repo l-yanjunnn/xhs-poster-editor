@@ -217,7 +217,7 @@ export function normalizePageBreakJson<T extends object>(document: T): T {
   const content: PageBreakJsonNode[] = []
   for (const child of root.content) {
     if (isPageBreakJsonNode(child)) {
-      content.push(pageBreakJsonNode(pageBreakJsonContinuation(child)))
+      content.push({ ...child, attrs: { ...child.attrs, ...pageBreakJsonNode(pageBreakJsonContinuation(child)).attrs } })
       continue
     }
     if (isListJsonNode(child)) {

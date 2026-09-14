@@ -18,6 +18,7 @@ export interface LayoutAtomInput {
   kind: LayoutAtomKind
   /** Canvas measureText 得到的字形 advance，不含可伸缩字缝。 */
   advance: number
+  preserveSpace?: boolean
   /** 实际墨迹相对排版原点的左/右边界，用于行首尾标点光学对齐。 */
   inkLeft?: number
   inkRight?: number
@@ -240,7 +241,7 @@ function isLatinLike(kind: LayoutAtomKind): boolean {
 
 function isCollapsibleSpace(atom: LayoutAtomInput): boolean {
   return (
-    atom.kind === 'space' &&
+    atom.kind === 'space' && !atom.preserveSpace &&
     Array.from(atom.text).every(
       (character) =>
         character === ' ' ||

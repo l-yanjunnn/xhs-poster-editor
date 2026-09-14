@@ -20,9 +20,15 @@ importers:
       '@radix-ui/react-select':
         specifier: ^2.2.6
         version: 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tiptap/extension-heading':
+        specifier: 3.23.5
+        version: 3.23.5(@tiptap/core@3.23.5(@tiptap/pm@3.23.5))
       '@tiptap/extension-image':
         specifier: ^3.23.6
         version: 3.23.6(@tiptap/core@3.23.5(@tiptap/pm@3.23.5))
+      '@tiptap/extension-paragraph':
+        specifier: 3.23.5
+        version: 3.23.5(@tiptap/core@3.23.5(@tiptap/pm@3.23.5))
       '@tiptap/extension-underline':
         specifier: ^3.23.6
         version: 3.23.6(@tiptap/core@3.23.5(@tiptap/pm@3.23.5))

@@ -1,3 +1,6 @@
+import Paragraph from '@tiptap/extension-paragraph'
+import Heading from '@tiptap/extension-heading'
+import { normalizePageVertical, deduplicatePageIdentities } from '@/lib/pageLayout'
 import { Extension, Node } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Plugin } from '@tiptap/pm/state'
@@ -9,6 +12,13 @@ import { TextHighlight } from './TextHighlight'
 import { handlePageBreakPaste } from './pageBreakCommand'
 import { PageBreakContinuation } from './pageBreakContinuation'
 import { applyBlockType, toggleBlockType } from './blockTypeCommand'
+
+const LosslessParagraph = Paragraph.extend({
+  parseHTML() { return [{ tag: 'p', preserveWhitespace: 'full' }] },
+})
+const LosslessHeading = Heading.extend({
+  parseHTML() { return this.options.levels.map(level => ({ tag: `h${level}`, attrs: { level }, preserveWhitespace: 'full' as const })) },
+})
 
 // 分页节点不属于 block group，因此 listItem/blockquote 的内容表达式无法再
 // 接纳它；只有根文档显式允许 pageBreak，结构不变量由 schema 兜底。
@@ -26,6 +36,16 @@ export const RootPageBreak = Node.create({
   selectable: true,
   addAttributes() {
     return {
+      pageId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-page-id'),
+        renderHTML: attrs => attrs.pageId ? { 'data-page-id': attrs.pageId } : {},
+      },
+      pageVertical: {
+        default: null,
+        parseHTML: element => normalizePageVertical(element.getAttribute('data-page-vertical')),
+        renderHTML: attrs => attrs.pageVertical ? { 'data-page-vertical': attrs.pageVertical } : {},
+      },
       continuation: {
         default: false,
         parseHTML: (element) =>
@@ -85,7 +105,7 @@ const PageBreakInvariants = Extension.create({
             !transactions.some((transaction) => transaction.docChanged) ||
             !hasNestedPageBreak(newState.doc)
           ) {
-            return null
+            return deduplicatePageIdentities(transactions, _oldState, newState)
           }
           const normalizedJson = normalizePageBreakJson(newState.doc.toJSON())
           const normalizedDocument = newState.schema.nodeFromJSON(normalizedJson)
@@ -136,8 +156,11 @@ export function createEditorExtensions() {
     StarterKit.configure({
       document: false,
       horizontalRule: false,
-      heading: { levels: [1, 2, 3] },
+      paragraph: false,
+      heading: false,
     }),
+    LosslessParagraph,
+    LosslessHeading.configure({ levels: [1, 2, 3] }),
     PosterDocument,
     RootPageBreak,
     Divider,

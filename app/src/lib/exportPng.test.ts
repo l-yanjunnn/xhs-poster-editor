@@ -3,6 +3,12 @@ import html2canvas from 'html2canvas-pro'
 import { pageToPngCanvas, removePreviewOnlyElements } from './exportPng'
 
 vi.mock('html2canvas-pro', () => ({ default: vi.fn() }))
+// These tests cover orchestration only. Actual painting is exercised by the
+// real Chrome matrix and PNG/ZIP byte checks, not happy-dom's absent Canvas.
+vi.mock('./canvasPaintContract', () => ({
+  captureExpectedGlyphPaints: () => [],
+  observeCanvasGlyphPaints: () => ({ verify: () => undefined, restore: () => undefined }),
+}))
 
 const mockedHtml2Canvas = vi.mocked(html2canvas)
 
@@ -82,7 +88,7 @@ describe('pageToPngCanvas typography stage', () => {
     source.dataset.layoutSnapshotPhase = 'sealed'
     source.style.width = '1080px'
     source.style.height = '1800px'
-    source.innerHTML = `<div class="content">${deterministicAtom('a0', '甲')}${deterministicAtom('a1', '4')}</div>`
+    source.innerHTML = `<div class="content"><p>${deterministicAtom('a0', '甲')}${deterministicAtom('a1', '4')}</p></div>`
     document.body.appendChild(source)
     const atomRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
@@ -163,7 +169,7 @@ describe('pageToPngCanvas typography stage', () => {
     source.dataset.layoutSnapshotPhase = 'sealed'
     source.style.width = '1080px'
     source.style.height = '1800px'
-    source.innerHTML = `<div class="content">${deterministicAtom('a0', '甲')}${deterministicAtom('a1', '4')}</div>`
+    source.innerHTML = `<div class="content"><p>${deterministicAtom('a0', '甲')}${deterministicAtom('a1', '4')}</p></div>`
     document.body.appendChild(source)
     const atomRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')

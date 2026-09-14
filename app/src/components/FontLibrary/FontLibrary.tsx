@@ -25,42 +25,50 @@ interface Props {
 export function FontLibrary(p: Props) {
   const [fonts, setFonts] = useState<StoredFont[]>([])
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   // Why: 用 label htmlFor 原生关联触发 file picker，绕过 Radix Dialog Portal 中 ref.click() 可能静默失败的脆弱链路
   const fileInputId = useId()
 
   useEffect(() => {
     if (!p.open) return
-    listUserFonts().then(setFonts)
+    listUserFonts().then(setFonts).catch(e => setError(String(e)))
   }, [p.open])
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploading(true)
+    setError(null)
     try {
       for (const file of Array.from(files)) {
         if (!/\.(ttf|otf|woff2?|ttc)$/i.test(file.name)) continue
         const family = fileNameToFamily(file.name)
-        // 先注册到 document.fonts，注册失败（文件损坏）就不存 IndexedDB
         try {
-          await registerFontFromBlob(family, file)
+          await registerFontFromBlob(family, file, () => putUserFont(family, file))
         } catch (e) {
-          console.warn('字体注册失败：', file.name, e)
-          continue
+          throw new Error(`${file.name} 保存失败：${String(e)}。请重新选择文件重试。`, { cause: e })
         }
-        await putUserFont(family, file)
       }
       setFonts(await listUserFonts())
       p.onFontsChanged()
+    } catch (e) {
+      setError(String(e))
     } finally {
+      setFonts(await listUserFonts().catch(() => fonts))
+      p.onFontsChanged()
       setUploading(false)
     }
   }
 
   async function handleDelete(family: string) {
-    unregisterFont(family)
-    await deleteUserFont(family)
-    setFonts(await listUserFonts())
-    p.onFontsChanged()
+    setError(null)
+    try {
+      await deleteUserFont(family)
+      unregisterFont(family)
+      setFonts(await listUserFonts())
+      p.onFontsChanged()
+    } catch (e) {
+      setError(`${family} 删除失败：${String(e)}。可再次点击删除重试。`)
+    }
   }
 
   return (
@@ -70,6 +78,7 @@ export function FontLibrary(p: Props) {
           <DialogTitle>字体库</DialogTitle>
         </DialogHeader>
 
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <Dropzone
           uploading={uploading}
           onFiles={handleFiles}
@@ -129,7 +138,7 @@ function FontCard({
       </div>
       <button
         onClick={onDelete}
-        className="ml-3 hidden h-8 w-8 items-center justify-center rounded bg-neutral-800 text-neutral-400 hover:bg-red-600 hover:text-white group-hover:flex"
+        className="ml-3 flex h-8 w-8 items-center justify-center rounded bg-neutral-800 text-neutral-400 hover:bg-red-600 hover:text-white"
         aria-label="删除"
       >
         ×

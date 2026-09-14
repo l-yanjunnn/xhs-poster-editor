@@ -73,7 +73,8 @@ describe('低视口弹窗布局契约', () => {
       createElement(ExportDialog, {
         open: true,
         onOpenChange: vi.fn(),
-        defaultFilename: '测试文稿',
+        inputVersion: 'test-document',
+      defaultFilename: '测试文稿',
         pageCount: 19,
         onExport: vi.fn(async () => undefined),
       }),

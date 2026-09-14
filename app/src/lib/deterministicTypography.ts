@@ -413,6 +413,7 @@ function extractAtoms(
   const nowrapGroups = new WeakMap<HTMLElement, string>()
   let nextNowrapGroup = 0
   let atomIndex = 0
+  const preserveSpace = block.closest('.page')?.getAttribute('data-whitespace-mode') === 'preserve'
   let previousWasCollapsedSpace = true
 
   const appendBreak = () => {
@@ -461,7 +462,7 @@ function extractAtoms(
         const collapsibleWhitespace =
           isCollapsibleAsciiWhitespace(sourceGrapheme)
         const collapsed =
-          collapsibleWhitespace && previousWasCollapsedSpace
+          !preserveSpace && collapsibleWhitespace && previousWasCollapsedSpace
         // 布局测量把 CSS 可折叠空白当作一个普通空格，
         // 但 DOM 仍存放 sourceGrapheme；后续重复空白仅以 0
         // advance 表达折叠，不删除或替换 Unicode 文本。
@@ -483,6 +484,7 @@ function extractAtoms(
           input: {
             id: `b${blockIndex}-a${atomIndex++}`,
             text: sourceGrapheme,
+            preserveSpace,
             kind,
             advance,
             inkLeft: measuredInkLeft ?? undefined,
@@ -1376,7 +1378,7 @@ function materializeBlock(
     const meta = metaById.get(atomElement.dataset.layoutAtom ?? '')
     const limit = (meta?.style.fontSize ?? blockStyle.fontSize) * 0.45
     const correction = baseline - nativeBaseline
-    if (!measurement.measured && hasLayoutGeometry) {
+    if (!measurement.measured && hasLayoutGeometry && (atomElement.textContent ?? '').trim()) {
       baselineIssues.push({
         code: 'baseline-unmeasurable',
         blockIndex,

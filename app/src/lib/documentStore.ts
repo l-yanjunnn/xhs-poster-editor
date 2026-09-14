@@ -1,3 +1,4 @@
+import { normalizeCoverTopOffset } from './pageLayout'
 import {
   DEFAULT_COVER_LAYOUT,
   DEFAULT_COVER_SUBTITLE_SPACING,
@@ -44,6 +45,8 @@ export interface EditorDocumentStyleV1 {
 }
 
 export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
+  /** Missing = legacy layout; only new drafts opt into preserved space advances. */
+  whitespaceMode?: 'legacy' | 'preserve'
   /** 首页底图；空字符串是可持久化的“纯色封面”语义。 */
   coverBgAssetId: string
   /** 只接受已规范化的 #RRGGBB，避免恢复时注入模糊 CSS 值。 */
@@ -53,6 +56,7 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   coverLayout: CoverLayout
   coverVertical: CoverVertical
   /** 封面副标题字距；旧 V1/V2 草稿缺字段时保持既有 standard 视觉。 */
+  coverTopOffset?: number
   coverSubtitleSpacing: CoverSubtitleSpacing
 }
 
@@ -83,6 +87,8 @@ export interface EditorDocumentV1 {
 }
 
 export interface EditorDocumentV2 {
+  /** Committed revision from which a recovery snapshot was edited; null means new. */
+  baseRevision?: number | null
   schemaVersion: typeof EDITOR_DOCUMENT_SCHEMA_VERSION
   id: string
   recoveryId: string
@@ -130,6 +136,7 @@ const VALID_OVERLAYS = new Set<OverlayKey>([
 ])
 const VALID_H1_WIDTHS = new Set<H1Width>(['50%', '66%', '80%', '100%'])
 const VALID_DENSITIES = new Set<DensityLevel>([
+  'ultra-compact',
   'compact',
   'normal',
   'relaxed',
@@ -160,7 +167,7 @@ interface StoredDocumentEnvelope {
 }
 
 export interface DocumentStoreBackend {
-  put: (document: EditorDocumentV2, makeActive: boolean) => Promise<void>
+  put: (document: EditorDocumentV2, makeActive: boolean, expectedRevision?: number | null) => Promise<void>
   list: () => Promise<unknown[]>
   get: (id: string) => Promise<unknown | undefined>
   getActiveId: () => Promise<string | null>
@@ -336,12 +343,18 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
   ) {
     throw new Error('草稿数据损坏：封面颜色必须是规范六位 HEX')
   }
+  const baseRevision = (document as EditorDocumentV2).baseRevision
+  if (baseRevision !== undefined && baseRevision !== null && (!Number.isSafeInteger(baseRevision) || baseRevision < 0)) {
+    throw new Error('草稿数据损坏：恢复日志基准版本无效')
+  }
   const publication = parseDocumentPublication(document)
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION,
     style: {
       ...(style as EditorDocumentStyleV2),
+      whitespaceMode: style.whitespaceMode === 'preserve' ? 'preserve' : 'legacy',
+      coverTopOffset: normalizeCoverTopOffset(style.coverTopOffset),
       coverLayout: normalizeCoverLayout(style.coverLayout),
       coverVertical: normalizeCoverVertical(style.coverVertical),
       coverSubtitleSpacing: normalizeCoverSubtitleSpacing(
@@ -411,10 +424,20 @@ function parseStoredDocument(value: unknown): EditorDocumentV2 {
   )
 }
 
+export class DocumentConflictError extends Error {
+  readonly conflictDocumentId: string
+  constructor(conflictDocumentId: string) {
+    super('另一页面已保存了更新版本。当前修改已另存为“冲突恢复”草稿，未覆盖原稿。请从草稿库打开最新版本。')
+    this.name = 'DocumentConflictError'
+    this.conflictDocumentId = conflictDocumentId
+  }
+}
+
 /** Save a complete document snapshot and make it the last active document atomically. */
 async function putIndexedDbDocument(
   document: EditorDocumentV2,
   makeActive = true,
+  expectedRevision?: number | null,
 ): Promise<void> {
   // Validate before IndexedDB structured-clones it so bad snapshots fail loudly.
   const normalizedDocument = parseStoredDocument(document)
@@ -423,14 +446,36 @@ async function putIndexedDbDocument(
     ? [DOCUMENTS_STORE, META_STORE]
     : [DOCUMENTS_STORE]
   const transaction = db.transaction(stores, 'readwrite')
-  transaction.objectStore(DOCUMENTS_STORE).put(normalizedDocument)
-  if (makeActive) {
-    transaction.objectStore(META_STORE).put({
-      key: ACTIVE_DOCUMENT_KEY,
-      value: document.id,
-    } satisfies StoredMeta)
+  const done = transactionDone(transaction)
+  const store = transaction.objectStore(DOCUMENTS_STORE)
+  let conflictId: string | null = null
+  try {
+    const value = await requestResult(store.get(document.id))
+    const current = value === undefined ? null : parseStoredDocument(value)
+    const identical = current?.recoveryId === document.recoveryId
+    const conflict = !identical && (
+      (expectedRevision !== undefined && (current?.revision ?? null) !== expectedRevision) ||
+      (current !== null && document.revision <= current.revision)
+    )
+    if (conflict) {
+      // Preserve both sides atomically, without moving the active pointer.
+      conflictId = `document-conflict-${document.recoveryId}`
+      store.put({ ...normalizedDocument, id: conflictId, revision: 0,
+        title: `${document.title}（冲突恢复）` })
+    } else if (!identical) {
+      store.put(normalizedDocument)
+      if (makeActive) {
+        transaction.objectStore(META_STORE).put({
+          key: ACTIVE_DOCUMENT_KEY, value: document.id,
+        } satisfies StoredMeta)
+      }
+    }
+    await done
+  } catch (error) {
+    await done.catch(() => undefined)
+    throw error
   }
-  await transactionDone(transaction)
+  if (conflictId) throw new DocumentConflictError(conflictId)
 }
 
 async function listIndexedDbDocuments(): Promise<unknown[]> {
@@ -507,9 +552,10 @@ function backend(): DocumentStoreBackend {
 export async function putEditorDocument(
   document: EditorDocumentV2,
   makeActive = true,
+  expectedRevision?: number | null,
 ): Promise<void> {
   const normalizedDocument = parseStoredDocument(document)
-  await backend().put(normalizedDocument, makeActive)
+  await backend().put(normalizedDocument, makeActive, expectedRevision)
 }
 
 export async function listEditorDocuments(): Promise<EditorDocumentV2[]> {

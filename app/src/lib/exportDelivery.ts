@@ -1,3 +1,4 @@
+import type { VerifiedExport } from './verifiedExport'
 import JSZip from 'jszip'
 import { buildExportBatchCss, renderPagePngBlob } from './exportPng'
 import {
@@ -51,6 +52,7 @@ export interface ExportDestinationCapabilities {
 }
 
 export interface DirectoryExportResumeToken {
+  prepared?: VerifiedExport
   plan: FolderExportPlan
   directoryHandle: ExportDirectoryHandle
   completedPages: number[]
@@ -79,6 +81,7 @@ export class DirectoryExportInterruptedError extends Error {
 }
 
 interface BaseExecutionOptions {
+  prepared?: VerifiedExport
   pageElements: readonly HTMLElement[]
   onProgress?: (current: number, total: number) => void
   /** 仅放行 warning 级排版问题的强制导出；硬阻断仍会渲染失败。 */
@@ -121,6 +124,7 @@ export async function executeDirectoryExport({
   pageElements,
   onProgress,
   allowWarnings,
+  prepared,
   startCollisionIndex = 1,
 }: ExecuteDirectoryExportOptions): Promise<FolderExportPlan> {
   const resolved = await createUniqueDirectory(
@@ -136,6 +140,7 @@ export async function executeDirectoryExport({
     pageElements,
     onProgress,
     allowWarnings,
+    prepared,
   })
   return resolved.plan
 }
@@ -162,6 +167,7 @@ export async function executeZipExport({
   saveFileHandle,
   onProgress,
   allowWarnings,
+  prepared,
 }: ExecuteZipExportOptions): Promise<FolderExportPlan> {
   assertPageElements(plan, pageElements)
   const totalSteps = plan.pages.length + 1
@@ -170,15 +176,15 @@ export async function executeZipExport({
   if (!folder) throw new Error('无法创建 ZIP 顶层文件夹')
 
   // 批内 CSS 不会变化：开头算一次，逐页透传（含 renderPagePngBlob 的 retry）。
-  const cssText = buildExportBatchCss()
+  const cssText = prepared ? undefined : buildExportBatchCss()
   for (let index = 0; index < plan.files.length; index += 1) {
     const file = plan.files[index]
     const page = pageElements[file.pageNumber - 1]
-    const blob = await renderPagePngBlob(page, { allowWarnings, cssText })
+    const blob = prepared ? verifiedPageBlob(prepared, file.pageNumber) : await renderPagePngBlob(page, { allowWarnings, cssText })
     folder.file(file.fileName, blob)
     onProgress?.(index + 1, totalSteps)
   }
-  folder.file(plan.manifestFile.fileName, plan.manifestFile.content)
+  folder.file(plan.manifestFile.fileName, verifiedManifest(plan, prepared))
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   onProgress?.(totalSteps, totalSteps)
 
@@ -248,6 +254,7 @@ async function writeDirectoryPlan({
   pageElements,
   onProgress,
   allowWarnings,
+  prepared,
 }: DirectoryExportResumeToken & BaseExecutionOptions): Promise<void> {
   assertPageElements(plan, pageElements)
   const resume = createDirectoryResumePlan(plan, completedPages)
@@ -256,11 +263,11 @@ async function writeDirectoryPlan({
   onProgress?.(completed.length, totalSteps)
 
   // 批内 CSS 不会变化：开头算一次，逐页透传（含 renderPagePngBlob 的 retry）。
-  const cssText = buildExportBatchCss()
+  const cssText = prepared ? undefined : buildExportBatchCss()
   try {
     for (const file of resume.remainingFiles) {
       const page = pageElements[file.pageNumber - 1]
-      const blob = await renderPagePngBlob(page, { allowWarnings, cssText })
+      const blob = prepared ? verifiedPageBlob(prepared, file.pageNumber) : await renderPagePngBlob(page, { allowWarnings, cssText })
       const fileHandle = await directoryHandle.getFileHandle(file.fileName, {
         create: true,
       })
@@ -276,11 +283,11 @@ async function writeDirectoryPlan({
       { create: true },
     )
     // 清单最后落盘：它的存在即表示这个文件夹已完整交付。
-    await writeFileHandle(manifestHandle, plan.manifestFile.content)
+    await writeFileHandle(manifestHandle, verifiedManifest(plan, prepared))
     onProgress?.(totalSteps, totalSteps)
   } catch (cause) {
     throw new DirectoryExportInterruptedError(
-      { plan, directoryHandle, completedPages: completed, allowWarnings },
+      { plan, directoryHandle, completedPages: completed, allowWarnings, prepared },
       cause,
     )
   }
@@ -353,4 +360,17 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
     anchor.remove()
     URL.revokeObjectURL(url)
   }, 60_000)
+}
+
+function verifiedPageBlob(prepared: VerifiedExport, pageNumber: number): Blob {
+  prepared.assertCurrent()
+  const page = prepared.pages.find(page => page.pageNumber === pageNumber)
+  if (!page) throw new Error(`成品缺少第 ${pageNumber} 页，请重新生成`)
+  return page.blob
+}
+
+function verifiedManifest(plan: FolderExportPlan, prepared?: VerifiedExport): string {
+  if (!prepared) return plan.manifestFile.content
+  prepared.assertCurrent()
+  return JSON.stringify({ ...JSON.parse(plan.manifestFile.content), verifiedExport: prepared.metadata }, null, 2)
 }
