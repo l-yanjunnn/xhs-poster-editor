@@ -608,9 +608,9 @@ export function ExportDialog({
                     </ul>
                     {!hasBlockingReadinessIssue && layoutWarnings.length > 0 ? (
                       <p className="mt-2 leading-5">
-                        中央画布显示的就是强制导出的实际效果，差异通常只有几像素的字距。
-                        你可以返回修改（取消该段的「短语不拆」、调整整体字号或排版间距、微调该句文字），
-                        也可以按当前预览强制导出；强制导出会记录进《导出清单.json》。
+                        你可以返回修改（调整「短语不拆」、字号、排版间距或页面位置），
+                        也可以按当前排版生成成品预览。下载前请检查完整 PNG；
+                        本次确认的排版提示会记录进《导出清单.json》。
                       </p>
                     ) : null}
                   </div>

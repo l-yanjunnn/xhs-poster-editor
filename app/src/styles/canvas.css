@@ -970,7 +970,9 @@
 
 /* Additive layout controls. Missing attributes preserve legacy geometry. */
 .page--first .content {
-  padding-top: calc(var(--page-padding-top) + var(--cover-top-offset, 0px));
+  /* A position offset must not change flex's free space: padding would halve
+   * the movement when centered and cancel it entirely when bottom-aligned. */
+  top: var(--cover-top-offset, 0px);
 }
 .page:not(.page--first) .content {
   padding-top: calc(var(--page-padding-top) + var(--inner-top-shift, 0px));

@@ -1284,17 +1284,31 @@ function App() {
           </section>
 
           <section className="workspace-inspector-panel">
-            <PageLayoutControls
-              pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
-              layouts={pageLayouts}
-              onPage={setLayoutPageIndex}
-              whitespaceMode={whitespaceMode}
-              onWhitespace={setWhitespaceMode}
-              coverTopOffset={coverTopOffset}
-              onCoverTopOffset={customize(setCoverTopOffset)}
-              onVertical={value => editorRef.current?.setPageVertical(Math.min(layoutPageIndex, pages.length - 1), value)}
-            />
             <ContextInspector
+              pageLayoutControls={
+                <PageLayoutControls
+                  pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
+                  layouts={pageLayouts}
+                  onPage={index => {
+                    setLayoutPageIndex(index)
+                    const panel = canvasPanelRef.current
+                    const page = pageRefs.current[index]
+                    if (panel && page) {
+                      panel.scrollTo({
+                        top: panel.scrollTop + page.getBoundingClientRect().top
+                          - panel.getBoundingClientRect().top
+                          - (canvasHeadingRef.current?.offsetHeight ?? 0) - 24,
+                        behavior: 'instant',
+                      })
+                    }
+                  }}
+                  whitespaceMode={whitespaceMode}
+                  onWhitespace={setWhitespaceMode}
+                  coverTopOffset={coverTopOffset}
+                  onCoverTopOffset={customize(setCoverTopOffset)}
+                  onVertical={value => editorRef.current?.setPageVertical(Math.min(layoutPageIndex, pages.length - 1), value)}
+                />
+              }
               releaseCopy={publication.releaseCopy}
               releaseCopySourceName={publication.sourceName}
               onReleaseCopyChange={handleReleaseCopyChange}
