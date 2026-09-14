@@ -1,0 +1,63 @@
+{
+  "version": "1.12.0",
+  "reviewedImplementation": "ea9a57e2afe46aefea360e9b339ed8d658d18ba1",
+  "note": "Final user-approved build; supersedes the unpublished archive/dist-v1.12.0 preparation snapshot. Never overwrite either archive.",
+  "files": [
+    {
+      "file": "assets/index-C2uIX3-f.js",
+      "sha256": "e61f8a9272b919e63531dde6d3b380d003626d68bf13786570102c4e4e1ee588"
+    },
+    {
+      "file": "assets/index-E9HUD_py.css",
+      "sha256": "990a49620ce9cc6cdab1274faa068c7b8040f07dd124e81386ccd154854ab309"
+    },
+    {
+      "file": "builtin-assets/bg-public-exam-landscape-cover-v1.png",
+      "sha256": "33228831119ffced8e96785015231ad751a7ec190dfaafd0a21d474e52e2b89c"
+    },
+    {
+      "file": "builtin-assets/bg-public-exam-landscape-inner-v1.png",
+      "sha256": "613d1b4c56da3ac2a38161cc8f7751f0fc38decf806e96130020754c44707401"
+    },
+    {
+      "file": "builtin-assets/bg-xuan-paper.png",
+      "sha256": "dd93f183facc83eb190e25e90e93b0b4a1b6ef199d6fbb2443ef3371bed7719a"
+    },
+    {
+      "file": "builtin-assets/cover-layout-kicker-above-v1.png",
+      "sha256": "73aeed3a03937faeafbcc486ce30dcfaa04d23e39abd591597632cf6e4217278"
+    },
+    {
+      "file": "builtin-assets/cover-layout-poster-center-v1.png",
+      "sha256": "f26e3fbabacc564d83e8a358a3f8e0f94107ba44c06b6a4880cbec4bcb41f513"
+    },
+    {
+      "file": "builtin-assets/cover-layout-stack-left-v1.png",
+      "sha256": "e4421fd5527a0fe21c335a8771539f858b3be291010087f5f64a571f71565310"
+    },
+    {
+      "file": "builtin-assets/logo-cat-ring.png",
+      "sha256": "28fdbf065e2712280c24309cbf40683f1080f98c990bd2034a86cd81dd3ada3c"
+    },
+    {
+      "file": "favicon.svg",
+      "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66"
+    },
+    {
+      "file": "fixtures/申论还原型概括题.md",
+      "sha256": "35bea5f30c6d9f6c9e185b83c0e402f3324ccadaf030b22efdd4280ef3d3c16e"
+    },
+    {
+      "file": "fixtures/超限19页导出演示.md",
+      "sha256": "36b7add22a791033436ff583057c8700311e7fc3d71b3d9c5edbd3ff23e3574d"
+    },
+    {
+      "file": "icons.svg",
+      "sha256": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a"
+    },
+    {
+      "file": "index.html",
+      "sha256": "6988645da9d2462adfcfd271d0b84fdac1adccbef042c03b4dca0afc447b5430"
+    }
+  ]
+}
