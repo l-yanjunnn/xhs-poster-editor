@@ -40,6 +40,7 @@ function primaryFontFamily(stack: string): string {
 export interface RunExportOptions {
   skipReadiness?: boolean
   allowLayoutWarnings?: boolean
+  allowCanvasClipping?: boolean
 }
 
 export interface RunExportContext {
@@ -59,7 +60,7 @@ export interface RunExportContext {
 
 /**
  * 导出编排纯函数：预检（字体恢复 / Canvas 探针 / 已知资源问题 / DOM 就绪）、
- * 门控（blocking 永不可绕过，warning 需用户确认强制导出）、目录 / 续写 /
+ * 门控（仅画布裁切可独立二次确认，其余 blocking 不可绕过）、目录 / 续写 /
  * ZIP 三条交付路径。App 的 handleExport 只负责收集状态后调用。
  *
  * （M7 拆分第五步：逻辑自 App.tsx 的 handleExport 原样抽出，行为零变化。）
@@ -109,7 +110,12 @@ export async function runExport(
   const selectedElements = plan.pages.map(
     (pageNumber) => allPageElements[pageNumber - 1],
   )
-  if (!options?.skipReadiness) {
+  const existing = request.prepared ?? request.resumeToken?.prepared
+  const allowCanvasClipping = Boolean(existing?.allowCanvasClipping || (request.prepareOnly && options?.allowCanvasClipping))
+  if (allowCanvasClipping && !request.prepareOnly && !existing?.metadata.canvasClipping?.confirmedAt) {
+    throw new Error('请先查看裁切预览，并确认仍要导出')
+  }
+  if (!options?.skipReadiness || allowCanvasClipping) {
     const customFontFamilies = new Set(
       selectedFontStacks
         .filter((stack) => !BUILTIN_FONT_STACKS.has(stack))
@@ -193,10 +199,11 @@ export async function runExport(
       ].map((issue) => [`${issue.kind}:${issue.label}:${issue.message}`, issue]),
     )
     const issues = Array.from(issueMap.values())
-    // 门控判定与 exportReadiness 共用同一实现：blocking 永不可绕过；
+    // 门控判定与 exportReadiness 共用同一实现：仅画布裁切可独立确认；
     // warning（如 unsatisfied-line）需要用户在弹窗里明确确认
     // 「按当前预览强制导出」后才放行。
     assertNoBlockingExportIssues(issues, {
+      allowCanvasClipping,
       allowWarnings: options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings,
     })
   }
@@ -227,9 +234,9 @@ export async function runExport(
   }
   const allowWarnings = Boolean(options?.allowLayoutWarnings || request.prepared?.allowWarnings || request.resumeToken?.prepared?.allowWarnings)
   const inputVersion = context.inputVersion ?? allPageElements.map(page => page.dataset.layoutSnapshot).join(':')
-  const existing = request.prepared ?? request.resumeToken?.prepared
+  if (existing && existing.metadata.pageOrder.join(',') !== plan.pages.join(',')) throw new Error('导出页码已改变，请重新生成成品预览')
   if (existing && existing.inputVersion !== inputVersion) throw new Error('文稿已修改，旧成品已失效，请重新生成')
-  const prepared = existing ?? await prepareVerifiedExport(allPageElements, plan.pages, inputVersion, allowWarnings, onProgress)
+  const prepared = existing ?? await prepareVerifiedExport(allPageElements, plan.pages, inputVersion, allowWarnings, onProgress, allowCanvasClipping)
   prepared.assertCurrent()
   if (request.prepareOnly) return prepared
   if (request.resumeToken) {

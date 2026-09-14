@@ -1,3 +1,4 @@
+import { ClippingConfirmation } from './ClippingConfirmation'
 import type { VerifiedExport } from '@/lib/verifiedExport'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import {
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import {
   ExportReadinessError,
   isBlockingExportIssue,
+  isCanvasClippingIssue,
   type ExportResourceIssue,
 } from '@/lib/exportReadiness'
 import {
@@ -67,7 +69,7 @@ interface Props {
   onExport: (
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
-    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
+    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean; allowCanvasClipping?: boolean },
   ) => Promise<VerifiedExport | void>
 }
 
@@ -99,6 +101,15 @@ export function ExportDialog({
   const exportGeneration = useRef(0)
   const previousInputVersion = useRef(inputVersion)
   const [prepared, setPrepared] = useState<VerifiedExport | null>(null)
+  const [clippingOpen, setClippingOpen] = useState(false)
+  const [clippingPrepared, setClippingPrepared] = useState<VerifiedExport | null>(null)
+  const clippingRef = useRef<VerifiedExport | null>(null)
+  function clearClipping() {
+    clippingRef.current?.dispose()
+    clippingRef.current = null
+    setClippingPrepared(null)
+    setClippingOpen(false)
+  }
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [readinessIssues, setReadinessIssues] = useState<
     ExportResourceIssue[]
@@ -116,6 +127,7 @@ export function ExportDialog({
 
   /* eslint-disable react-hooks/set-state-in-effect -- controlled open defines a new export transaction and resets all prepared handles. */
   useEffect(() => {
+    clearClipping()
     if (!open) { exportGeneration.current += 1; setPrepared(null); return }
     exportGeneration.current += 1
     const inputChanged = previousInputVersion.current !== inputVersion
@@ -143,6 +155,7 @@ export function ExportDialog({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => () => prepared?.dispose(), [prepared])
+  useEffect(() => () => clippingRef.current?.dispose(), [])
 
   const pages = pageMode === 'all'
     ? Array.from({ length: pageCount }, (_, index) => index + 1)
@@ -156,13 +169,14 @@ export function ExportDialog({
     pages.length > 0 &&
     pageCount > 0 &&
     !exporting
+  const clippingIssues = readinessIssues.filter(isCanvasClippingIssue)
   const layoutWarnings = readinessIssues.filter(
     (issue) => !isBlockingExportIssue(issue),
   )
   const hasBlockingReadinessIssue = readinessIssues.some(
     (issue) =>
       (issue.kind === 'font' || issue.kind === 'layout') &&
-      isBlockingExportIssue(issue),
+      isBlockingExportIssue(issue) && !isCanvasClippingIssue(issue),
   )
   const hasImageReadinessIssue = readinessIssues.some(
     (issue) => issue.kind === 'image',
@@ -174,6 +188,8 @@ export function ExportDialog({
   const exampleEnd = `${formatPageNumber(exampleLastPage, Math.max(1, pageCount))}_${topic}_${exampleLastPage === 1 ? 'cover' : 'inner'}.png`
 
   function invalidatePreparedDestination() {
+    exportGeneration.current += 1
+    clearClipping()
     setPrepared(null)
     directoryParentRef.current = null
     saveFileHandleRef.current = null
@@ -257,12 +273,61 @@ export function ExportDialog({
     }
   }
 
+  async function openClippingConfirmation() {
+    const generation = ++exportGeneration.current
+    clearClipping()
+    setClippingOpen(true)
+    setExporting(true)
+    setExportError(null)
+    setProgress({ current: 0, total: pages.length })
+    try {
+      const result = await onExport({ prepareOnly: true, filename: trimmedFilename, selectedPages: pages,
+        deliveryMode, collisionIndex: collisionByTopicRef.current.get(topic) ?? 1,
+        zipFileName: normalizeZipName(zipFileName || `${topic}.zip`),
+      }, (current, total) => { if (generation === exportGeneration.current) setProgress({ current, total }) },
+      { allowLayoutWarnings: true, allowCanvasClipping: true })
+      if (!result) throw new Error('未能生成裁切预览，请重新检查')
+      if (generation !== exportGeneration.current) { result.dispose(); return }
+      clippingRef.current = result
+      setClippingPrepared(result)
+    } catch (cause) {
+      if (generation !== exportGeneration.current) return
+      if (cause instanceof ExportReadinessError) setReadinessIssues(cause.issues)
+      setExportError(cause instanceof Error ? cause.message : '裁切预览生成失败')
+    } finally { if (generation === exportGeneration.current) setExporting(false) }
+  }
+
+  function cancelClipping() {
+    exportGeneration.current += 1
+    setExporting(false)
+    clearClipping()
+  }
+
+  function confirmClippingExport() {
+    if (!clippingPrepared || exporting) return
+    try {
+      clippingPrepared.confirmCanvasClipping?.()
+      const accepted = clippingPrepared
+      clippingRef.current = null
+      setClippingPrepared(null)
+      setClippingOpen(false)
+      setPrepared(accepted)
+      setReadinessIssues([])
+      void handleExport(false, null, true, true, accepted)
+    } catch (cause) {
+      setExportError(cause instanceof Error ? cause.message : '文稿已改变，请重新生成裁切预览')
+      clearClipping()
+    }
+  }
+
   async function handleExport(
     skipReadiness = false,
     resume: DirectoryExportResumeToken | null = null,
     bypassAllConfirmation = false,
     allowLayoutWarnings = false,
+    acceptedPrepared: VerifiedExport | null = null,
   ) {
+    const exportPrepared = acceptedPrepared ?? prepared
     if (!canExport && !resume) return
     if ((skipReadiness || allowLayoutWarnings) && !resume && hasBlockingReadinessIssue) {
       setExportError('字体或确定性排版存在硬阻断问题，修复后才能导出 PNG。')
@@ -281,7 +346,7 @@ export function ExportDialog({
 
     const generation = exportGeneration.current
     let destination: Awaited<ReturnType<typeof prepareDestination>> = {}
-    if (!resume && prepared) {
+    if (!resume && exportPrepared) {
       try {
         destination = await prepareDestination()
         if (!destination || generation !== exportGeneration.current) return
@@ -299,8 +364,8 @@ export function ExportDialog({
       const collisionIndex = collisionByTopicRef.current.get(topic) ?? 1
       const result = await onExport(
         {
-          prepareOnly: !prepared && !resume,
-          prepared: prepared ?? undefined,
+          prepareOnly: !exportPrepared && !resume,
+          prepared: exportPrepared ?? undefined,
           filename: trimmedFilename,
           selectedPages: resume?.plan.pages ?? pages,
           deliveryMode: resume
@@ -371,6 +436,9 @@ export function ExportDialog({
         className="grid max-h-[calc(100dvh-56px)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 sm:max-w-[1080px]"
         description="选择全部或自选页码，导出到独立文件夹或单个兼容 ZIP"
       >
+        <ClippingConfirmation open={clippingOpen} prepared={clippingPrepared} loading={exporting}
+          progress={progress} error={exportError} pageNumbers={[...new Set(clippingIssues.map(issue => issue.pageNumber).filter((n): n is number => Boolean(n)))]}
+          onCancel={cancelClipping} onConfirm={confirmClippingExport} />
         <DialogHeader className="border-b border-neutral-200 px-6 py-5 pr-14">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -395,7 +463,7 @@ export function ExportDialog({
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-6 py-5">
+        <fieldset disabled={exporting} className="min-h-0 overflow-y-auto px-6 py-5">
           <label className="mb-3 flex items-center gap-2 text-xs text-neutral-600">
             <input type="checkbox" checked={includeDocumentDiagnostic} onChange={event => setIncludeDocumentDiagnostic(event.target.checked)} />
             本地诊断附上当前文稿文字和样式（默认不含原文，不含字体或图片文件）
@@ -595,6 +663,8 @@ export function ExportDialog({
                     <strong>
                       {hasBlockingReadinessIssue
                         ? '字体或排版预检未通过，已阻止导出'
+                        : clippingIssues.length > 0
+                          ? '内容超出画布，导出前需要确认裁切'
                         : layoutWarnings.length > 0
                           ? '排版预检发现轻微超限，需要你确认'
                           : '部分图片资源尚未就绪'}
@@ -623,7 +693,7 @@ export function ExportDialog({
               </div>
             </div>
           )}
-        </div>
+        </fieldset>
 
         <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4">
           <div className="mr-auto flex items-center gap-2 text-[10px] text-neutral-500">
@@ -662,7 +732,7 @@ export function ExportDialog({
               style: document.documentElement.getAttribute('style'),
               fonts: [...document.fonts].map(font => ({ family: font.family, weight: font.weight, style: font.style, status: font.status })),
               pages: pages.map(page => ({ number: page.dataset.pageNumber, whitespaceMode: page.dataset.whitespaceMode, coverLayout: page.dataset.coverLayout, coverVertical: page.dataset.coverVertical, innerVertical: page.dataset.innerVertical, coverTopOffset: page.style.getPropertyValue('--cover-top-offset'), state: page.dataset.layoutState })),
-              issues: readinessIssues.map(issue => ({ kind: issue.kind, severity: issue.severity })),
+              issues: readinessIssues.map(issue => ({ kind: issue.kind, severity: issue.severity, code: issue.code, pageNumber: issue.pageNumber, blockIndex: issue.blockIndex })),
               verified: prepared?.metadata ?? null,
             }
             const url = URL.createObjectURL(new Blob([JSON.stringify(diagnostics, null, 2)], { type: 'application/json' }))
@@ -681,17 +751,16 @@ export function ExportDialog({
             </Button>
           ) : readinessIssues.length > 0 ? (
             <>
-              {!hasBlockingReadinessIssue && layoutWarnings.length === 0 ? (
+              {!hasBlockingReadinessIssue && clippingIssues.length === 0 && layoutWarnings.length === 0 ? (
                 <Button variant="outline" onClick={() => void handleExport(true)} disabled={!canExport}>
                   仍然导出
                 </Button>
               ) : null}
-              {!hasBlockingReadinessIssue && layoutWarnings.length > 0 ? (
+              {!hasBlockingReadinessIssue && (layoutWarnings.length > 0 || clippingIssues.length > 0) ? (
                 <Button
                   onClick={() =>
-                    // 与图片问题混合时沿用其既有的 skip 语义；warning 白名单
-                    // 单独走 allowLayoutWarnings，不放宽任何硬阻断检查。
-                    void handleExport(hasImageReadinessIssue, null, false, true)
+                    // 裁切先展示独立浮窗；普通 warning 保持原确认流程。
+                    clippingIssues.length > 0 ? void openClippingConfirmation() : void handleExport(hasImageReadinessIssue, null, false, true)
                   }
                   disabled={!canExport}
                 >

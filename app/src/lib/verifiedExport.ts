@@ -3,13 +3,17 @@ import { captureRenderContract, assertRenderContract } from './renderContract'
 import { captureExpectedGlyphPaints } from './canvasPaintContract'
 import { getFontRegistryRevision, getUserFontResourceUrls } from './fontRegistry'
 import { fnv1a32Hex } from './stableHash'
+import { inspectPageGeometry, type PageGeometryIssue } from './pageGeometry'
 
-export interface VerifiedExportPage { pageNumber: number; blob: Blob; sha256: string; previewUrl: string }
+export const CLIPPING_PREVIEW_MARGIN = 160
+export interface VerifiedExportPage { pageNumber: number; blob: Blob; sha256: string; previewUrl: string; clipping?: { previewUrl: string; issues: PageGeometryIssue[] } }
 export interface VerifiedExport {
   inputVersion: string
   allowWarnings: boolean
+  allowCanvasClipping?: boolean
+  confirmCanvasClipping?: () => void
   pages: VerifiedExportPage[]
-  metadata: { appVersion: string; renderer: string; inputVersion: string; rootStyleHash: string; cssHash: string; pageOrder: number[]; resources: Array<{ url: string; sha256: string }>; pages: Array<{ pageNumber: number; snapshot: string; geometryHash: string; pngSha256: string; glyphCount: number; pixelCheckedGlyphs: number }> }
+  metadata: { canvasClipping?: { confirmedAt: string | null; pages: Array<{ pageNumber: number; issues: PageGeometryIssue[] }> }; appVersion: string; renderer: string; inputVersion: string; rootStyleHash: string; cssHash: string; pageOrder: number[]; resources: Array<{ url: string; sha256: string }>; pages: Array<{ pageNumber: number; snapshot: string; geometryHash: string; pngSha256: string; glyphCount: number; pixelCheckedGlyphs: number }> }
   assertCurrent: () => void
   dispose: () => void
 }
@@ -23,6 +27,7 @@ async function sha256(blob: Blob): Promise<string> {
 export async function prepareVerifiedExport(
   sourcePages: readonly HTMLElement[], pageNumbers: number[], inputVersion: string,
   allowWarnings: boolean, onProgress?: (current: number, total: number) => void,
+  allowCanvasClipping = false,
 ): Promise<VerifiedExport> {
   let disposed = false
   const rootStyle = document.documentElement.getAttribute('style') ?? ''
@@ -41,7 +46,7 @@ export async function prepareVerifiedExport(
         copies[index].style.setProperty(property, style.getPropertyValue(property))
       }
     })
-    return { page, clone, contract, paints, snapshot: page.dataset.layoutSnapshot ?? '' }
+    return { page, clone, contract, paints, clippingIssues: inspectPageGeometry(page).filter(issue => issue.code === 'content-clipped'), snapshot: page.dataset.layoutSnapshot ?? '' }
   })
   const assertCurrent = () => {
     if (disposed || rootStyle !== (document.documentElement.getAttribute('style') ?? '') || fontRevision !== getFontRegistryRevision() ||
@@ -61,7 +66,7 @@ export async function prepareVerifiedExport(
   const cleanup = () => {
     disposed = true
     for (const url of pinned.values()) URL.revokeObjectURL(url)
-    for (const page of pages) URL.revokeObjectURL(page.previewUrl)
+    for (const page of pages) { URL.revokeObjectURL(page.previewUrl); if (page.clipping) URL.revokeObjectURL(page.clipping.previewUrl) }
   }
   try {
     // Fetch only already used resource URLs; all operations are reads. Pin their bytes
@@ -83,6 +88,7 @@ export async function prepareVerifiedExport(
       appVersion: __APP_VERSION__, renderer: 'html2canvas-pro@2.0.2 / verified-boundary-v1', inputVersion: fnv1a32Hex(inputVersion),
       rootStyleHash: fnv1a32Hex(rootStyle), cssHash: fnv1a32Hex(cssText), pageOrder: [...pageNumbers], resources: resourceVersions, pages: [],
     }
+    if (allowCanvasClipping) metadata.canvasClipping = { confirmedAt: null, pages: frozen.flatMap((item, index) => item.clippingIssues.length ? [{ pageNumber: pageNumbers[index], issues: item.clippingIssues }] : []) }
     for (let index = 0; index < frozen.length; index += 1) {
       assertCurrent()
       const item = frozen[index]
@@ -95,9 +101,13 @@ export async function prepareVerifiedExport(
           if (node.image?.startsWith(`${original}|`)) node.image = replacement + node.image.slice(original.length)
         }
       }
-      const blob = await renderPagePngBlob(item.clone, { allowWarnings, cssText: frozenCss, frozen: { contract, paints: item.paints, rootStyle } })
+      const blob = await renderPagePngBlob(item.clone, { allowWarnings, allowCanvasClipping, cssText: frozenCss, frozen: { contract, paints: item.paints, rootStyle } })
       const hash = await sha256(blob)
       pages.push({ pageNumber: pageNumbers[index], blob, sha256: hash, previewUrl: URL.createObjectURL(blob) })
+      if (allowCanvasClipping && item.clippingIssues.length) {
+        const evidence = await renderPagePngBlob(item.clone, { allowWarnings, allowCanvasClipping, clippingPreviewMargin: CLIPPING_PREVIEW_MARGIN, cssText: frozenCss, frozen: { contract, paints: item.paints, rootStyle } })
+        pages.at(-1)!.clipping = { previewUrl: URL.createObjectURL(evidence), issues: item.clippingIssues }
+      }
       metadata.pages.push({ pageNumber: pageNumbers[index], snapshot: item.snapshot, geometryHash: fnv1a32Hex(JSON.stringify(item.contract)), pngSha256: hash, glyphCount: item.paints.length, pixelCheckedGlyphs: item.paints.filter(paint => paint.samples?.length).length })
       onProgress?.(index + 1, frozen.length)
     }
@@ -106,7 +116,9 @@ export async function prepareVerifiedExport(
     // PNGs no longer depend on source assets. Release the temporary pinned resource URLs.
     for (const url of pinned.values()) URL.revokeObjectURL(url)
     pinned.clear()
-    return { inputVersion, allowWarnings, pages, metadata, assertCurrent, dispose: cleanup }
+    return { inputVersion, allowWarnings, allowCanvasClipping, pages, metadata, assertCurrent, dispose: cleanup,
+      confirmCanvasClipping: () => { assertCurrent(); if (metadata.canvasClipping) metadata.canvasClipping.confirmedAt = new Date().toISOString() },
+    }
   } catch (error) {
     cleanup()
     throw error

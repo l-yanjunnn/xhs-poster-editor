@@ -1070,7 +1070,7 @@ function App() {
   async function handleExport(
     request: ExportRequest,
     onProgress: (current: number, total: number) => void,
-    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean },
+    options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean; allowCanvasClipping?: boolean },
   ) {
     return runExport(request, onProgress, options, {
       inputVersion: JSON.stringify([activeDraft?.id, content, documentStyle, publication]),

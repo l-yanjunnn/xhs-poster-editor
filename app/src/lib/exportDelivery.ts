@@ -127,6 +127,7 @@ export async function executeDirectoryExport({
   prepared,
   startCollisionIndex = 1,
 }: ExecuteDirectoryExportOptions): Promise<FolderExportPlan> {
+  if (prepared) assertClippingConfirmed(prepared)
   const resolved = await createUniqueDirectory(
     parentHandle,
     createPlanOptions,
@@ -169,6 +170,7 @@ export async function executeZipExport({
   allowWarnings,
   prepared,
 }: ExecuteZipExportOptions): Promise<FolderExportPlan> {
+  if (prepared) assertClippingConfirmed(prepared)
   assertPageElements(plan, pageElements)
   const totalSteps = plan.pages.length + 1
   const zip = new JSZip()
@@ -256,6 +258,7 @@ async function writeDirectoryPlan({
   allowWarnings,
   prepared,
 }: DirectoryExportResumeToken & BaseExecutionOptions): Promise<void> {
+  if (prepared) assertClippingConfirmed(prepared)
   assertPageElements(plan, pageElements)
   const resume = createDirectoryResumePlan(plan, completedPages)
   const completed = [...resume.completed]
@@ -364,6 +367,7 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
 
 function verifiedPageBlob(prepared: VerifiedExport, pageNumber: number): Blob {
   prepared.assertCurrent()
+  assertClippingConfirmed(prepared)
   const page = prepared.pages.find(page => page.pageNumber === pageNumber)
   if (!page) throw new Error(`成品缺少第 ${pageNumber} 页，请重新生成`)
   return page.blob
@@ -372,5 +376,10 @@ function verifiedPageBlob(prepared: VerifiedExport, pageNumber: number): Blob {
 function verifiedManifest(plan: FolderExportPlan, prepared?: VerifiedExport): string {
   if (!prepared) return plan.manifestFile.content
   prepared.assertCurrent()
+  assertClippingConfirmed(prepared)
   return JSON.stringify({ ...JSON.parse(plan.manifestFile.content), verifiedExport: prepared.metadata }, null, 2)
+}
+
+function assertClippingConfirmed(prepared: VerifiedExport): void {
+  if (prepared.allowCanvasClipping && !prepared.metadata.canvasClipping?.confirmedAt) throw new Error('裁切成品尚未确认，不能下载')
 }

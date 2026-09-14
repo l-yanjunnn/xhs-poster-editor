@@ -88,6 +88,10 @@ export interface RenderPageOptions {
    * 仍然拒绝渲染。这不是宽泛的 skip：快照必须已封存。
    */
   allowWarnings?: boolean
+  /** Separate permission for intentional canvas clipping only. */
+  allowCanvasClipping?: boolean
+  /** Evidence image only: reveal adjacent overflow without changing layout. */
+  clippingPreviewMargin?: number
   /** Immutable input prepared before rendering any page in the batch. */
   frozen?: {
     contract: ReturnType<typeof captureRenderContract>
@@ -110,7 +114,7 @@ function assertPageExportable(
   page: HTMLElement,
   options?: RenderPageOptions,
 ): void {
-  const geometryIssues = inspectPageGeometry(page)
+  const geometryIssues = inspectPageGeometry(page).filter(issue => !(options?.allowCanvasClipping && issue.code === 'content-clipped'))
   if (geometryIssues.length) throw new Error(geometryIssues.map(issue => `第 ${issue.blockIndex + 1} 段：${issue.message}`).join('；'))
   if (!options?.allowWarnings && inspectPageSafeArea(page).length) throw new Error('内容超出安全区，请先确认裁切告警再导出')
   const sealed = page.dataset.layoutSnapshotPhase === 'sealed'
@@ -150,7 +154,7 @@ export async function pageToPngCanvas(
     'top:0',
     `width:${CANVAS_WIDTH}px`,
     `height:${CANVAS_HEIGHT}px`,
-    'overflow:hidden',
+    options?.clippingPreviewMargin ? 'overflow:visible' : 'overflow:hidden',
     'pointer-events:none',
     'z-index:-1',
     'background:transparent',
@@ -241,16 +245,19 @@ export async function pageToPngCanvas(
     const rootInlineStyle = options?.frozen?.rootStyle ?? document.documentElement.getAttribute('style') ?? ''
 
     const targetCanvas = document.createElement('canvas')
-    targetCanvas.width = CANVAS_WIDTH * EXPORT_SCALE
-    targetCanvas.height = CANVAS_HEIGHT * EXPORT_SCALE
-    const paintObserver = observeCanvasGlyphPaints(targetCanvas, expectedPaints)
+    const margin = options?.allowCanvasClipping ? options.clippingPreviewMargin ?? 0 : 0
+    targetCanvas.width = (CANVAS_WIDTH + margin * 2) * EXPORT_SCALE
+    targetCanvas.height = (CANVAS_HEIGHT + margin * 2) * EXPORT_SCALE
+    const paintObserver = observeCanvasGlyphPaints(targetCanvas, expectedPaints, { allowCanvasClipping: options?.allowCanvasClipping, margin })
     let canvas: HTMLCanvasElement
     try {
       canvas = await html2canvas(cloned, {
       canvas: targetCanvas,
       scale: EXPORT_SCALE,
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
+      width: CANVAS_WIDTH + margin * 2,
+      height: CANVAS_HEIGHT + margin * 2,
+      x: -margin,
+      y: -margin,
       backgroundColor: null,
       useCORS: true,
       imageTimeout: 30_000,
@@ -308,6 +315,9 @@ export async function pageToPngCanvas(
         }
         void clonedPage.offsetHeight
         assertRenderContract(rendererContract, captureRenderContract(clonedPage, true), '最终渲染页面')
+        // This second image explains overflow; the delivered PNG uses margin=0.
+        // Change only clipping after the unchanged geometry/style contract passes.
+        if (margin) clonedPage.style.overflow = 'visible'
       },
     })
       paintObserver.verify()

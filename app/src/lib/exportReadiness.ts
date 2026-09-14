@@ -29,6 +29,11 @@ export function isBlockingExportIssue(issue: ExportResourceIssue): boolean {
   return issue.severity !== 'warning'
 }
 
+/** Canvas clipping is confirmable separately; it is never an ordinary warning. */
+export function isCanvasClippingIssue(issue: ExportResourceIssue): boolean {
+  return issue.kind === 'layout' && issue.code === 'content-clipped'
+}
+
 export class ExportReadinessError extends Error {
   readonly issues: ExportResourceIssue[]
 
@@ -257,16 +262,16 @@ export async function checkExportReadiness(
 }
 
 /**
- * 唯一的预检门控实现：blocking 永不可绕过；warning（如 unsatisfied-line）
+ * 唯一的预检门控实现：仅 content-clipped 可独立确认；其余 blocking 不可绕过。warning（如 unsatisfied-line）
  * 只有在用户明确确认 allowWarnings 后才放行。App 导出闸门在调用前把
  * checkExportReadiness 之外的补充问题（Canvas 探针、已知资源问题、
  * 字体恢复失败）concat 进 issues，再统一走这一份判定。
  */
 export function assertNoBlockingExportIssues(
   issues: ExportResourceIssue[],
-  options?: { allowWarnings?: boolean },
+  options?: { allowWarnings?: boolean; allowCanvasClipping?: boolean },
 ): void {
-  const blocking = issues.filter(isBlockingExportIssue)
+  const blocking = issues.filter(issue => isBlockingExportIssue(issue) && !(options?.allowCanvasClipping && isCanvasClippingIssue(issue)))
   if (blocking.length > 0) throw new ExportReadinessError(issues)
   if (issues.length > 0 && !options?.allowWarnings) {
     throw new ExportReadinessError(issues)

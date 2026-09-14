@@ -217,3 +217,17 @@ describe('export readiness', () => {
     ])
   })
 })
+
+describe('intentional canvas clipping consent', () => {
+  const clipping = { kind: 'layout' as const, code: 'content-clipped', severity: 'blocking' as const, label: '第 8 页第 8 段', message: '内容超出画布' }
+  it('ordinary warning confirmation does not authorize canvas clipping', () => {
+    expect(() => assertNoBlockingExportIssues([clipping], { allowWarnings: true })).toThrow(ExportReadinessError)
+    expect(() => assertNoBlockingExportIssues([clipping], { allowWarnings: true, allowCanvasClipping: true })).not.toThrow()
+  })
+  it.each(['block-overlap', 'logo-overlap', 'block-compressed', 'text-mismatch', 'new-unknown-code'])('clipping confirmation cannot authorize %s', code => {
+    expect(() => assertNoBlockingExportIssues([clipping, { ...clipping, code }], { allowWarnings: true, allowCanvasClipping: true })).toThrow(ExportReadinessError)
+  })
+  it('clipping confirmation cannot authorize font failure', () => {
+    expect(() => assertNoBlockingExportIssues([clipping, { kind: 'font', label: '字体', message: '未就绪' }], { allowWarnings: true, allowCanvasClipping: true })).toThrow(ExportReadinessError)
+  })
+})

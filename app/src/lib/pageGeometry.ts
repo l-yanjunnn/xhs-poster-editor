@@ -3,6 +3,7 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH, COVER_CROP_TOP, COVER_CROP_BOTTOM } from '
 export interface PageGeometryIssue {
   code: 'content-clipped' | 'block-compressed' | 'block-overlap' | 'logo-overlap'
   blockIndex: number
+  bounds?: { x: number; y: number; width: number; height: number }
   blockText: string
   message: string
 }
@@ -55,6 +56,8 @@ export function inspectPageGeometry(page: HTMLElement): PageGeometryIssue[] {
       const y = (r.top - bounds.top) / scale
       if (x < -1 || y < -1 || x + r.width / scale > CANVAS_WIDTH + 1 || y + r.height / scale > CANVAS_HEIGHT + 1) {
         report('content-clipped', '内容超出画布，会被裁切；请分页或调整字号、间距')
+        const issue = issues.find(issue => issue.blockIndex === blockIndex && issue.code === 'content-clipped')!
+        issue.bounds ??= { x, y, width: r.width / scale, height: r.height / scale }
       }
     }
   })

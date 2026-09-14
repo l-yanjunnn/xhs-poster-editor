@@ -51,7 +51,8 @@ export function captureExpectedGlyphPaints(page: HTMLElement): GlyphPaint[] {
 }
 
 /** Observe only this canvas instance; concurrent exports cannot steal each other's evidence. */
-export function observeCanvasGlyphPaints(canvas: HTMLCanvasElement, expected: GlyphPaint[]) {
+export function observeCanvasGlyphPaints(canvas: HTMLCanvasElement, expected: GlyphPaint[], options?: { allowCanvasClipping?: boolean; margin?: number }) {
+  const margin = options?.margin ?? 0
   const context = canvas.getContext('2d')
   if (!context) throw new Error('无法创建导出 Canvas')
   const original = context.fillText
@@ -60,10 +61,10 @@ export function observeCanvasGlyphPaints(canvas: HTMLCanvasElement, expected: Gl
     const matrix = this.getTransform()
     const metrics = this.measureText(text)
     const corners = [[x - metrics.actualBoundingBoxLeft, y - metrics.actualBoundingBoxAscent], [x + metrics.actualBoundingBoxRight, y + metrics.actualBoundingBoxDescent]]
-    const ink = corners.flatMap(([px, py]) => [(matrix.a * px + matrix.c * py + matrix.e) / EXPORT_SCALE, (matrix.b * px + matrix.d * py + matrix.f) / EXPORT_SCALE])
+    const ink = corners.flatMap(([px, py]) => [(matrix.a * px + matrix.c * py + matrix.e) / EXPORT_SCALE - margin, (matrix.b * px + matrix.d * py + matrix.f) / EXPORT_SCALE - margin])
     actual.push({ text, font: this.font, ink,
-      x: (matrix.a * x + matrix.c * y + matrix.e) / EXPORT_SCALE,
-      y: (matrix.b * x + matrix.d * y + matrix.f) / EXPORT_SCALE,
+      x: (matrix.a * x + matrix.c * y + matrix.e) / EXPORT_SCALE - margin,
+      y: (matrix.b * x + matrix.d * y + matrix.f) / EXPORT_SCALE - margin,
     })
     if (maxWidth === undefined) original.call(this, text, x, y)
     else original.call(this, text, x, y, maxWidth)
@@ -83,10 +84,18 @@ export function observeCanvasGlyphPaints(canvas: HTMLCanvasElement, expected: Gl
         if (match < 0) throw new Error(`导出丢字：未绘制「${glyph.text}」`)
         const paint = remaining.splice(match, 1)[0]
         if (distance > 1) throw new Error(`导出字形位置偏移：「${glyph.text}」偏移 ${distance.toFixed(2)} 像素`)
-        if (paint.ink && (paint.ink[0] < -1 || paint.ink[1] < -1 || paint.ink[2] > CANVAS_WIDTH + 1 || paint.ink[3] > CANVAS_HEIGHT + 1)) throw new Error(`导出字形墨迹超出画布：「${glyph.text}」会被裁切`)
+        if (!options?.allowCanvasClipping && paint.ink && (paint.ink[0] < -1 || paint.ink[1] < -1 || paint.ink[2] > CANVAS_WIDTH + 1 || paint.ink[3] > CANVAS_HEIGHT + 1)) throw new Error(`导出字形墨迹超出画布：「${glyph.text}」会被裁切`)
         if (glyph.samples?.length) {
-          const matching = glyph.samples.filter(sample => {
-            const x = Math.round(glyph.x * EXPORT_SCALE + sample.x), y = Math.round(glyph.y * EXPORT_SCALE + sample.y)
+          // Only intentional off-canvas pixels are exempt. All visible samples,
+          // draw calls, positions and fonts must still pass the original checks.
+          const visibleSamples = glyph.samples.filter(sample => {
+            if (!options?.allowCanvasClipping) return true
+            const x = Math.round((glyph.x + margin) * EXPORT_SCALE + sample.x)
+            const y = Math.round((glyph.y + margin) * EXPORT_SCALE + sample.y)
+            return x >= 0 && y >= 0 && x < pixels.width && y < pixels.height
+          })
+          const matching = visibleSamples.filter(sample => {
+            const x = Math.round((glyph.x + margin) * EXPORT_SCALE + sample.x), y = Math.round((glyph.y + margin) * EXPORT_SCALE + sample.y)
             for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) {
               const px = x + dx, py = y + dy
               if (px < 0 || py < 0 || px >= pixels.width || py >= pixels.height) continue
@@ -95,7 +104,7 @@ export function observeCanvasGlyphPaints(canvas: HTMLCanvasElement, expected: Gl
             }
             return false
           }).length
-          if (matching / glyph.samples.length < 0.95) throw new Error(`导出字形像素缺失或被遮挡：「${glyph.text}」核心墨迹 ${matching}/${glyph.samples.length}，请检查该页后重试`)
+          if (visibleSamples.length > 0 && matching / visibleSamples.length < 0.95) throw new Error(`导出字形像素缺失或被遮挡：「${glyph.text}」核心墨迹 ${matching}/${visibleSamples.length}，请检查该页后重试`)
         }
         if (paint.font !== glyph.font) throw new Error(`导出实际绘制字体不一致：「${glyph.text}」${paint.font} / ${glyph.font}`)
       }
