@@ -975,5 +975,16 @@
   top: var(--cover-top-offset, 0px);
 }
 .page:not(.page--first) .content {
-  padding-top: calc(var(--page-padding-top) + var(--inner-top-shift, 0px));
+  top: var(--inner-top-shift, 0px);
+}
+
+/* Top mode shares its first row with the logo. Reserve that row before the
+   text solver measures it; later blocks retain the full content width. */
+.page:not(.page--first)[data-inner-vertical="top"]:has(> .logo) .content > :first-child {
+  --inner-first-width: calc(1080px - var(--page-padding-x) - var(--logo-offset-x) - var(--logo-size) - 24px);
+  max-width: min(100%, var(--inner-first-width));
+  margin-bottom: var(--inner-first-clearance, 0px);
+}
+.page:not(.page--first)[data-inner-vertical="top"]:has(> .logo) .content > h1:first-child {
+  max-width: min(var(--h1-max-width), var(--inner-first-width));
 }

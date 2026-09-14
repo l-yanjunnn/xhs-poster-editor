@@ -1,4 +1,4 @@
-import { normalizeCoverTopOffset } from './pageLayout'
+import { normalizeCoverTopOffset, normalizeInnerPagePosition, type InnerPagePosition } from './pageLayout'
 import {
   DEFAULT_COVER_LAYOUT,
   DEFAULT_COVER_SUBTITLE_SPACING,
@@ -55,8 +55,10 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   /** 封面槽位；旧 V2 草稿缺字段时按 A · 上兼容。 */
   coverLayout: CoverLayout
   coverVertical: CoverVertical
-  /** 封面副标题字距；旧 V1/V2 草稿缺字段时保持既有 standard 视觉。 */
+  /** 未单独设置的内页跟随此模板默认值；旧稿保持原有留白。 */
+  innerVerticalDefault?: InnerPagePosition
   coverTopOffset?: number
+  /** 封面副标题字距；旧 V1/V2 草稿缺字段时保持既有 standard 视觉。 */
   coverSubtitleSpacing: CoverSubtitleSpacing
 }
 
@@ -354,6 +356,7 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
     style: {
       ...(style as EditorDocumentStyleV2),
       whitespaceMode: style.whitespaceMode === 'preserve' ? 'preserve' : 'legacy',
+      innerVerticalDefault: normalizeInnerPagePosition(style.innerVerticalDefault),
       coverTopOffset: normalizeCoverTopOffset(style.coverTopOffset),
       coverLayout: normalizeCoverLayout(style.coverLayout),
       coverVertical: normalizeCoverVertical(style.coverVertical),

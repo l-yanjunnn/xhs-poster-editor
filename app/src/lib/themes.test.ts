@@ -154,7 +154,7 @@ describe('built-in themes V2', () => {
         coverSubtitleSpacing,
       }
 
-      expect(normalizeTheme(source)).toEqual({ ...source, coverTopOffset: 0 })
+      expect(normalizeTheme(source)).toEqual({ ...source, coverTopOffset: 0, innerVerticalDefault: 'middle' })
     },
   )
 })

@@ -1026,13 +1026,12 @@
 .layout-document-settings { border-top: 1px solid #eaecf0; padding-top: 16px; }
 .layout-document-settings .layout-scope { margin-bottom: 9px; }
 .layout-document-settings .layout-scope > span { background: #f2f4f7; color: #667085; }
-.layout-position-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.layout-position-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .layout-position-options button { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid #e4e7ec; border-radius: 8px; padding: 9px 3px 7px; background: #fff; color: #667085; font-size: 11px; cursor: pointer; }
 .layout-position-options button[aria-pressed="true"] { border-color: #84adff; background: #eff4ff; color: #155eef; box-shadow: 0 0 0 1px #84adff; }
 .layout-position-icon { display: flex; width: 20px; height: 24px; border: 1px solid currentColor; border-radius: 3px; padding: 3px; }
 .layout-position-icon i { display: block; width: 100%; height: 7px; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; }
 .layout-position-icon.is-middle { align-items: center; }
-.layout-position-icon.is-bottom { align-items: flex-end; }
 .layout-position-icon.is-inherit { border-color: transparent; align-items: center; padding: 0; }
 .layout-position-icon svg { width: 20px; height: 20px; }
 .page-layout-controls :is(select,input,button):focus-visible { outline: 2px solid var(--workspace-blue); outline-offset: 3px; }

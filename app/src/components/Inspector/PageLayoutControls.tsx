@@ -1,8 +1,9 @@
 import { AlignVerticalDistributeCenter, PanelTop, RotateCcw } from 'lucide-react'
 import { InspectorCard } from './InspectorCard'
-import type { PageVertical } from '@/lib/pageLayout'
+import type { InnerPagePosition, PageVertical } from '@/lib/pageLayout'
 
 interface Props {
+  templateDefault: InnerPagePosition
   pageIndex: number
   layouts: Array<{ id: string | null; vertical: PageVertical }>
   onPage: (index: number) => void
@@ -36,9 +37,9 @@ export function PageLayoutControls(props: Props) {
             <div className="layout-hint-row"><p id="cover-offset-hint">整体上移或下移封面文字；内页位置独立设置。</p><button type="button" className="layout-reset" disabled={props.coverTopOffset === 0} onClick={() => props.onCoverTopOffset(0)} aria-label="恢复封面默认偏移"><RotateCcw aria-hidden="true" />重置</button></div>
           </> : <>
             <div role="group" aria-label="仅当前内页 · 垂直位置" className="layout-position-options">
-              {([['inherit', '默认'], ['top', '顶部'], ['middle', '居中'], ['bottom', '底部']] as const).map(([value, label]) => <button type="button" key={value} aria-pressed={vertical === value} onClick={() => props.onVertical(value)}><span className={`layout-position-icon is-${value}`} aria-hidden="true">{value === 'inherit' ? <AlignVerticalDistributeCenter /> : <i />}</span>{label}</button>)}
+              {([['inherit', '默认'], ['top', '顶部'], ['middle', '居中']] as const).map(([value, label]) => <button type="button" key={value} aria-pressed={vertical === value} onClick={() => props.onVertical(value)}><span className={`layout-position-icon is-${value}`} aria-hidden="true">{value === 'inherit' ? <AlignVerticalDistributeCenter /> : <i />}</span>{label}</button>)}
             </div>
-            <p className="layout-hint">只影响第 {props.pageIndex + 1} 页；选择「默认」可恢复主题位置。调整封面请切换到第 1 页。</p>
+            <p className="layout-hint">默认跟随模板（当前：{props.templateDefault === 'top' ? '顶部' : '居中'}）。顶部与 Logo 上缘对齐；居中保留原有留白。</p>
           </>}
         </div>
         <div className="layout-document-settings">

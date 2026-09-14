@@ -1,4 +1,4 @@
-import { readPageLayouts } from '@/lib/pageLayout'
+import { readPageLayouts, resolvePageVertical, normalizeInnerPagePosition, type InnerPagePosition } from '@/lib/pageLayout'
 import { PageLayoutControls } from '@/components/Inspector/PageLayoutControls'
 import {
   useCallback,
@@ -131,6 +131,7 @@ function App() {
   const [whitespaceMode, setWhitespaceMode] = useState<'legacy' | 'preserve'>('preserve')
   const [coverTopOffset, setCoverTopOffset] = useState(0)
   const [layoutPageIndex, setLayoutPageIndex] = useState(0)
+  const [innerVerticalDefault, setInnerVerticalDefault] = useState<InnerPagePosition>('middle')
   const [coverLayout, setCoverLayout] = useState(DEFAULT_THEME.coverLayout)
   const [coverVertical, setCoverVertical] = useState(
     DEFAULT_THEME.coverVertical,
@@ -322,6 +323,7 @@ function App() {
       coverVertical,
       coverSubtitleSpacing,
       coverTopOffset,
+      innerVerticalDefault,
     }),
     [
       whitespaceMode,
@@ -347,6 +349,7 @@ function App() {
       coverVertical,
       coverSubtitleSpacing,
       coverTopOffset,
+      innerVerticalDefault,
     ],
   )
   const documentStyleRef = useRef(documentStyle)
@@ -514,6 +517,7 @@ function App() {
     setCoverSubtitleColor(document.style.coverSubtitleColor)
     setWhitespaceMode(document.style.whitespaceMode ?? 'legacy')
     setCoverTopOffset(document.style.coverTopOffset ?? 0)
+    setInnerVerticalDefault(normalizeInnerPagePosition(document.style.innerVerticalDefault))
     setCoverLayout(document.style.coverLayout)
     setCoverVertical(document.style.coverVertical)
     setCoverSubtitleSpacing(document.style.coverSubtitleSpacing)
@@ -730,6 +734,7 @@ function App() {
     setCoverTitleColor(theme.coverTitleColor)
     setCoverSubtitleColor(theme.coverSubtitleColor)
     setCoverTopOffset(theme.coverTopOffset ?? 0)
+    setInnerVerticalDefault(normalizeInnerPagePosition(theme.innerVerticalDefault))
     setCoverLayout(theme.coverLayout)
     setCoverVertical(theme.coverVertical)
     setCoverSubtitleSpacing(theme.coverSubtitleSpacing)
@@ -760,8 +765,15 @@ function App() {
     setThemeApplying(false)
   }
 
+  const pages = useMemo(() => splitIntoPages(content), [content])
+  const pageLayouts = useMemo(() => readPageLayouts(content), [content])
+  const innerPositionForSave = layoutPageIndex > 0
+    ? resolvePageVertical(pageLayouts[Math.min(layoutPageIndex, pages.length - 1)]?.vertical, innerVerticalDefault)
+    : innerVerticalDefault
+
   // 把当前 App state 打包成新主题保存
   async function saveCurrentAsTheme(name: string) {
+    const applyRevision = themeApplyRevisionRef.current
     const theme: Theme = {
       id: newUserThemeId(),
       name,
@@ -789,11 +801,16 @@ function App() {
       coverVertical,
       coverSubtitleSpacing,
       coverTopOffset,
+      innerVerticalDefault: innerPositionForSave,
       // v1.3 起主题只保存样式；可恢复的正文由草稿库负责。
       // 历史上已存在的“含正文主题”仍会被 applyTheme 正常打开。
       contentJSON: null,
     }
     await putUserTheme(theme)
+    // A completed save may belong to a draft/theme the user has since left.
+    if (applyRevision !== themeApplyRevisionRef.current) return
+    if (innerPositionForSave !== innerVerticalDefault) dirtyDocumentRef.current = true
+    setInnerVerticalDefault(innerPositionForSave)
     setCurrentThemeId(theme.id)
   }
 
@@ -1031,9 +1048,6 @@ function App() {
     themeLibOpen,
   ])
 
-  const pages = useMemo(() => splitIntoPages(content), [content])
-  const pageLayouts = useMemo(() => readPageLayouts(content), [content])
-
   // v1.8 长文双向滚动联动：只写两个容器的 scrollTop，不碰正文/选区/导出 DOM。
   // 图片手势期间暂停；草稿切换/导入即清零，首次人工滚动前保持静止。
   useDocumentScrollSync({
@@ -1175,6 +1189,7 @@ function App() {
           open={themeLibOpen}
           onOpenChange={setThemeLibOpen}
           userThemes={userThemes}
+          innerPositionForSave={innerPositionForSave}
           currentThemeId={currentThemeId}
           onApply={applyTheme}
           onSaveCurrent={saveCurrentAsTheme}
@@ -1257,7 +1272,7 @@ function App() {
                   key={pageLayouts[index]?.id ?? index}
                   whitespaceMode={whitespaceMode}
                   coverTopOffset={coverTopOffset}
-                  innerVertical={pageLayouts[index]?.vertical ?? 'inherit'}
+                  innerVertical={resolvePageVertical(pageLayouts[index]?.vertical, innerVerticalDefault)}
                   ref={getPageRefCallback(index)}
                   html={pageHtml}
                   themeClass={themeClass}
@@ -1289,6 +1304,7 @@ function App() {
                 <PageLayoutControls
                   pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
                   layouts={pageLayouts}
+                  templateDefault={innerVerticalDefault}
                   onPage={index => {
                     setLayoutPageIndex(index)
                     const panel = canvasPanelRef.current

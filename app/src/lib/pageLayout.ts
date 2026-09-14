@@ -1,28 +1,46 @@
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 
-export type PageVertical = 'inherit' | 'top' | 'middle' | 'bottom'
+export type InnerPagePosition = 'top' | 'middle'
+export type PageVertical = 'inherit' | InnerPagePosition
 export function normalizePageVertical(value: unknown): PageVertical {
-  return value === 'top' || value === 'middle' || value === 'bottom' ? value : 'inherit'
+  return value === 'top' || value === 'middle' ? value : 'inherit'
+}
+export function normalizeInnerPagePosition(value: unknown): InnerPagePosition {
+  return value === 'top' ? 'top' : 'middle'
+}
+export function resolvePageVertical(value: unknown, templateDefault: unknown): InnerPagePosition {
+  const override = normalizePageVertical(value)
+  return override === 'inherit' ? normalizeInnerPagePosition(templateDefault) : override
 }
 export function normalizeCoverTopOffset(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(-120, Math.min(120, value)) : 0
 }
 
-/** Align the existing normal-flow stack; keep its collapsed margins and line geometry. */
+/** Middle retains the template's original flow position. Top aligns that flow
+ * to the logo anchor and reserves the remainder of the logo's first row. */
 export function alignInnerPage(page: HTMLElement): void {
   page.style.setProperty('--inner-top-shift', '0px')
-  if (page.classList.contains('page--first')) return
-  const mode = page.dataset.innerVertical
-  if (mode !== 'middle' && mode !== 'bottom') return
+  page.style.setProperty('--inner-first-clearance', '0px')
+  if (page.classList.contains('page--first') || page.dataset.innerVertical !== 'top') return
   const content = page.querySelector<HTMLElement>('.content')
-  if (!content?.lastElementChild) return
+  if (!content?.firstElementChild) return
   const bounds = page.getBoundingClientRect(), scale = bounds.width / 1080
   if (!scale) return
-  const style = getComputedStyle(content)
-  const bottom = Math.max(...[...content.children].map(child => child.getBoundingClientRect().bottom))
-  const availableBottom = bounds.bottom - parseFloat(style.paddingBottom) * scale
-  const slack = Math.max(0, (availableBottom - bottom) / scale)
-  page.style.setProperty('--inner-top-shift', `${slack * (mode === 'middle' ? 0.5 : 1)}px`)
+  const first = [...content.children].map(child => child.getBoundingClientRect())
+    .find(rect => rect.width > 0 && rect.height > 0)
+  if (!first) return
+  // Hiding the logo must not change the template's alignment anchor.
+  const logo = page.querySelector<HTMLElement>('.logo')?.getBoundingClientRect()
+  const anchor = logo && logo.height > 0
+    ? (logo.top - bounds.top) / scale
+    : parseFloat(getComputedStyle(page).getPropertyValue('--logo-offset-y'))
+  if (!Number.isFinite(anchor)) return
+  page.style.setProperty('--inner-top-shift', `${anchor - (first.top - bounds.top) / scale}px`)
+  // Reserve any remainder of the logo row as spacing, without stretching a
+  // short heading's own box or its optical decorations.
+  if (logo?.height) {
+    page.style.setProperty('--inner-first-clearance', `${Math.max(0, (logo.height - first.height) / scale)}px`)
+  }
 }
 
 /** The preceding break owns the following page. Unconfigured legacy pages need no migration. */

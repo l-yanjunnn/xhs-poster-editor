@@ -1,7 +1,7 @@
 import { CANVAS_HEIGHT, CANVAS_WIDTH, COVER_CROP_TOP, COVER_CROP_BOTTOM } from './canvas'
 
 export interface PageGeometryIssue {
-  code: 'content-clipped' | 'block-compressed' | 'block-overlap'
+  code: 'content-clipped' | 'block-compressed' | 'block-overlap' | 'logo-overlap'
   blockIndex: number
   blockText: string
   message: string
@@ -18,6 +18,7 @@ export function inspectPageGeometry(page: HTMLElement): PageGeometryIssue[] {
   const blocks = [...page.querySelectorAll<HTMLElement>('.content > *')]
   const issues: PageGeometryIssue[] = []
   const previousRects: DOMRect[] = []
+  const logo = page.querySelector<HTMLElement>('.logo')?.getBoundingClientRect()
   blocks.forEach((block, blockIndex) => {
     const rect = block.getBoundingClientRect()
     const report = (code: PageGeometryIssue['code'], message: string) => {
@@ -33,6 +34,18 @@ export function inspectPageGeometry(page: HTMLElement): PageGeometryIssue[] {
       report('block-overlap', '文字块与上一段重叠，请调整布局')
     }
     previousRects.push(rect)
+    // The logo lives outside .content, so ordinary block checks cannot detect
+    // it covering text. Check actual glyphs/images, not empty paragraph boxes.
+    if (logo?.width && logo.height) {
+      for (const element of block.querySelectorAll<HTMLElement>('.dtl-atom, img')) {
+        const r = element.getBoundingClientRect()
+        if (Math.min(r.right, logo.right) - Math.max(r.left, logo.left) > scale &&
+            Math.min(r.bottom, logo.bottom) - Math.max(r.top, logo.top) > scale) {
+          report('logo-overlap', '内容与 Logo 重叠，请调整内页位置或 Logo 显示设置')
+          break
+        }
+      }
+    }
     // Include every line/atom: absolute children can escape a seemingly valid block.
     for (const element of [block, ...block.querySelectorAll<HTMLElement>('.dtl-line, .dtl-atom, img, pre, li')]) {
       if (element.closest('[data-preview-only]')) continue

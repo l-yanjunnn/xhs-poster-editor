@@ -511,7 +511,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
           if (node.type.name !== 'horizontalRule' || ++index !== pageIndex) return
           editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(position, undefined, {
             ...node.attrs, pageId: node.attrs.pageId || crypto.randomUUID(),
-            pageVertical: ['top', 'middle', 'bottom'].includes(vertical) ? vertical : null,
+            pageVertical: ['top', 'middle'].includes(vertical) ? vertical : null,
           })))
         })
       },

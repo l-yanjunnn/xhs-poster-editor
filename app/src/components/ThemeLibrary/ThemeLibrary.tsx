@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { InnerPagePosition } from '@/lib/pageLayout'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import { deleteUserTheme } from '@/lib/themeStore'
 import { ThemePreview } from '@/components/ThemePreview/ThemePreview'
 
 interface Props {
+  innerPositionForSave?: InnerPagePosition
   open: boolean
   onOpenChange: (open: boolean) => void
   // 用户主题由 App 持有（同时供 Toolbar 下拉用），这里只读
@@ -93,6 +95,7 @@ export function ThemeLibrary(p: Props) {
 
           <TabsContent value="user" className="mt-4">
             <SaveForm
+              innerPosition={p.innerPositionForSave ?? 'middle'}
               newName={newName}
               saving={saving}
               onNewName={setNewName}
@@ -197,11 +200,13 @@ function ThemeGrid({
 }
 
 function SaveForm({
+  innerPosition,
   newName,
   saving,
   onNewName,
   onSave,
 }: {
+  innerPosition: InnerPagePosition
   newName: string
   saving: boolean
   onNewName: (v: string) => void
@@ -226,7 +231,7 @@ function SaveForm({
         </Button>
       </div>
       <div className="mt-2 text-[11px] text-neutral-500">
-        主题只保存当前样式；正文和排版状态由「草稿」自动保存。
+        内页默认位置：{innerPosition === 'top' ? '顶部' : '居中'}（取当前内页设置；选封面时沿用模板默认）。主题不保存正文，逐页覆盖由草稿保存。
       </div>
     </div>
   )
