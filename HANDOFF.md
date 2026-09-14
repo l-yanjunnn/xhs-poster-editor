@@ -1,3 +1,18 @@
+# v1.13.0 上线闭环已完成（2026-09-15 00:37 北京时间）
+
+本节为最新状态；下方 rc.2 / v1.12.0 记录保留为历史。用户已明确授权「走上线闭环」，三项需求现已正式上线。
+
+- **发布身份**：`fea0a71528d6e27ddc84d1e9bdfd7a4192947a2c` / 精确 tag `v1.13.0`，已推送。后续发布记录和归档提交不改变该 tag。
+- **双入口**：https://xhsposter.tshzchen.cn ／ https://xhs-poster-editor.l-yanjunnn.workers.dev 。页面 / JS / CSS 与本地发布构建逐字节相同：`index-BEn2anmj.js`、`index-3-9v__-J.css`。
+- **行为**：内页 ±360 px 微调（步长 1 px），保留默认 / 顶部 / 居中；只移动当前页内容，Logo 原位；点击固定选项归零，模板继承 / 草稿恢复 / 撤销重做。底部参考线固定在当前主题原定留白高度。超出画布可通过带边界放大预览和实际 PNG 的二次确认导出；其他字体、丢字、压缩、重叠等阻断不放宽。
+- **验收**：build / lint / 505 单测通过。两个真实生产入口都完成：滑杆精确偏移与撤销重做、草稿刷新、模板继承与显式 0、三主题固定参考线、裁切确认→真实下载、三主题 / 自定义字体、18/19 页导入和 19 张 2160×3600 PNG 完整 ZIP。预览与下载 PNG 字节一致，长文 console/page error 为 0。
+- **归档**：`archive/dist-v1.13.0/` 不覆盖历史；核心文件哈希与正式构建一致，字体清单与精确 tag 可复原完整版本。
+- **说明与公告**：权威使用说明 https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd 已更新四处并逐字回读。`default` / `cli_a92bb2ebb1795bd2`「Claude聊天助手」已向刘彦君既有 1v1 发送完整公告，消息 `om_x100b65b669d448a0c328350fc7c7a65` 全文回读一致；含双入口和说明链接，无群发。
+- **证据**：`docs/PRODUCTION-v1.13.0.json`；完整脚本、日志、截图、PNG / ZIP、构建清单、飞书回执在 `/Users/a0000/Codex_YJ/tasks/xhs-clipping-confirmation-20260914/production-v1.13.0/`。
+- **边界**：测试为隔离 Chrome 桌面环境与合成稿件；周宇原始九页稿仍未取得，不宣称该原稿已复现。原生系统目录选择器 UI 和其他平台未新增验收。
+
+---
+
 # 2026-09-15 00:10 北京时间：v1.12.1-rc.2 裁切确认、内页微调和固定底部参考线（本地候选，未上线）
 
 - 当前工作树 `/Users/a0000/Codex_YJ/tasks/xhs-clipping-confirmation-20260914/candidate`，分支 `codex/xhs-clipping-confirmation-20260914`，基线 `ed7c7a2`。线上仍为 v1.12.0；下方旧版发布记录保留。

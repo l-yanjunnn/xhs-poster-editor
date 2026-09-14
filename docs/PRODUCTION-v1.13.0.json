@@ -1,0 +1,232 @@
+{
+  "version": "1.13.0",
+  "releasedCommit": "fea0a71528d6e27ddc84d1e9bdfd7a4192947a2c",
+  "tag": "v1.13.0",
+  "verifiedAt": "2026-09-15T00:36:14.437635+08:00",
+  "archive": "archive/dist-v1.13.0",
+  "localChecks": {
+    "build": true,
+    "lint": true,
+    "tests": 505
+  },
+  "production": {
+    "oss": {
+      "build": [
+        {
+          "url": "https://xhsposter.tshzchen.cn/",
+          "bytes": 1766,
+          "sha256": "3c130d0c0c037ecf251509aa1b486226f4ff487b644c7e666d18fd6f574cd228",
+          "expectedSha256": "3c130d0c0c037ecf251509aa1b486226f4ff487b644c7e666d18fd6f574cd228",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-BEn2anmj.js",
+          "bytes": 1333838,
+          "sha256": "7a051f20ae434416452621100c862ee591c7ee5d33711c47a62aea395d3097f1",
+          "expectedSha256": "7a051f20ae434416452621100c862ee591c7ee5d33711c47a62aea395d3097f1",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-3-9v__-J.css",
+          "bytes": 2119301,
+          "sha256": "f87cbdf76065fc0e8d22bc710cc4b0468d1df90f8a56c65d6667f8a362207b05",
+          "expectedSha256": "f87cbdf76065fc0e8d22bc710cc4b0468d1df90f8a56c65d6667f8a362207b05",
+          "equal": true
+        }
+      ],
+      "checks": [
+        {
+          "check": "inner-slider.py",
+          "exitCode": 0
+        },
+        {
+          "check": "template-guides.py",
+          "exitCode": 0
+        },
+        {
+          "check": "clipping.py",
+          "exitCode": 0
+        },
+        {
+          "check": "prod-deep.py",
+          "exitCode": 0
+        },
+        {
+          "check": "long-export.py",
+          "exitCode": 0
+        }
+      ],
+      "sliderPreviewMatchesDownload": true,
+      "sliderUndoRedoRefresh": true,
+      "templateInheritanceAndExplicitZero": true,
+      "fixedBottomGuidesInThreeThemes": true,
+      "clippingPreviewMatchesDownload": true,
+      "clippingConfirmed": {
+        "confirmedAt": "2026-09-14T16:27:18.487Z",
+        "pages": [
+          {
+            "pageNumber": 2,
+            "issues": [
+              {
+                "code": "content-clipped",
+                "blockIndex": 1,
+                "blockText": "这段文字保留在画布边缘，最后一行会被有意裁切。超出的内容不进入导出的图片。",
+                "message": "内容超出画布，会被裁切；请分页或调整字号、间距",
+                "bounds": {
+                  "x": 80,
+                  "y": 1785,
+                  "width": 920,
+                  "height": 147.9998779296875
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "threeThemesAndUserFont": true,
+      "longExport": {
+        "url": "https://xhsposter.tshzchen.cn/",
+        "expectedVersion": "v1.13.0",
+        "zip": "/Users/a0000/Codex_YJ/tasks/xhs-clipping-confirmation-20260914/production-v1.13.0/evidence/oss/long-export/20260914T162805Z/v170-19页完整导出回归.zip",
+        "rootFolder": "v170-19页完整导出回归__全部__19张__20260915-002828",
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    "cloudflare": {
+      "build": [
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+          "bytes": 1766,
+          "sha256": "3c130d0c0c037ecf251509aa1b486226f4ff487b644c7e666d18fd6f574cd228",
+          "expectedSha256": "3c130d0c0c037ecf251509aa1b486226f4ff487b644c7e666d18fd6f574cd228",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-BEn2anmj.js",
+          "bytes": 1333838,
+          "sha256": "7a051f20ae434416452621100c862ee591c7ee5d33711c47a62aea395d3097f1",
+          "expectedSha256": "7a051f20ae434416452621100c862ee591c7ee5d33711c47a62aea395d3097f1",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-3-9v__-J.css",
+          "bytes": 2119301,
+          "sha256": "f87cbdf76065fc0e8d22bc710cc4b0468d1df90f8a56c65d6667f8a362207b05",
+          "expectedSha256": "f87cbdf76065fc0e8d22bc710cc4b0468d1df90f8a56c65d6667f8a362207b05",
+          "equal": true
+        }
+      ],
+      "checks": [
+        {
+          "check": "inner-slider.py",
+          "exitCode": 0
+        },
+        {
+          "check": "template-guides.py",
+          "exitCode": 0
+        },
+        {
+          "check": "clipping.py",
+          "exitCode": 0
+        },
+        {
+          "check": "prod-deep.py",
+          "exitCode": 0
+        },
+        {
+          "check": "long-export.py",
+          "exitCode": 0
+        }
+      ],
+      "sliderPreviewMatchesDownload": true,
+      "sliderUndoRedoRefresh": true,
+      "templateInheritanceAndExplicitZero": true,
+      "fixedBottomGuidesInThreeThemes": true,
+      "clippingPreviewMatchesDownload": true,
+      "clippingConfirmed": {
+        "confirmedAt": "2026-09-14T16:33:10.797Z",
+        "pages": [
+          {
+            "pageNumber": 2,
+            "issues": [
+              {
+                "code": "content-clipped",
+                "blockIndex": 1,
+                "blockText": "这段文字保留在画布边缘，最后一行会被有意裁切。超出的内容不进入导出的图片。",
+                "message": "内容超出画布，会被裁切；请分页或调整字号、间距",
+                "bounds": {
+                  "x": 80,
+                  "y": 1785,
+                  "width": 920,
+                  "height": 147.9998779296875
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "threeThemesAndUserFont": true,
+      "longExport": {
+        "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+        "expectedVersion": "v1.13.0",
+        "zip": "/Users/a0000/Codex_YJ/tasks/xhs-clipping-confirmation-20260914/production-v1.13.0/evidence/cloudflare/long-export/20260914T163412Z/v170-19页完整导出回归.zip",
+        "rootFolder": "v170-19页完整导出回归__全部__19张__20260915-003447",
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    }
+  },
+  "usageDocument": "https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd",
+  "usageDocumentReadback": true,
+  "limits": [
+    "Chrome desktop with isolated synthetic documents; original Zhou nine-page source not available",
+    "Native OS file chooser UI and other browser/platform combinations not newly tested"
+  ],
+  "announcementMessageId": "om_x100b65b669d448a0c328350fc7c7a65",
+  "announcementReadback": true
+}

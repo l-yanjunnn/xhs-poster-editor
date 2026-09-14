@@ -1,0 +1,22 @@
+{
+  "version": "1.13.0",
+  "releasedCommit": "fea0a71528d6e27ddc84d1e9bdfd7a4192947a2c",
+  "tag": "v1.13.0",
+  "sourceCandidate": "35654f6c864002604bfc8d5b6d0ca4dfa2dd8fa1",
+  "coreFiles": {
+    "assets/index-3-9v__-J.css": "f87cbdf76065fc0e8d22bc710cc4b0468d1df90f8a56c65d6667f8a362207b05",
+    "assets/index-BEn2anmj.js": "7a051f20ae434416452621100c862ee591c7ee5d33711c47a62aea395d3097f1",
+    "builtin-assets/bg-public-exam-landscape-cover-v1.png": "33228831119ffced8e96785015231ad751a7ec190dfaafd0a21d474e52e2b89c",
+    "builtin-assets/bg-public-exam-landscape-inner-v1.png": "613d1b4c56da3ac2a38161cc8f7751f0fc38decf806e96130020754c44707401",
+    "builtin-assets/bg-xuan-paper.png": "dd93f183facc83eb190e25e90e93b0b4a1b6ef199d6fbb2443ef3371bed7719a",
+    "builtin-assets/cover-layout-kicker-above-v1.png": "73aeed3a03937faeafbcc486ce30dcfaa04d23e39abd591597632cf6e4217278",
+    "builtin-assets/cover-layout-poster-center-v1.png": "f26e3fbabacc564d83e8a358a3f8e0f94107ba44c06b6a4880cbec4bcb41f513",
+    "builtin-assets/cover-layout-stack-left-v1.png": "e4421fd5527a0fe21c335a8771539f858b3be291010087f5f64a571f71565310",
+    "builtin-assets/logo-cat-ring.png": "28fdbf065e2712280c24309cbf40683f1080f98c990bd2034a86cd81dd3ada3c",
+    "favicon.svg": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66",
+    "fixtures/\u7533\u8bba\u8fd8\u539f\u578b\u6982\u62ec\u9898.md": "35bea5f30c6d9f6c9e185b83c0e402f3324ccadaf030b22efdd4280ef3d3c16e",
+    "fixtures/\u8d85\u965019\u9875\u5bfc\u51fa\u6f14\u793a.md": "36b7add22a791033436ff583057c8700311e7fc3d71b3d9c5edbd3ff23e3574d",
+    "icons.svg": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a",
+    "index.html": "3c130d0c0c037ecf251509aa1b486226f4ff487b644c7e666d18fd6f574cd228"
+  }
+}
