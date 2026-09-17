@@ -1,7 +1,7 @@
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { LogoStrategy, ThemeKey } from './themes'
 
-export type CoverLogoPosition = 'visible-area' | 'inner'
+export type CoverLogoPosition = 'visible-area' | 'inner' | 'outside-area'
 export type PageLogoVisibility = 'inherit' | 'show' | 'hide'
 export interface LogoSettings {
   strategy: LogoStrategy
@@ -9,7 +9,7 @@ export interface LogoSettings {
   coverVisibility: PageLogoVisibility
 }
 export function normalizeCoverLogoPosition(value: unknown): CoverLogoPosition {
-  return value === 'inner' ? 'inner' : 'visible-area'
+  return value === 'inner' || value === 'outside-area' ? value : 'visible-area'
 }
 export function normalizePageLogoVisibility(value: unknown): PageLogoVisibility {
   return value === 'show' || value === 'hide' ? value : 'inherit'

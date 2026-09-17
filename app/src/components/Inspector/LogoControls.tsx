@@ -62,9 +62,10 @@ export function LogoControls(p: Props) {
             <SelectContent>
               <SelectItem value="visible-area">封面可见区右上角</SelectItem>
               <SelectItem value="inner">与内页一致</SelectItem>
+              <SelectItem value="outside-area">封面可见范围外右上角</SelectItem>
             </SelectContent>
           </Select>
-          <p className="layout-hint">与内页一致会沿用内页的顶部、右侧距离和尺寸，裁切后仍可能露出部分 Logo。隐藏时保留位置。</p>
+          <p className="layout-hint">与内页一致可能在裁切后露出部分 Logo；范围外选项让 Logo 底边位于参考线上方 5 px，完整图片仍保留 Logo。隐藏时保留位置。</p>
           <label className="logo-crop-toggle"><input type="checkbox" checked={p.cropGuideOn} onChange={event => p.onCropGuide(event.target.checked)} />显示封面 3:4 裁切参考</label>
           <p className="layout-hint">这是中心裁切模拟；实际平台、设备和发布方式可能不同。完整 PNG 保持 9:15，参考遮罩不导出。</p>
         </div>}

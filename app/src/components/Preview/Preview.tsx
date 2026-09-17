@@ -1006,7 +1006,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
             data-whitespace-mode={whitespaceMode}
             data-inner-vertical={!isFirstPage ? innerVertical : undefined}
             data-inner-offset={!isFirstPage ? innerOffset : undefined}
-            style={{ '--cover-top-offset': `${coverTopOffset}px`, '--inner-offset': `${innerOffset}px` } as CSSProperties}
+            style={{ '--cover-crop-top': `${COVER_CROP_TOP}px`, '--cover-top-offset': `${coverTopOffset}px`, '--inner-offset': `${innerOffset}px` } as CSSProperties}
             {...coverSlotDataset(
               isFirstPage,
               coverLayout,

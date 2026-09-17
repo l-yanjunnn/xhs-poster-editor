@@ -361,6 +361,11 @@
   --logo-offset-y: var(--inner-logo-offset-y);
 }
 
+/* 与预览裁切参考共用同一上边界；只移动 Logo，保留 5 画布像素间隙。 */
+.page--first[data-cover-logo-position="outside-area"] {
+  --logo-offset-y: calc(var(--cover-crop-top) - var(--logo-size) - 5px);
+}
+
 /* 首图 3:4 裁切参考：只在预览打开参考线时出现。
  * Why 用真实 DOM：导出前可明确 remove，避免 html2canvas 把伪元素截进 PNG。 */
 .canvas-interaction-layer .cover-crop-preview {

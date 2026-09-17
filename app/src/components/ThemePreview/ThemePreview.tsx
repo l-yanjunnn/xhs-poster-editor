@@ -11,7 +11,7 @@ import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
 import { DENSITY_MAP } from '@/lib/density'
 import { computeFontSizeVars } from '@/lib/fontSize'
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas'
+import { CANVAS_HEIGHT, CANVAS_WIDTH, COVER_CROP_TOP } from '@/lib/canvas'
 import {
   calibratePageTypography,
   calibratePageTypographyNow,
@@ -167,7 +167,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
           ref={pageRef}
           className={`page page--first ${theme.themeClass}`}
           data-cover-logo-position={theme.coverLogoPosition ?? 'visible-area'}
-          style={{ boxShadow: 'none' }}
+          style={{ boxShadow: 'none', '--cover-crop-top': `${COVER_CROP_TOP}px` } as CSSProperties}
           {...coverSlotDataset(
             true,
             theme.coverLayout,
