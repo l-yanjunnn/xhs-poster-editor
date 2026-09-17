@@ -2,10 +2,12 @@
 
 把文字 + 背景图 + Logo 排成小红书风格的 9:15（3:5）全屏长图，一键导出 2160×3600 PNG。
 
-🌐 **线上版本 v1.13.0**（双轨已发布，验证记录见 [HANDOFF](HANDOFF.md)）：
+🌐 **线上版本 v1.14.0**（双轨已发布，验证记录见 [HANDOFF](HANDOFF.md)）：
 
 - Cloudflare：https://xhs-poster-editor.l-yanjunnn.workers.dev
 - 大陆通道：https://xhsposter.tshzchen.cn
+
+**v1.14.0「Logo 显示范围与封面位置」**：统一 Logo 设置区，整篇四种范围加逐页跟随／显示／隐藏，封面可选可见区右上角、与内页一致、可见范围外右上角。范围外档在中心裁切参考上沿之外留 5 画布像素；完整图保留品牌。手动选页后设置，滚动不改变目标页。详见 [使用说明](USAGE.md)、[发布说明](docs/RELEASE-v1.14.0.md) 与 [生产证据](docs/PRODUCTION-v1.14.0.json)。
 
 **v1.13.0「内页微调与裁切确认」**：内页新增位置滑杆并保留默认 / 顶部 / 居中；底部参考线固定在主题原定高度；画布裁切可在查看边界放大预览和实际 PNG 后二次确认导出。两个生产入口均通过实际导出验收。详见 [使用说明](USAGE.md)、[发布说明](docs/RELEASE-v1.13.0.md) 与 [生产证据](docs/PRODUCTION-v1.13.0.json)。
 

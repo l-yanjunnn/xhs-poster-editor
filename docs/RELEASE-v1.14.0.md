@@ -1,6 +1,6 @@
 # v1.14.0 · Logo 显示范围与封面位置
 
-用户已审阅 rc.2 并授权上线闭环；本文件先记录本版变化，最终发布身份与生产验证见 HANDOFF 最新记录。
+2026-09-17 21:21 北京时间 已完成双轨发布、生产功能验收、精确 tag、不可覆盖归档、使用说明与私聊公告。发布提交 `e7d4e68`，详见 [生产证据](PRODUCTION-v1.14.0.json)。
 
 ## 这次更新了什么
 
@@ -20,3 +20,6 @@
 备用：https://xhs-poster-editor.l-yanjunnn.workers.dev
 
 详细使用说明：https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd
+
+
+正式公告已由固定机器人发至刘彦君既有私聊，消息 `om_x100b658adfe78510c101b657ec257bf` 全文回读一致。

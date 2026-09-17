@@ -1,0 +1,289 @@
+{
+  "version": "1.14.0",
+  "releasedCommit": "e7d4e68d95333da79935162499712c0fb789c011",
+  "tag": "v1.14.0",
+  "verifiedAt": "2026-09-17T21:20:07.827224+08:00",
+  "archive": "archive/dist-v1.14.0",
+  "localChecks": {
+    "build": true,
+    "lint": true,
+    "tests": 517,
+    "testFiles": 49
+  },
+  "production": {
+    "oss": {
+      "build": [
+        {
+          "url": "https://xhsposter.tshzchen.cn/",
+          "bytes": 1766,
+          "sha256": "6b96d1261dfd5b88e9f62652c6cc77f1c349e2e801b5496896236065233ef2af",
+          "expectedSha256": "6b96d1261dfd5b88e9f62652c6cc77f1c349e2e801b5496896236065233ef2af",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-Dq_yHRf4.js",
+          "bytes": 1342794,
+          "sha256": "a2f2d8ceb67bd43a2d50355042f9d3428f1984a6f9c4940ed608e8daabf8a7ec",
+          "expectedSha256": "a2f2d8ceb67bd43a2d50355042f9d3428f1984a6f9c4940ed608e8daabf8a7ec",
+          "equal": true
+        },
+        {
+          "url": "https://xhsposter.tshzchen.cn/assets/index-K8e2YxU7.css",
+          "bytes": 2120561,
+          "sha256": "89cb78c18fc08d9c1a16460e4611a64b2b618bed1dc682796b046e21cda414c3",
+          "expectedSha256": "89cb78c18fc08d9c1a16460e4611a64b2b618bed1dc682796b046e21cda414c3",
+          "equal": true
+        }
+      ],
+      "logo": {
+        "browser": "153.0.8010.48",
+        "url": "https://xhsposter.tshzchen.cn/",
+        "noDevHooks": true,
+        "keyboardGlobalPageAndReset": true,
+        "refresh": true,
+        "outsidePositionHistoryHideShowTemplateKeyboard": true,
+        "narrow": [
+          {
+            "width": 900,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          },
+          {
+            "width": 600,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          },
+          {
+            "width": 390,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          }
+        ],
+        "exports": [
+          {
+            "position": "封面可见区右上角",
+            "zip": "review-visible-area.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "03aef9b6a2874cd9a1267583833329024304606e2605103ae656c91e357f1b57"
+          },
+          {
+            "position": "与内页一致",
+            "zip": "review-inner.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "fbfaff51c03f788fd46860712325c92c9a3d558fb9dc47ff5820e9b12a6b4e3d"
+          },
+          {
+            "position": "封面可见范围外右上角",
+            "zip": "review-outside.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "2d53f70364943cb64ce02b66cca16e1e620c020b2317485b9ff013ac02546b3d"
+          }
+        ],
+        "pageErrors": []
+      },
+      "deep": {
+        "functionalChecks": "pass",
+        "processExit": 0,
+        "log": "prod-deep.py.log"
+      },
+      "longExport": {
+        "zip": "evidence/oss/long-export/20260917T131638Z/v170-19页完整导出回归.zip",
+        "rootFolder": "v170-19页完整导出回归__全部__19张__20260917-211708",
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "functionalChecks": "pass",
+        "consoleErrors": [],
+        "pageErrors": [],
+        "teardown": "Chrome context close stalled after complete UI and ZIP assertions; stopped test process",
+        "browserLog": "long-export.py.log"
+      }
+    },
+    "cloudflare": {
+      "build": [
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+          "bytes": 1766,
+          "sha256": "6b96d1261dfd5b88e9f62652c6cc77f1c349e2e801b5496896236065233ef2af",
+          "expectedSha256": "6b96d1261dfd5b88e9f62652c6cc77f1c349e2e801b5496896236065233ef2af",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-Dq_yHRf4.js",
+          "bytes": 1342794,
+          "sha256": "a2f2d8ceb67bd43a2d50355042f9d3428f1984a6f9c4940ed608e8daabf8a7ec",
+          "expectedSha256": "a2f2d8ceb67bd43a2d50355042f9d3428f1984a6f9c4940ed608e8daabf8a7ec",
+          "equal": true
+        },
+        {
+          "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/assets/index-K8e2YxU7.css",
+          "bytes": 2120561,
+          "sha256": "89cb78c18fc08d9c1a16460e4611a64b2b618bed1dc682796b046e21cda414c3",
+          "expectedSha256": "89cb78c18fc08d9c1a16460e4611a64b2b618bed1dc682796b046e21cda414c3",
+          "equal": true
+        }
+      ],
+      "logo": {
+        "browser": "153.0.8010.48",
+        "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+        "noDevHooks": true,
+        "keyboardGlobalPageAndReset": true,
+        "refresh": true,
+        "outsidePositionHistoryHideShowTemplateKeyboard": true,
+        "narrow": [
+          {
+            "width": 900,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          },
+          {
+            "width": 600,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          },
+          {
+            "width": 390,
+            "scroll": 265,
+            "client": 265,
+            "document": 1280
+          }
+        ],
+        "exports": [
+          {
+            "position": "封面可见区右上角",
+            "zip": "review-visible-area.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "42841abac6a15c00e5044126609db9b9daeedf940bd4d94d22a0c39e51223cad"
+          },
+          {
+            "position": "与内页一致",
+            "zip": "review-inner.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "96beb040ca7c197dd558c1ab1d1d388bff05775fddf19fba6dbadc32b5c23586"
+          },
+          {
+            "position": "封面可见范围外右上角",
+            "zip": "review-outside.zip",
+            "pngCount": 3,
+            "allPreviewBytesEqualDownloads": true,
+            "sha256": "10a78e9753a91c6d69c030ec55623692e2a29c2bd8801aa3a9037559885b8977"
+          }
+        ],
+        "pageErrors": []
+      },
+      "deep": {
+        "functionalChecks": "pass",
+        "artifactsRechecked": [
+          {
+            "zip": "theme-雅致.zip",
+            "sizeAndCornersPass": true,
+            "ink": 6592
+          },
+          {
+            "zip": "theme-极简白.zip",
+            "sizeAndCornersPass": true,
+            "ink": 8043
+          },
+          {
+            "zip": "theme-深夜黑.zip",
+            "sizeAndCornersPass": true,
+            "ink": 479596
+          },
+          {
+            "zip": "font-baseline.zip",
+            "sizeAndCornersPass": true,
+            "ink": 6592
+          },
+          {
+            "zip": "font-user.zip",
+            "sizeAndCornersPass": true,
+            "ink": 7773
+          }
+        ],
+        "teardown": "Chrome context close stalled; stopped test process after all functional checks"
+      },
+      "longExport": {
+        "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev/",
+        "expectedVersion": "v1.14.0",
+        "zip": "/Users/a0000/Codex_YJ/tasks/xhs-logo-20260917/production-v1.14.0/evidence/cloudflare/long-export/20260917T131825Z/v170-19页完整导出回归.zip",
+        "rootFolder": "v170-19页完整导出回归__全部__19张__20260917-211904",
+        "pngCount": 19,
+        "sourcePages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    }
+  },
+  "usageGuide": {
+    "newBlocks": 17,
+    "scrollExplanationReadBack": true,
+    "allNewTextReadBack": true,
+    "screenshots": 2,
+    "captions": 2,
+    "documentId": "SFDddCFb3o8T5VxP2wBcb0XXndd"
+  },
+  "evidenceDirectory": "/Users/a0000/Codex_YJ/tasks/xhs-logo-20260917/production-v1.14.0",
+  "limitations": [
+    "中心3:4裁切仅为编辑器模拟，不保证实际平台裁切。",
+    "Chrome桌面隔离合成稿验收，不代表作者原稿或所有浏览器验收。",
+    "OSS长文与Cloudflare主题测试完成后Chrome清理卡住；保留日志与下载、独立复验产物后停止对应测试进程。不是产品功能失败，也不记作测试进程正常退出。"
+  ],
+  "announcement": {
+    "messageId": "om_x100b658adfe78510c101b657ec257bf",
+    "profile": "default",
+    "appId": "cli_a92bb2ebb1795bd2",
+    "chatId": "oc_9e2813855736a171c86c8df2b13e1048",
+    "sender": "Claude聊天助手",
+    "fullReadbackVerified": true
+  },
+  "completedAt": "2026-09-17 21:21 北京时间"
+}
