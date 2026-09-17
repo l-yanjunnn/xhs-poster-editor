@@ -50,6 +50,21 @@ describe('export readiness', () => {
     await expect(checkExportReadiness([page])).resolves.toEqual([])
   })
 
+  it('hidden Logo placeholders do not block export, but visible missing Logos still do', async () => {
+    const page = document.createElement('div')
+    markLayoutReady(page)
+    const logo = imageWithState(true, 0)
+    logo.className = 'logo'
+    logo.style.visibility = 'hidden'
+    page.appendChild(logo)
+    document.body.appendChild(page)
+    try {
+      expect(await checkExportReadiness([page])).toEqual([])
+      logo.style.visibility = 'visible'
+      expect(await checkExportReadiness([page])).toEqual([expect.objectContaining({ kind: 'image' })])
+    } finally { page.remove() }
+  })
+
   it('报告已失败的图片并带可读名称', async () => {
     const page = document.createElement('div')
     markLayoutReady(page)

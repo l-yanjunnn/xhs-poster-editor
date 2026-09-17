@@ -166,6 +166,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
         <div
           ref={pageRef}
           className={`page page--first ${theme.themeClass}`}
+          data-cover-logo-position={theme.coverLogoPosition ?? 'visible-area'}
           style={{ boxShadow: 'none' }}
           {...coverSlotDataset(
             true,

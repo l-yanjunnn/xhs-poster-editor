@@ -50,7 +50,7 @@ export function alignInnerPage(page: HTMLElement): void {
   page.style.setProperty('--inner-top-shift', `${anchor - (first.top - bounds.top) / scale + normalizeInnerPageOffset(Number(page.dataset.innerOffset))}px`)
   // Reserve any remainder of the logo row as spacing, without stretching a
   // short heading's own box or its optical decorations.
-  if (logo?.height) {
+  if (logo?.height && page.dataset.logoLayoutReserved !== 'false') {
     page.style.setProperty('--inner-first-clearance', `${Math.max(0, (logo.height - first.height) / scale)}px`)
   }
 }

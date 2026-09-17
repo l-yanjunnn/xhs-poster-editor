@@ -61,6 +61,7 @@ function makeDocument(
       coverLayout: 'stack-left',
       coverVertical: 'top',
       coverSubtitleSpacing: 'standard',
+      coverLogoPosition: 'visible-area',
       coverTopOffset: 0,
       innerVerticalDefault: 'middle',
       innerOffsetDefault: 0,

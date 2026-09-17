@@ -19,7 +19,9 @@ export function inspectPageGeometry(page: HTMLElement): PageGeometryIssue[] {
   const blocks = [...page.querySelectorAll<HTMLElement>('.content > *')]
   const issues: PageGeometryIssue[] = []
   const previousRects: DOMRect[] = []
-  const logo = page.querySelector<HTMLElement>('.logo')?.getBoundingClientRect()
+  const logoElement = page.querySelector<HTMLElement>('.logo')
+  const logo = logoElement && getComputedStyle(logoElement).visibility !== 'hidden'
+    ? logoElement.getBoundingClientRect() : undefined
   blocks.forEach((block, blockIndex) => {
     const rect = block.getBoundingClientRect()
     const report = (code: PageGeometryIssue['code'], message: string) => {

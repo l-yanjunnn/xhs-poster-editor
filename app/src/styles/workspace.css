@@ -1043,3 +1043,18 @@
     transition: none !important;
   }
 }
+
+/* Logo settings share the existing inspector spacing and system UI font. */
+.logo-controls, .logo-field { display: grid; gap: 8px; min-width: 0; }
+.logo-controls { gap: 14px; }
+.logo-field > span { font-size: 12px; font-weight: 500; }
+.logo-field [data-slot="select-trigger"] { min-width: 0; height: auto; min-height: 34px; }
+.logo-field [data-slot="select-value"] { white-space: normal; text-align: left; }
+.logo-asset-button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; text-align: left; }
+.logo-asset-button img { width: 32px; height: 32px; object-fit: contain; background: #eee; border-radius: 4px; }
+.logo-asset-button > svg { width: 20px; height: 20px; }
+.logo-overrides-note { display: grid; justify-items: start; gap: 6px; font-size: 11px; color: var(--muted-foreground); }
+.logo-crop-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+.logo-controls button:focus-visible, .logo-crop-toggle input:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+.logo-controls .layout-page-settings { display: grid; gap: 12px; }

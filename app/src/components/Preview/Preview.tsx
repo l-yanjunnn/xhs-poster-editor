@@ -1,3 +1,4 @@
+import type { CoverLogoPosition } from '@/lib/logoSettings'
 import { alignInnerPage } from '@/lib/pageLayout'
 import { inspectPageGeometry } from '@/lib/pageGeometry'
 import {
@@ -63,6 +64,8 @@ interface Props {
   coverVertical?: CoverVertical
   coverSubtitleSpacing?: CoverSubtitleSpacing
   bgSrc?: string
+  logoLayoutReserved?: boolean
+  coverLogoPosition?: CoverLogoPosition
   logoSrc?: string
   showLogo?: boolean
   pageIndex?: number
@@ -307,6 +310,8 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverVertical = DEFAULT_COVER_VERTICAL,
     coverSubtitleSpacing = DEFAULT_COVER_SUBTITLE_SPACING,
     bgSrc,
+    logoLayoutReserved = true,
+    coverLogoPosition = 'visible-area',
     logoSrc,
     showLogo = true,
     pageIndex = 0,
@@ -365,7 +370,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
-    whitespaceMode, coverTopOffset, innerVertical, innerOffset,
+    whitespaceMode, coverTopOffset, innerVertical, innerOffset, logoSrc, logoLayoutReserved,
   ])
 
   const findSelectedImage = useCallback(() => {
@@ -657,7 +662,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     coverLayout,
     coverVertical,
     coverSubtitleSpacing,
-    whitespaceMode, coverTopOffset, innerVertical, innerOffset,
+    whitespaceMode, coverTopOffset, innerVertical, innerOffset, logoSrc, logoLayoutReserved,
   ])
 
   useLayoutEffect(() => {
@@ -720,6 +725,8 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
     measureSelection,
     refreshCanvasGeometry,
     themeClass,
+    coverLogoPosition,
+    showLogo,
   ])
 
   useEffect(() => {
@@ -993,6 +1000,9 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
             ref={setPageNode}
             className={cn('page', themeClass, isFirstPage && 'page--first')}
             data-page-number={pageIndex + 1}
+            data-cover-logo-position={isFirstPage ? coverLogoPosition : undefined}
+            data-logo-visible={showLogo}
+            data-logo-layout-reserved={logoLayoutReserved && !!logoSrc}
             data-whitespace-mode={whitespaceMode}
             data-inner-vertical={!isFirstPage ? innerVertical : undefined}
             data-inner-offset={!isFirstPage ? innerOffset : undefined}
@@ -1008,8 +1018,8 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
           >
             {bgSrc && <img className="bg" src={bgSrc} alt="" />}
             <div className="overlay" />
-            {logoSrc && showLogo && (
-              <img className="logo" src={logoSrc} alt="" />
+            {logoSrc && (
+              <img className="logo" src={logoSrc} alt="" style={showLogo ? undefined : { visibility: 'hidden' }} />
             )}
             <div
               ref={contentRef}
@@ -1040,7 +1050,7 @@ export const Preview = memo(forwardRef<HTMLDivElement, Props>(function Preview(
               >
                 <div className="cover-crop-mask cover-crop-mask--top" />
                 <div className="cover-crop-mask cover-crop-mask--bottom" />
-                <div className="cover-crop-label">首图 3:4 可见区</div>
+                <div className="cover-crop-label">3:4 裁切参考 · 模拟</div>
               </div>
             )}
 

@@ -78,7 +78,6 @@ export async function runExport(
     pageCount,
     selectedFontStacks,
     resourceIssues,
-    logoStrategy,
     ensureUserFontsLoaded,
     recordRecentAction,
   } = context
@@ -169,7 +168,7 @@ export async function runExport(
     const knownIssues = resourceIssues
       .filter((issue) => {
         if (issue.scope === 'library') return false
-        if (issue.id.startsWith('logo:') && logoStrategy === 'none') return false
+        if (issue.id.startsWith('logo:') && !selectedElements.some(page => page?.dataset.logoVisible === 'true')) return false
         if (
           issue.backgroundRole === 'inner' &&
           !plan.pages.some((pageNumber) => pageNumber > 1)

@@ -38,11 +38,9 @@ import type {
 import {
   BUILTIN_THEMES,
   H1_WIDTH_OPTIONS,
-  LOGO_STRATEGY_OPTIONS,
   OVERLAY_OPTIONS,
   type DensityLevel,
   type H1Width,
-  type LogoStrategy,
   type OverlayKey,
   type Theme,
 } from '@/lib/themes'
@@ -85,6 +83,7 @@ export interface ResourceIssue {
 }
 
 interface Props {
+  logoControls?: React.ReactNode
   pageLayoutControls?: React.ReactNode
   releaseCopy: string
   releaseCopySourceName: string | null
@@ -111,7 +110,6 @@ interface Props {
   density: DensityLevel
   h1Width: H1Width
   overlay: OverlayKey
-  logoStrategy: LogoStrategy
   coverTitleColor: string
   coverSubtitleColor: string
   coverLayout: CoverLayout
@@ -129,7 +127,6 @@ interface Props {
   onDensity: (value: DensityLevel) => void
   onH1Width: (value: H1Width) => void
   onOverlay: (value: OverlayKey) => void
-  onLogoStrategy: (value: LogoStrategy) => void
   onCoverTitleColor: (color: string) => void
   onCoverSubtitleColor: (color: string) => void
   onRestoreCoverColors: () => void
@@ -169,6 +166,7 @@ export function ContextInspector(props: Props) {
       />
 
       {props.pageLayoutControls}
+      {props.logoControls}
 
       <div className="inspector-context-label">
         <span>当前对象</span>
@@ -621,15 +619,7 @@ function PageInspector(props: Props) {
             onValueChange={(value) => props.onH1Width(value as H1Width)}
           />
         </Field>
-        <Field label="Logo 策略">
-          <SimpleSelect
-            value={props.logoStrategy}
-            options={LOGO_STRATEGY_OPTIONS}
-            onValueChange={(value) =>
-              props.onLogoStrategy(value as LogoStrategy)
-            }
-          />
-        </Field>
+
       </InspectorCard>
 
       <details className="inspector-details">

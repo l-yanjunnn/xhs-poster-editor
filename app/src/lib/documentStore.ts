@@ -1,3 +1,4 @@
+import { normalizeCoverLogoPosition, type CoverLogoPosition } from './logoSettings'
 import { normalizeCoverTopOffset, normalizeInnerPagePosition, normalizeInnerPageOffset, type InnerPagePosition } from './pageLayout'
 import {
   DEFAULT_COVER_LAYOUT,
@@ -58,6 +59,7 @@ export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   /** 未单独设置的内页跟随此模板默认值；旧稿保持原有留白。 */
   innerVerticalDefault?: InnerPagePosition
   innerOffsetDefault?: number
+  coverLogoPosition?: CoverLogoPosition
   coverTopOffset?: number
   /** 封面副标题字距；旧 V1/V2 草稿缺字段时保持既有 standard 视觉。 */
   coverSubtitleSpacing: CoverSubtitleSpacing
@@ -359,6 +361,7 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
       whitespaceMode: style.whitespaceMode === 'preserve' ? 'preserve' : 'legacy',
       innerVerticalDefault: normalizeInnerPagePosition(style.innerVerticalDefault),
       innerOffsetDefault: normalizeInnerPageOffset(style.innerOffsetDefault),
+      coverLogoPosition: normalizeCoverLogoPosition(style.coverLogoPosition),
       coverTopOffset: normalizeCoverTopOffset(style.coverTopOffset),
       coverLayout: normalizeCoverLayout(style.coverLayout),
       coverVertical: normalizeCoverVertical(style.coverVertical),

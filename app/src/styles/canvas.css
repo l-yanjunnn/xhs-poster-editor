@@ -14,7 +14,8 @@
   /* Logo */
   --logo-size: 120px;
   --logo-offset-x: 60px;
-  --logo-offset-y: 100px;
+  --inner-logo-offset-y: 100px;
+  --logo-offset-y: var(--inner-logo-offset-y);
 
   /* 字体（webfont 优先 + local 回退）
    * H1/H2/H3 各自独立可调，H3 默认沿用 body 字体保留原视觉层级 */
@@ -354,6 +355,10 @@
 .page--first {
   --page-padding-top: 320px;
   --logo-offset-y: 200px;
+}
+
+.page--first[data-cover-logo-position="inner"] {
+  --logo-offset-y: var(--inner-logo-offset-y);
 }
 
 /* 首图 3:4 裁切参考：只在预览打开参考线时出现。
@@ -980,11 +985,11 @@
 
 /* Top mode shares its first row with the logo. Reserve that row before the
    text solver measures it; later blocks retain the full content width. */
-.page:not(.page--first)[data-inner-vertical="top"]:has(> .logo) .content > :first-child {
+.page:not(.page--first)[data-inner-vertical="top"][data-logo-layout-reserved="true"] .content > :first-child {
   --inner-first-width: calc(1080px - var(--page-padding-x) - var(--logo-offset-x) - var(--logo-size) - 24px);
   max-width: min(100%, var(--inner-first-width));
   margin-bottom: var(--inner-first-clearance, 0px);
 }
-.page:not(.page--first)[data-inner-vertical="top"]:has(> .logo) .content > h1:first-child {
+.page:not(.page--first)[data-inner-vertical="top"][data-logo-layout-reserved="true"] .content > h1:first-child {
   max-width: min(var(--h1-max-width), var(--inner-first-width));
 }

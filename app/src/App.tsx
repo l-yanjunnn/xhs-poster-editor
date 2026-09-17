@@ -1,3 +1,5 @@
+import { hydrateLogoSettings, isLogoVisible, normalizeCoverLogoPosition, readPageLogoOverrides, readLogoLayoutReservations, preserveDraftPageLogos, type CoverLogoPosition, type PageLogoVisibility } from '@/lib/logoSettings'
+import { LogoControls } from '@/components/Inspector/LogoControls'
 import { readPageLayouts, resolvePageVertical, normalizeInnerPagePosition, normalizeInnerPageOffset, resolveInnerPageOffset, type InnerPagePosition } from '@/lib/pageLayout'
 import { PageLayoutControls } from '@/components/Inspector/PageLayoutControls'
 import {
@@ -119,6 +121,8 @@ function App() {
   const [density, setDensity] = useState<DensityLevel>(DEFAULT_THEME.density)
   const [h1Width, setH1Width] = useState<H1Width>(DEFAULT_THEME.h1Width)
   const [overlay, setOverlay] = useState<OverlayKey>(DEFAULT_THEME.overlay)
+  const [coverLogoPosition, setCoverLogoPosition] = useState<CoverLogoPosition>('visible-area')
+  const [coverLogoVisibility, setCoverLogoVisibility] = useState<PageLogoVisibility>('inherit')
   const [logoStrategy, setLogoStrategy] = useState<LogoStrategy>(
     DEFAULT_THEME.logoStrategy,
   )
@@ -315,6 +319,7 @@ function App() {
       fontSize,
       density,
       logoStrategy,
+      coverLogoPosition,
       bgAssetId,
       coverBgAssetId: coverAssetId,
       logoAssetId,
@@ -342,6 +347,7 @@ function App() {
       fontSize,
       density,
       logoStrategy,
+      coverLogoPosition,
       bgAssetId,
       coverAssetId,
       logoAssetId,
@@ -516,6 +522,7 @@ function App() {
     setH1Width(document.style.h1Width)
     setOverlay(document.style.overlay)
     setLogoStrategy(document.style.logoStrategy)
+    setCoverLogoPosition(normalizeCoverLogoPosition(document.style.coverLogoPosition))
     setCoverTitleColor(document.style.coverTitleColor)
     setCoverSubtitleColor(document.style.coverSubtitleColor)
     setWhitespaceMode(document.style.whitespaceMode ?? 'legacy')
@@ -542,9 +549,9 @@ function App() {
     setCurrentThemeId(null)
     setPublication(document.publication ?? EMPTY_PUBLICATION)
     editorRef.current?.setContent(
-      contentResult.status === 'fulfilled'
+      hydrateLogoSettings(contentResult.status === 'fulfilled'
         ? contentResult.value.document
-        : document.contentJSON,
+        : document.contentJSON, document.style),
       { resetHistory: true },
     )
 
@@ -760,17 +767,20 @@ function App() {
     setCurrentThemeId(theme.id)
     if (theme.contentJSON && contentResult.status === 'fulfilled' && contentResult.value) {
       // 正文插图按 assetId 重新 resolve src（存储里的 blob URL 已跨会话失效）
-      editorRef.current?.setContent(contentResult.value.document)
+      editorRef.current?.setContent(preserveDraftPageLogos(contentResult.value.document, editorRef.current.getJSON()))
     } else if (theme.id === PUBLIC_EXAM_THEME.id) {
       // 默认教程状态下切公考：首页整页换成版式 A 示例封面
       //（2026-08-14 用户拍板；正文被改过则一字不动）
       const swapped = replaceDefaultTutorialCoverHtml(content, DEFAULT_CONTENT)
       if (swapped !== null) editorRef.current?.setContent(swapped)
     }
+    editorRef.current?.setLogoSettings({ strategy: theme.logoStrategy, coverPosition: normalizeCoverLogoPosition(theme.coverLogoPosition) }, false)
     setThemeApplying(false)
   }
 
   const pages = useMemo(() => splitIntoPages(content), [content])
+  const logoLayoutReservations = useMemo(() => readLogoLayoutReservations(content), [content])
+  const pageLogoOverrides = useMemo(() => readPageLogoOverrides(content, coverLogoVisibility), [content, coverLogoVisibility])
   const pageLayouts = useMemo(() => readPageLayouts(content), [content])
   const innerPositionForSave = layoutPageIndex > 0
     ? resolvePageVertical(pageLayouts[Math.min(layoutPageIndex, pages.length - 1)]?.vertical, innerVerticalDefault)
@@ -801,6 +811,7 @@ function App() {
       fontSize,
       density,
       logoStrategy,
+      coverLogoPosition,
       bgAssetId,
       coverBgAssetId: coverAssetId,
       logoAssetId,
@@ -1084,7 +1095,7 @@ function App() {
     options?: { skipReadiness?: boolean; allowLayoutWarnings?: boolean; allowCanvasClipping?: boolean },
   ) {
     return runExport(request, onProgress, options, {
-      inputVersion: JSON.stringify([activeDraft?.id, content, documentStyle, publication]),
+      inputVersion: JSON.stringify([activeDraft?.id, content, documentStyle, publication, coverLogoVisibility]),
       canvasGestureActive,
       themeApplying,
       pageElements: pageRefs.current,
@@ -1098,16 +1109,7 @@ function App() {
   }
 
   function shouldShowLogo(pageIndex: number, total: number): boolean {
-    switch (logoStrategy) {
-      case 'every':
-        return true
-      case 'first':
-        return pageIndex === 0
-      case 'first-last':
-        return pageIndex === 0 || pageIndex === total - 1
-      case 'none':
-        return false
-    }
+    return isLogoVisible(logoStrategy, pageLogoOverrides[pageIndex], pageIndex, total, themeClass)
   }
 
   const blockingTitle =
@@ -1224,7 +1226,7 @@ function App() {
           onGenerate={handleGenerateImportedDraft}
         />
         <ExportDialog
-          inputVersion={JSON.stringify([activeDraft?.id, content, documentStyle, publication])}
+          inputVersion={JSON.stringify([activeDraft?.id, content, documentStyle, publication, coverLogoVisibility])}
           open={exportOpen}
           onOpenChange={setExportOpen}
           defaultFilename={suggestFilename(content)}
@@ -1238,6 +1240,11 @@ function App() {
               editable={!interactionBlocked}
               ref={editorRef}
               onUpdate={handleEditorUpdate}
+              onLogoSettings={settings => {
+                setLogoStrategy(settings.strategy)
+                setCoverLogoPosition(settings.coverPosition)
+                setCoverLogoVisibility(settings.coverVisibility)
+              }}
               onInsertImageClick={() => {
                 setReplaceImageId(null)
                 setAssetLibInitialKind('image')
@@ -1294,6 +1301,8 @@ function App() {
                   coverSubtitleSpacing={coverSubtitleSpacing}
                   bgSrc={index === 0 ? coverSrc : bgSrc}
                   logoSrc={logoSrc}
+                  logoLayoutReserved={logoLayoutReservations[index]}
+                  coverLogoPosition={coverLogoPosition}
                   showLogo={shouldShowLogo(index, pages.length)}
                   pageIndex={index}
                   pageTotal={pages.length}
@@ -1313,6 +1322,17 @@ function App() {
 
           <section className="workspace-inspector-panel">
             <ContextInspector
+              logoControls={<LogoControls
+                pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
+                overrides={pageLogoOverrides} strategy={logoStrategy} coverPosition={coverLogoPosition}
+                themeClass={themeClass} logoSrc={logoSrc} hasAsset={!!logoAssetId}
+                onStrategy={strategy => { setCurrentThemeId(null); editorRef.current?.setLogoSettings({ strategy }) }}
+                onCoverPosition={coverPosition => { setCurrentThemeId(null); editorRef.current?.setLogoSettings({ coverPosition }) }}
+                onVisibility={value => editorRef.current?.setPageLogo(Math.min(layoutPageIndex, pages.length - 1), value)}
+                onReset={() => editorRef.current?.resetPageLogos()}
+                onPick={() => { setReplaceImageId(null); setAssetLibInitialKind('logo'); setAssetLibOpen(true) }}
+                cropGuideOn={cropGuideOn} onCropGuide={setCropGuideOn}
+              />}
               pageLayoutControls={
                 <PageLayoutControls
                   pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
@@ -1366,7 +1386,6 @@ function App() {
               density={density}
               h1Width={h1Width}
               overlay={overlay}
-              logoStrategy={logoStrategy}
               coverTitleColor={coverTitleColor}
               coverSubtitleColor={coverSubtitleColor}
               coverLayout={coverLayout}
@@ -1384,7 +1403,6 @@ function App() {
               onDensity={customize(setDensity)}
               onH1Width={customize(setH1Width)}
               onOverlay={customize(setOverlay)}
-              onLogoStrategy={customize(setLogoStrategy)}
               onCoverTitleColor={customize(setCoverTitleColor)}
               onCoverSubtitleColor={customize(setCoverSubtitleColor)}
               onRestoreCoverColors={handleRestoreCoverColors}

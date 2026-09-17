@@ -118,7 +118,7 @@ export async function checkExportReadiness(
   const imageEntries: { image: HTMLImageElement; label: string }[] = []
   pages.forEach((page, pageIndex) => {
     const pageNumber = page.dataset.pageNumber ?? String(pageIndex + 1)
-    Array.from(page.querySelectorAll<HTMLImageElement>('img')).forEach(
+    Array.from(page.querySelectorAll<HTMLImageElement>('img')).filter(image => getComputedStyle(image).visibility !== 'hidden' && getComputedStyle(image).display !== 'none').forEach(
       (image, indexInPage) => {
         if (seenImages.has(image)) return
         seenImages.add(image)

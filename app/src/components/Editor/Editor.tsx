@@ -1,3 +1,4 @@
+import { normalizeLogoSettings, pageLogoTransaction, resetPageLogosTransaction, type LogoSettings, type PageLogoVisibility } from '@/lib/logoSettings'
 import { normalizeInnerPageOffset } from '@/lib/pageLayout'
 import {
   useEditor,
@@ -103,6 +104,9 @@ export interface EditorHandle {
     content: object | string,
     options?: { resetHistory?: boolean },
   ) => void
+  setLogoSettings: (patch: Partial<LogoSettings>, addToHistory?: boolean) => void
+  setPageLogo: (pageIndex: number, visibility: PageLogoVisibility) => void
+  resetPageLogos: () => void
   setPageVertical: (pageIndex: number, vertical: string) => void
   setPageOffset: (pageIndex: number, offset: number, newHistoryGroup?: boolean) => void
   getJSON: () => object | null
@@ -131,6 +135,7 @@ export interface EditorHandle {
 interface Props {
   editable?: boolean
   onUpdate?: (html: string) => void
+  onLogoSettings?: (settings: LogoSettings) => void
   initialContent?: string
   // 编辑器内点「插入图片」时通知 App 打开素材库到 image tab
   onInsertImageClick?: () => void
@@ -261,6 +266,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     onImageStateChange,
     onTextSelectionStateChange,
     onHistoryStateChange,
+    onLogoSettings,
     noWrapH1Layout,
   },
   ref,
@@ -344,6 +350,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       transformPasted: stripPastedImageIds,
     },
     onUpdate: ({ editor }) => {
+      onLogoSettings?.(normalizeLogoSettings(editor.state.doc.attrs.logoSettings))
       onUpdate?.(editor.getHTML())
       // 改属性（如调宽度）也走 onUpdate，需同步上抛
       reportEditorState(editor)
@@ -372,7 +379,8 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     if (!editor) return
     const normalized = normalizeIncomingContent(content)
     if (!resetHistory) {
-      editor.commands.setContent(normalized as never)
+      const current = editor.state.doc.attrs.logoSettings
+      editor.chain().setContent(normalized as never).command(({ tr }) => { tr.setDocAttribute('logoSettings', current); return true }).run()
       return
     }
 
@@ -380,8 +388,10 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     // 也不会清除上一份草稿的 undo 栈。恢复/切换草稿时重建
     // history plugin，确保撤销绝不跨文档。
     editor.unregisterPlugin('history')
-    editor.commands.setContent(normalized as never, { emitUpdate: false })
+    const logoSettings = typeof normalized === 'object' ? (normalized as { attrs?: { logoSettings?: unknown } }).attrs?.logoSettings ?? null : null
+    editor.chain().setContent(normalized as never, { emitUpdate: false }).command(({ tr }) => { tr.setDocAttribute('logoSettings', logoSettings); return true }).run()
     editor.registerPlugin(history({ depth: 100, newGroupDelay: 500 }))
+    onLogoSettings?.(normalizeLogoSettings(editor.state.doc.attrs.logoSettings))
     onUpdate?.(editor.getHTML())
     queueMicrotask(() => {
       if (!editor.isDestroyed) reportEditorState(editor)
@@ -506,6 +516,17 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     () => ({
       setContent: (content, options) =>
         replaceContent(content, options?.resetHistory ?? false),
+      setLogoSettings: (patch, addToHistory = true) => {
+        if (!editor?.isEditable) return
+        const transaction = editor.state.tr.setDocAttribute('logoSettings', { ...normalizeLogoSettings(editor.state.doc.attrs.logoSettings), ...patch }).setMeta('addToHistory', addToHistory)
+        editor.view.dispatch(addToHistory ? closeHistory(transaction) : transaction)
+      },
+      setPageLogo: (index, visibility) => {
+        if (editor?.isEditable) editor.view.dispatch(closeHistory(pageLogoTransaction(editor.state, index, visibility)))
+      },
+      resetPageLogos: () => {
+        if (editor?.isEditable) editor.view.dispatch(closeHistory(resetPageLogosTransaction(editor.state)))
+      },
       setPageVertical: (pageIndex, vertical) => {
         if (!editor || pageIndex < 1 || !editor.isEditable) return
         let index = 0

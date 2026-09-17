@@ -1,3 +1,4 @@
+import { normalizePageLogoVisibility } from '@/lib/logoSettings'
 import Paragraph from '@tiptap/extension-paragraph'
 import Heading from '@tiptap/extension-heading'
 import { normalizePageVertical, normalizeInnerPageOffset, parsePageOffset, deduplicatePageIdentities } from '@/lib/pageLayout'
@@ -26,6 +27,7 @@ export const PosterDocument = Node.create({
   name: 'doc',
   topNode: true,
   content: '(block | pageBreak)+',
+  addAttributes() { return { logoSettings: { default: null } } },
 })
 
 // 继续使用 horizontalRule 作为节点名，旧草稿 JSON 无需迁移节点类型。
@@ -36,6 +38,16 @@ export const RootPageBreak = Node.create({
   selectable: true,
   addAttributes() {
     return {
+      logoLayoutReserved: {
+        default: true,
+        parseHTML: element => element.getAttribute('data-logo-layout-reserved') !== 'false',
+        renderHTML: attrs => attrs.logoLayoutReserved === false ? { 'data-logo-layout-reserved': 'false' } : {},
+      },
+      logoVisibility: {
+        default: null,
+        parseHTML: element => normalizePageLogoVisibility(element.getAttribute('data-logo-visibility')),
+        renderHTML: attrs => attrs.logoVisibility && attrs.logoVisibility !== 'inherit' ? { 'data-logo-visibility': attrs.logoVisibility } : {},
+      },
       pageId: {
         default: null,
         parseHTML: element => element.getAttribute('data-page-id'),

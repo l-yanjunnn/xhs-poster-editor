@@ -81,6 +81,7 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     coverLayout: theme.coverLayout,
     coverVertical: theme.coverVertical,
     whitespaceMode: 'preserve',
+    coverLogoPosition: theme.coverLogoPosition ?? 'visible-area',
     coverTopOffset: theme.coverTopOffset ?? 0,
     coverSubtitleSpacing: theme.coverSubtitleSpacing,
   }
