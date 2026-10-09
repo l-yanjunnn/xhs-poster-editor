@@ -1,0 +1,66 @@
+{
+  "version": "1.15.0",
+  "status": "deployed-awaiting-production-ui-verification",
+  "releaseCommit": "47cd8ee6829c0142cd7ffa411c8f72ccd87627e8",
+  "tag": "v1.15.0",
+  "builtAssets": {
+    "index.html": "2bf2e9de1451ab98c0182f51638c238875d558fad22393ccbdc17881818d4556",
+    "assets/index-DrmkKVaH.js": "9564a945fd65ccd56b316e5014150f76c2b8ee476eb733a499ec9cc3c27f1924",
+    "assets/index-BrEdTgGq.css": "513e9360c371499a5af4bac288a064692297f2dd3b6b8afaadc624a214a9e1ee"
+  },
+  "local": {
+    "ci": "passed",
+    "testFiles": 55,
+    "tests": 599,
+    "desktopViewport": [
+      1280,
+      720
+    ],
+    "narrowViewport": [
+      679,
+      988
+    ],
+    "narrowScrollWidth": 679,
+    "actualPng": [
+      2160,
+      3600
+    ],
+    "actualPngPath": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.15.0-20261009/evidence/local-narrow-palette.png-export.png",
+    "independentReview": "no blockers"
+  },
+  "cloudflare": {
+    "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev",
+    "workerBuild": "success",
+    "buildId": "246ff339-c9d3-4aa0-93e1-9818f19f062b",
+    "htmlJsCssMatchLocal": true,
+    "productionUi": "pending; IAB repeatedly timed out"
+  },
+  "mainland": {
+    "url": "https://xhsposter.tshzchen.cn",
+    "ossDeploy": "success",
+    "cdnRefresh": "success",
+    "htmlJsCssMatchLocal": true,
+    "productionUi": "pending; IAB repeatedly timed out"
+  },
+  "archive": {
+    "path": "archive/dist-v1.15.0",
+    "coreFiles": 14,
+    "allMatches": true,
+    "fontManifestEntries": 3337
+  },
+  "guide": {
+    "url": "https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd",
+    "updatedTextBlocks": 23,
+    "newTextBlocks": 9,
+    "replacedImages": 2,
+    "readback": "passed"
+  },
+  "announcement": {
+    "status": "not sent pending production verification"
+  },
+  "limitations": [
+    "Windows native-font real-machine not tested",
+    "Phone editing outside desktop product scope",
+    "IAB ZIP download event unavailable; local actual PNG blob saved and inspected; production ZIP pending"
+  ]
+}
