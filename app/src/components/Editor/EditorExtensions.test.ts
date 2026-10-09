@@ -155,6 +155,46 @@ describe('v1.4 editor extensions', () => {
     restored.destroy()
   })
 
+  it('preserves underline style through JSON/HTML and canonicalizes its color without changing text', () => {
+    const editor = makeEditor('<h1>创始人与付费咨询</h1>')
+    editor.commands.setTextSelection({ from: 1, to: 4 })
+    editor.commands.setMark('textHighlight', { style: 'underline', color: '#FF0000', opacity: 0.5 })
+    const mark = editor.state.doc.firstChild!.firstChild!.marks[0]
+    expect(mark.attrs).toMatchObject({ style: 'underline', color: '#31C9C1', opacity: 0.5 })
+    const parsed = new DOMParser().parseFromString(editor.getHTML(), 'text/html')
+    const highlighted = parsed.querySelector<HTMLElement>('[data-text-highlight]')!
+    expect(highlighted.dataset.highlightStyle).toBe('underline')
+    expect(highlighted.dataset.highlightColor).toBe('#31C9C1')
+    expect(highlighted.style.backgroundImage).toContain('linear-gradient')
+    expect(highlighted.style.backgroundSize).toBe('100% 0.28em')
+    expect(highlighted.textContent).toBe('创始人')
+    const fromJSON = makeEditor(editor.getJSON())
+    const fromHTML = makeEditor(editor.getHTML())
+    expect(fromJSON.getJSON()).toEqual(editor.getJSON())
+    expect(fromHTML.state.doc.firstChild!.firstChild!.marks[0].attrs).toMatchObject(mark.attrs)
+    expect(fromHTML.state.doc.textContent).toBe('创始人与付费咨询')
+    editor.destroy()
+    fromJSON.destroy()
+    fromHTML.destroy()
+  })
+
+  it('defaults missing legacy style to purple and missing underline opacity to 50%', () => {
+    const editor = makeEditor({ type: 'doc', content: [{ type: 'paragraph', content: [
+      { type: 'text', text: '旧底色', marks: [{ type: 'textHighlight', attrs: { color: '#FF0000' } }] },
+      { type: 'text', text: '新划线', marks: [{ type: 'textHighlight', attrs: { style: 'underline' } }] },
+    ] }] })
+    const parsed = new DOMParser().parseFromString(editor.getHTML(), 'text/html')
+    const highlights = Array.from(parsed.querySelectorAll<HTMLElement>('[data-text-highlight]'))
+    expect(highlights.map(node => [node.dataset.highlightStyle, node.dataset.highlightColor, node.dataset.highlightOpacity])).toEqual([
+      ['background', '#7B3B8B', '0.25'], ['underline', '#31C9C1', '0.5'],
+    ])
+    // Imported JSON may omit defaults; the first ordinary transaction canonicalizes them.
+    editor.commands.setTextSelection(2)
+    expect(editor.state.doc.firstChild!.firstChild!.marks[0].attrs).toMatchObject({ style: 'background', color: '#7B3B8B', opacity: 0.25 })
+    expect(editor.state.doc.firstChild!.lastChild!.marks[0].attrs).toMatchObject({ style: 'underline', color: '#31C9C1', opacity: 0.5 })
+    editor.destroy()
+  })
+
   it('undoes semantic image attrs without reverting a later non-history src sync', async () => {
     const host = document.createElement('div')
     document.body.append(host)

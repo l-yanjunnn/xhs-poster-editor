@@ -98,6 +98,7 @@
  * 公考和用户主题则可通过同一组 token 实时修改。 */
 .page--first .content > h1:first-of-type {
   color: var(--c-cover-title, var(--c-text-primary));
+  font-size: var(--fs-cover-title, var(--fs-h1));
 }
 .page--first .content > h1:first-of-type + p {
   color: var(--c-cover-subtitle, var(--c-text-secondary));
@@ -286,7 +287,7 @@
 }
 .page--first[data-cover-layout="kicker-above"] .content > h1:first-of-type {
   margin-top: 0;
-  font-size: calc(var(--fs-h1) * 1.16);
+  font-size: var(--fs-cover-title, calc(var(--fs-h1) * 1.16));
   letter-spacing: 0.01em;
 }
 /* 眉题左移 20px 给竖条让位：竖条绝对定位在盒外侧，
@@ -711,6 +712,7 @@
   .deterministic-text-layout
   [data-text-highlight] {
   background-color: transparent !important;
+  background-image: none !important;
 }
 
 .content .deterministic-text-layout .dtl-decoration {
@@ -727,6 +729,10 @@
   .dtl-decoration--highlight {
   border-radius: 0.08em;
   z-index: 0;
+}
+
+.content .deterministic-text-layout .dtl-decoration--highlight-underline {
+  border-radius: 0.035em;
 }
 
 .content

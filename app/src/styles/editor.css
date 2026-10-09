@@ -27,6 +27,8 @@
 }
 
 .editor-panel-heading strong {
+  flex: none;
+  white-space: nowrap;
   color: #101828;
   font-size: 15px;
   font-weight: 720;
@@ -181,6 +183,11 @@
 
 .tiptap-editor :focus {
   outline: none;
+}
+
+.tiptap-editor [data-text-highlight][data-highlight-style="underline"] {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .tiptap-editor h1 {

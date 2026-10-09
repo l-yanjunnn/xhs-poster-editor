@@ -18,12 +18,15 @@ export const DEFAULT_GENERIC_FONT_FAMILIES = [
   'fangsong',
 ] as const
 
-/** macOS 内置字体不会出现在 FontFaceSet.load 的返回字面中。 */
+/** 本机系统字体/别名不出现在 FontFaceSet.load 的已下载字面中；允许浏览器按本机字体栈回退。 */
 export const DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES = [
   'PingFang SC',
   'Songti SC',
+  'Microsoft YaHei',
+  'Segoe UI',
   'Helvetica Neue',
   '-apple-system',
+  'BlinkMacSystemFont',
 ] as const
 
 export interface LayoutFontRequest {

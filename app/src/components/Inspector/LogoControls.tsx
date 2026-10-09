@@ -6,6 +6,7 @@ import { isLogoVisible, type CoverLogoPosition, type PageLogoVisibility } from '
 
 interface Props {
   pageIndex: number
+  onPage?: (index: number) => void
   overrides: PageLogoVisibility[]
   strategy: LogoStrategy
   coverPosition: CoverLogoPosition
@@ -45,6 +46,11 @@ export function LogoControls(p: Props) {
         <button type="button" className="layout-reset" disabled={!count} onClick={p.onReset}>恢复所有页面跟随</button>
       </div>
       <div className="layout-page-settings">
+        {p.onPage && <label className="layout-field">设置 Logo 所在页
+          <select aria-label="设置 Logo 所在页" value={p.pageIndex} onChange={event => p.onPage?.(Number(event.target.value))}>
+            {Array.from({ length: p.overrides.length }, (_, index) => <option key={index} value={index}>{index === 0 ? '第 1 页 · 封面' : `第 ${index + 1} 页 · 内页`}</option>)}
+          </select>
+        </label>}
         <div className="layout-scope"><span>仅第 {p.pageIndex + 1} 页{p.pageIndex === 0 ? ' · 封面' : ''}</span><strong aria-live="polite">当前{visible ? '显示' : '隐藏'}</strong></div>
         <div className="logo-field"><span id="page-logo-label">本页 Logo 显示</span>
           <Select value={override} onValueChange={value => p.onVisibility(value as PageLogoVisibility)}>

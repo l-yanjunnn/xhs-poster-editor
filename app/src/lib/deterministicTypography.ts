@@ -9,6 +9,7 @@ import {
 import { freezeOpticalListMarkerGeometry } from './opticalTypography'
 import { PAGE_CONTINUATION_TERMINAL_ATTRIBUTE } from './pageBreak'
 import { fnv1a32Hex } from './stableHash'
+import { highlightColorWithOpacity, normalizeHighlightStyle, type TextHighlightStyle } from './textHighlight'
 
 export interface DeterministicFontRequest {
   family: string
@@ -106,6 +107,7 @@ interface LayoutAtomMeta {
   style: LayoutRunStyle
   underline: boolean
   highlightColor: string | null
+  highlightStyle: TextHighlightStyle
   actualAscent: number
   actualDescent: number
 }
@@ -309,15 +311,19 @@ function nowrapOwner(
   return null
 }
 
-function highlightColor(
+function highlightDecoration(
   element: HTMLElement,
   block: HTMLElement,
-): string | null {
+): { color: string; style: TextHighlightStyle } | null {
   let current: HTMLElement | null = element
   while (current && current !== block) {
     if (current.hasAttribute('data-text-highlight')) {
-      const color = window.getComputedStyle(current).backgroundColor
-      return TRANSPARENT_COLORS.has(color) ? null : color
+      const style = normalizeHighlightStyle(current.getAttribute('data-highlight-style'))
+      // 语义色对两种样式一致。仅无颜色属性的历史 inline 底色沿用已有 CSS。
+      const color = style === 'underline' || current.hasAttribute('data-highlight-color')
+        ? highlightColorWithOpacity(current.getAttribute('data-highlight-color'), current.getAttribute('data-highlight-opacity'), style)
+        : window.getComputedStyle(current).backgroundColor
+      return TRANSPARENT_COLORS.has(color) ? null : { color, style }
     }
     current = current.parentElement
   }
@@ -435,6 +441,7 @@ function extractAtoms(
         style,
         underline: false,
         highlightColor: null,
+        highlightStyle: 'background',
         actualAscent: 0,
         actualDescent: 0,
       })
@@ -448,6 +455,7 @@ function extractAtoms(
       if (!parent) return
       const style = runStyleFor(parent)
       const wrappers = inlineWrappers(parent, block)
+      const highlight = highlightDecoration(parent, block)
       const owner = nowrapOwner(parent, block)
       let hardGroup: string | undefined
       if (owner) {
@@ -500,7 +508,8 @@ function extractAtoms(
           wrappers,
           style,
           underline: isUnderlined(parent, block),
-          highlightColor: highlightColor(parent, block),
+          highlightColor: highlight?.color ?? null,
+          highlightStyle: highlight?.style ?? 'background',
           actualAscent: Math.max(
             0,
             finite(metrics.actualBoundingBoxAscent, style.fontSize * 0.82),
@@ -1126,18 +1135,22 @@ function appendDecorations(
   const highlights = decorationRuns(
     line,
     metaById,
-    (meta) => meta.highlightColor,
+    (meta) => meta.highlightColor === null ? null : `${meta.highlightStyle}:${meta.highlightColor}`,
   )
   for (const run of highlights) {
     const fontSize = Math.max(...run.metas.map((meta) => meta.style.fontSize))
+    const highlightStyle = run.metas[0].highlightStyle
+    const isUnderline = highlightStyle === 'underline'
     const decoration = lineElement.ownerDocument.createElement('span')
     decoration.className = 'dtl-decoration dtl-decoration--highlight'
+    if (isUnderline) decoration.classList.add('dtl-decoration--highlight-underline')
     decoration.setAttribute('aria-hidden', 'true')
+    decoration.dataset.highlightStyle = highlightStyle
     decoration.style.left = `${run.start}px`
     decoration.style.width = `${Math.max(0, run.end - run.start)}px`
-    decoration.style.top = `${Math.max(0, baseline - fontSize * 0.84)}px`
-    decoration.style.height = `${Math.min(lineHeight, fontSize * 1.04)}px`
-    decoration.style.backgroundColor = run.value
+    decoration.style.top = `${Math.max(0, baseline - fontSize * (isUnderline ? 0.18 : 0.84))}px`
+    decoration.style.height = `${Math.min(lineHeight, fontSize * (isUnderline ? 0.28 : 1.04))}px`
+    decoration.style.backgroundColor = run.metas[0].highlightColor!
     lineElement.appendChild(decoration)
   }
 
@@ -1438,6 +1451,7 @@ function materializeBlock(
           meta.style.underlineThickness.toFixed(3),
         ),
         highlight: meta.highlightColor,
+        ...(meta.highlightStyle === 'underline' ? { highlightStyle: 'underline' } : {}),
         descent: Number(meta.actualDescent.toFixed(3)),
       })),
     }),

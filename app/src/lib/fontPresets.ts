@@ -1,14 +1,28 @@
-// 字体下拉预设。跨平台标记沿用 editor.html 的约定。
-// 「跨平台 ✓」= local() 优先，CDN webfont 作回退；「跨平台 ✗」= 仅 macOS 系统字，Windows 必然回退到 fallback。
+// 字体下拉预设。crossPlatform 标记能否提供同名字体的跨平台字形；
+// 本机系统栈按可用字体回退，不承诺换机后的相同字形或断行。
 
 export interface FontOption {
   value: string // 完整的 font-family stack
   label: string
   group: string
   crossPlatform: boolean
+  note?: string
+}
+
+/** Native font references only: no font files, @font-face registration or downloads. */
+export const SYSTEM_FONT_STACK =
+  '"PingFang SC", "Microsoft YaHei", system-ui, sans-serif'
+
+export const SYSTEM_FONT_OPTION: FontOption = {
+  value: SYSTEM_FONT_STACK,
+  label: '系统字体',
+  group: '系统字体',
+  crossPlatform: false,
+  note: '调用本机字体：macOS 优先苹方，Windows 优先微软雅黑；其他系统使用默认无衬线字体，换机后外观和换行可能不同。',
 }
 
 export const DISPLAY_FONTS: FontOption[] = [
+  SYSTEM_FONT_OPTION,
   {
     value: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif',
     label: '思源宋体',
@@ -66,6 +80,7 @@ export const DISPLAY_FONTS: FontOption[] = [
 ]
 
 export const BODY_FONTS: FontOption[] = [
+  SYSTEM_FONT_OPTION,
   {
     value: '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif',
     label: '思源黑体',

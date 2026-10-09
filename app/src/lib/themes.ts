@@ -15,6 +15,7 @@ import {
   type CoverVertical,
 } from './coverSlots'
 import { normalizeHexColor } from './hexColor'
+import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
 
 export type LogoStrategy = 'every' | 'first' | 'first-last' | 'none'
 export type OverlayKey =
@@ -53,6 +54,8 @@ export interface Theme {
   h2Bold: boolean
   h3Bold: boolean
   fontSize: number
+  /** Missing follows the original theme/layout rule; explicit values are final canvas CSS px. */
+  coverTitleFontSize?: CoverTitleFontSize
   density: DensityLevel
   logoStrategy: LogoStrategy
   bgAssetId: string // 默认/内页背景；builtin/user asset id；'' = 纯色背景
@@ -302,6 +305,7 @@ export function normalizeTheme(value: unknown): Theme | null {
     // documentStore 的 parseDocumentStyleV1 要求 12–120，越界即抛；
     // 主题层必须 clamp 到同一区间，否则坏主题应用后自动保存会永久失败。
     fontSize: Math.min(120, Math.max(12, theme.fontSize)),
+    coverTitleFontSize: normalizeCoverTitleFontSize(theme.coverTitleFontSize),
     density: theme.density as DensityLevel,
     logoStrategy: theme.logoStrategy as LogoStrategy,
     bgAssetId: theme.bgAssetId,

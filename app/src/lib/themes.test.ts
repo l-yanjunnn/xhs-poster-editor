@@ -14,6 +14,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverLayout
   delete legacy.coverVertical
   delete legacy.coverSubtitleSpacing
+  delete legacy.coverTitleFontSize
   return legacy
 }
 
@@ -35,6 +36,7 @@ describe('normalizeTheme', () => {
     expect(normalized?.coverLayout).toBe('stack-left')
     expect(normalized?.coverVertical).toBe('top')
     expect(normalized?.coverSubtitleSpacing).toBe('standard')
+    expect(normalized?.coverTitleFontSize).toBeUndefined()
   })
 
   it("preserves an explicit empty cover asset instead of falling back with '||'", () => {
@@ -76,6 +78,33 @@ describe('normalizeTheme', () => {
     })
     expect(unsafe?.coverTitleColor).toBe('#1A1A1A')
     expect(unsafe?.coverSubtitleColor).toBe('#1A1A1A')
+  })
+
+  it.each([108, 126, 144] as const)(
+    'preserves the explicit %s px cover size without applying layout multipliers',
+    (coverTitleFontSize) => {
+      const source = {
+        ...BUILTIN_THEMES[0],
+        coverLayout: 'kicker-above' as const,
+        coverTitleFontSize,
+      }
+
+      expect(normalizeTheme(source)).toMatchObject({
+        coverTitleFontSize,
+        fontSize: source.fontSize,
+        coverLayout: 'kicker-above',
+        contentJSON: null,
+      })
+    },
+  )
+
+  it('restores follow mode for invalid cover sizes without rejecting a legacy theme', () => {
+    for (const coverTitleFontSize of [undefined, null, 0, 120, 500, '126', '126px', NaN]) {
+      const normalized = normalizeTheme({ ...BUILTIN_THEMES[0], coverTitleFontSize })
+      expect(normalized).not.toBeNull()
+      expect(normalized?.coverTitleFontSize).toBeUndefined()
+      expect(normalized?.fontSize).toBe(BUILTIN_THEMES[0].fontSize)
+    }
   })
 
   it('rejects a record that is not a complete legacy theme', () => {

@@ -1,3 +1,6 @@
+import { createNoWrapH1Layout } from '@/lib/noWrapH1Layout'
+import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from '@/lib/coverTitle'
+import { TEXT_HIGHLIGHT_COLORS, type TextHighlightColor, type TextHighlightStyle } from '@/lib/textHighlight'
 import { hydrateLogoSettings, isLogoVisible, normalizeCoverLogoPosition, readPageLogoOverrides, readLogoLayoutReservations, preserveDraftPageLogos, type CoverLogoPosition, type PageLogoVisibility } from '@/lib/logoSettings'
 import { LogoControls } from '@/components/Inspector/LogoControls'
 import { readPageLayouts, resolvePageVertical, normalizeInnerPagePosition, normalizeInnerPageOffset, resolveInnerPageOffset, type InnerPagePosition } from '@/lib/pageLayout'
@@ -31,6 +34,7 @@ import {
 import { ImportDialog } from '@/components/ImportDialog/ImportDialog'
 import { DraftLibrary } from '@/components/DraftLibrary/DraftLibrary'
 import { ContextInspector } from '@/components/Inspector/ContextInspector'
+import { WorkspaceNavigation, useCompactWorkspace, type WorkspacePanel } from '@/components/WorkspaceNavigation'
 import {
   BUILTIN_THEMES,
   DEFAULT_THEME,
@@ -71,7 +75,6 @@ import { useDocumentScrollSync } from '@/lib/useDocumentScrollSync'
 import { suggestFilename } from '@/lib/exportPng'
 import { runExport } from '@/lib/runExport'
 import {
-  coverContentWidthForTheme,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
 } from '@/lib/canvas'
@@ -106,6 +109,8 @@ const EMPTY_PUBLICATION: EditorDocumentPublicationV1 = {
   importedAt: null,
 }
 function App() {
+  const compactWorkspace = useCompactWorkspace()
+  const [activeWorkspacePanel, setActiveWorkspacePanel] = useState<WorkspacePanel>('editor')
   // 主题对应的色彩 CSS class（作用在 .page div 上）
   const [themeClass, setThemeClass] = useState<ThemeKey>(DEFAULT_THEME.themeClass)
 
@@ -118,6 +123,7 @@ function App() {
   const [h2Bold, setH2Bold] = useState(DEFAULT_THEME.h2Bold)
   const [h3Bold, setH3Bold] = useState(DEFAULT_THEME.h3Bold)
   const [fontSize, setFontSize] = useState(DEFAULT_THEME.fontSize)
+  const [coverTitleFontSize, setCoverTitleFontSize] = useState<CoverTitleFontSize | undefined>(DEFAULT_THEME.coverTitleFontSize)
   const [density, setDensity] = useState<DensityLevel>(DEFAULT_THEME.density)
   const [h1Width, setH1Width] = useState<H1Width>(DEFAULT_THEME.h1Width)
   const [overlay, setOverlay] = useState<OverlayKey>(DEFAULT_THEME.overlay)
@@ -240,7 +246,8 @@ function App() {
     useState<TextSelectionState>({
       active: false,
       highlighted: false,
-      opacity: 0.5,
+      opacity: 0.25,
+      style: 'background',
     })
   const [historyState, setHistoryState] = useState<HistoryState>({
     canUndo: false,
@@ -317,6 +324,7 @@ function App() {
       h2Bold,
       h3Bold,
       fontSize,
+      coverTitleFontSize,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -345,6 +353,7 @@ function App() {
       h2Bold,
       h3Bold,
       fontSize,
+      coverTitleFontSize,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -366,15 +375,19 @@ function App() {
   // eslint-disable-next-line react-hooks/refs
   documentStyleRef.current = documentStyle
   const noWrapH1Layout = useMemo(
-    () => ({
+    () => createNoWrapH1Layout({
       fontFamily: fontH1,
       fontSizePx: Math.round((fontSize * 90) / 40),
       fontWeight: h1Bold ? 700 : 400,
-      maxWidthPx:
-        coverContentWidthForTheme(themeClass) *
-        (Number.parseFloat(h1Width) / 100),
+      h1Width,
+      themeClass,
+      coverLayout,
+      coverTitleFontSize,
+      innerVerticalDefault,
+      logoLayoutReserved: !!logoSrc,
     }),
-    [fontH1, fontSize, h1Bold, h1Width, themeClass],
+    [fontH1, fontSize, h1Bold, h1Width, themeClass, coverLayout,
+      coverTitleFontSize, innerVerticalDefault, logoSrc],
   )
   const previewLayoutRevision = [
     fontH1,
@@ -391,6 +404,9 @@ function App() {
     userFontFamilies.join(','),
     fontRegistryRevision,
   ].join('|')
+
+  // A cover-only change must preserve the already sealed inner-page geometry.
+  const coverPreviewLayoutRevision = [previewLayoutRevision, coverTitleFontSize].join('|')
 
   // hydrateDocument 真身在持久化 hook 之后定义（要写 hook 返回的
   // documentRevisionRef / pendingSnapshotRef / dirtyDocumentRef /
@@ -518,6 +534,7 @@ function App() {
     setH2Bold(document.style.h2Bold)
     setH3Bold(document.style.h3Bold)
     setFontSize(document.style.fontSize)
+    setCoverTitleFontSize(normalizeCoverTitleFontSize(document.style.coverTitleFontSize))
     setDensity(document.style.density)
     setH1Width(document.style.h1Width)
     setOverlay(document.style.overlay)
@@ -738,6 +755,7 @@ function App() {
     setH2Bold(theme.h2Bold)
     setH3Bold(theme.h3Bold)
     setFontSize(theme.fontSize)
+    setCoverTitleFontSize(normalizeCoverTitleFontSize(theme.coverTitleFontSize))
     setDensity(theme.density)
     setH1Width(theme.h1Width)
     setOverlay(theme.overlay)
@@ -779,6 +797,10 @@ function App() {
   }
 
   const pages = useMemo(() => splitIntoPages(content), [content])
+  const hasCoverTitle = useMemo(() => {
+    const cover = new DOMParser().parseFromString(pages[0] ?? '', 'text/html')
+    return Array.from(cover.body.children).some((node) => node.tagName === 'H1')
+  }, [pages])
   const logoLayoutReservations = useMemo(() => readLogoLayoutReservations(content), [content])
   const pageLogoOverrides = useMemo(() => readPageLogoOverrides(content, coverLogoVisibility), [content, coverLogoVisibility])
   const pageLayouts = useMemo(() => readPageLayouts(content), [content])
@@ -809,6 +831,7 @@ function App() {
       h2Bold,
       h3Bold,
       fontSize,
+      coverTitleFontSize,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -1006,13 +1029,26 @@ function App() {
 
   function handleHighlightOpacity(opacity: number) {
     if (editorRef.current?.setTextHighlight(opacity)) {
-      recordRecentAction(`荧光笔 ${Math.round(opacity * 100)}%`)
+      recordRecentAction(`关键词强调 ${Math.round(opacity * 100)}%`)
+    }
+  }
+
+  function handleHighlightStyle(style: TextHighlightStyle) {
+    if (editorRef.current?.setTextHighlight(undefined, style)) {
+      recordRecentAction(style === 'underline' ? '划线荧光笔' : '整块底色')
+    }
+  }
+
+  function handleHighlightColor(color: TextHighlightColor) {
+    if (editorRef.current?.setTextHighlight(undefined, undefined, color)) {
+      const label = TEXT_HIGHLIGHT_COLORS.find(option => option.value === color)?.label ?? ''
+      recordRecentAction(`${label}色关键词强调`)
     }
   }
 
   function handleClearHighlight() {
     if (editorRef.current?.clearTextHighlight()) {
-      recordRecentAction('移除荧光笔')
+      recordRecentAction('移除关键词强调')
     }
   }
 
@@ -1031,6 +1067,7 @@ function App() {
     h2Bold,
     h3Bold,
     fontSize,
+    coverTitleFontSize,
     density,
     h1Width,
     overlay,
@@ -1082,7 +1119,7 @@ function App() {
     getCanvasHeading: () => canvasHeadingRef.current,
     getPageElements: () => pageRefs.current.slice(0, pages.length),
     documentIdentity: activeDraft?.id ?? 'unsaved',
-    structureRevision: [pages.length, themeClass, previewLayoutRevision].join(
+    structureRevision: [pages.length, themeClass, coverPreviewLayoutRevision].join(
       '|',
     ),
   })
@@ -1128,6 +1165,20 @@ function App() {
         : writerLeaseState === 'checking'
           ? '正在确认没有其他页面写入同一份草稿。'
           : '恢复完成前暂不接受编辑，避免新输入被旧快照覆盖。'
+
+  const handleLayoutPageChange = (index: number) => {
+    setLayoutPageIndex(index)
+    const panel = canvasPanelRef.current
+    const page = pageRefs.current[index]
+    if (panel && page) {
+      panel.scrollTo({
+        top: panel.scrollTop + page.getBoundingClientRect().top
+          - panel.getBoundingClientRect().top
+          - (canvasHeadingRef.current?.offsetHeight ?? 0) - 24,
+        behavior: 'instant',
+      })
+    }
+  }
 
   return (
     <div
@@ -1234,8 +1285,19 @@ function App() {
           onExport={handleExport}
         />
 
+        <WorkspaceNavigation
+          activePanel={activeWorkspacePanel}
+          onPanelChange={setActiveWorkspacePanel}
+        />
+
         <main className="workspace-grid">
-          <section className="workspace-editor-panel" aria-label="正文编辑">
+          <section
+            id="workspace-editor"
+            className="workspace-editor-panel"
+            data-active={activeWorkspacePanel === 'editor'}
+            inert={compactWorkspace && activeWorkspacePanel !== 'editor' ? true : undefined}
+            aria-label="正文编辑"
+          >
             <EditorPane
               editable={!interactionBlocked}
               ref={editorRef}
@@ -1258,8 +1320,11 @@ function App() {
           </section>
 
           <section
+            id="workspace-canvas"
             ref={canvasPanelRef}
             className="workspace-canvas-panel"
+            data-active={activeWorkspacePanel === 'canvas'}
+            inert={compactWorkspace && activeWorkspacePanel !== 'canvas' ? true : undefined}
             aria-label="9:15 编辑预览"
           >
             <div className="workspace-canvas-heading" ref={canvasHeadingRef}>
@@ -1310,7 +1375,7 @@ function App() {
                   layoutGuidesOn={layoutGuidesOn}
                   snapEnabled={snapEnabled}
                   selectedImageId={imageState.imageId}
-                  layoutRevision={previewLayoutRevision}
+                  layoutRevision={index === 0 ? coverPreviewLayoutRevision : previewLayoutRevision}
                   onSelectImage={handleSelectCanvasImage}
                   onClearSelection={handleClearCanvasSelection}
                   onGestureStateChange={handleCanvasGestureStateChange}
@@ -1320,9 +1385,15 @@ function App() {
             </div>
           </section>
 
-          <section className="workspace-inspector-panel">
+          <section
+            id="workspace-inspector"
+            className="workspace-inspector-panel"
+            data-active={activeWorkspacePanel === 'inspector'}
+            inert={compactWorkspace && activeWorkspacePanel !== 'inspector' ? true : undefined}
+          >
             <ContextInspector
               logoControls={<LogoControls
+                onPage={handleLayoutPageChange}
                 pageIndex={Math.min(layoutPageIndex, pages.length - 1)}
                 overrides={pageLogoOverrides} strategy={logoStrategy} coverPosition={coverLogoPosition}
                 themeClass={themeClass} logoSrc={logoSrc} hasAsset={!!logoAssetId}
@@ -1340,19 +1411,7 @@ function App() {
                   templateDefault={innerVerticalDefault}
                   templateOffset={innerOffsetDefault}
                   onInnerOffset={(offset, newHistoryGroup) => editorRef.current?.setPageOffset(Math.min(layoutPageIndex, pages.length - 1), offset, newHistoryGroup)}
-                  onPage={index => {
-                    setLayoutPageIndex(index)
-                    const panel = canvasPanelRef.current
-                    const page = pageRefs.current[index]
-                    if (panel && page) {
-                      panel.scrollTo({
-                        top: panel.scrollTop + page.getBoundingClientRect().top
-                          - panel.getBoundingClientRect().top
-                          - (canvasHeadingRef.current?.offsetHeight ?? 0) - 24,
-                        behavior: 'instant',
-                      })
-                    }
-                  }}
+                  onPage={handleLayoutPageChange}
                   whitespaceMode={whitespaceMode}
                   onWhitespace={setWhitespaceMode}
                   coverTopOffset={coverTopOffset}
@@ -1383,6 +1442,9 @@ function App() {
               h2Bold={h2Bold}
               h3Bold={h3Bold}
               fontSize={fontSize}
+              coverTitleFontSize={coverTitleFontSize}
+              hasCoverTitle={hasCoverTitle}
+              onCoverTitleFontSizeChange={customize(setCoverTitleFontSize)}
               density={density}
               h1Width={h1Width}
               overlay={overlay}
@@ -1421,6 +1483,8 @@ function App() {
               onReplaceImage={handleReplaceImage}
               onDeleteImage={handleDeleteImage}
               onHighlightOpacity={handleHighlightOpacity}
+              onHighlightStyle={handleHighlightStyle}
+              onHighlightColor={handleHighlightColor}
               onClearHighlight={handleClearHighlight}
             />
           </section>

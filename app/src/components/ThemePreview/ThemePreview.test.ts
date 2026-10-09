@@ -85,6 +85,23 @@ afterEach(async () => {
 })
 
 describe('ThemePreview cover semantics', () => {
+  it('isolates a legacy thumbnail from the active cover size and recalibrates explicit sizes', async () => {
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockResolvedValue({ coverSrc: '', innerSrc: '', issues: [] })
+    document.documentElement.style.setProperty('--fs-cover-title', '144px')
+    const item = await mountThemePreview(publicExamTheme())
+    const scope = item.host.querySelector('.page')?.parentElement
+    expect(scope?.style.getPropertyValue('--fs-cover-title')).toBe('initial')
+    const initialSignal = mockedCalibratePageTypography.mock.calls.at(-1)?.[1]?.signal
+    await act(async () => item.root.render(createElement(ThemePreview, {
+      theme: publicExamTheme({ coverTitleFontSize: 126, coverLayout: 'kicker-above' }),
+    })))
+    expect(scope?.style.getPropertyValue('--fs-cover-title')).toBe('126px')
+    expect(initialSignal?.aborted).toBe(true)
+    expect(scope?.style.getPropertyValue('--fs-h1')).toBe('90px')
+    document.documentElement.style.removeProperty('--fs-cover-title')
+  })
+
   it('用 cover asset 渲染首页，注入主副标题色并展示公考封面文案', async () => {
     mockedResolveAssetSrc.mockResolvedValue('')
     const theme = publicExamTheme({

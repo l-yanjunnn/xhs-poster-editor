@@ -11,6 +11,7 @@ import { resolveAssetSrc } from '@/lib/resolveAsset'
 import { resolvePageBackgrounds } from '@/lib/pageBackgrounds'
 import { DENSITY_MAP } from '@/lib/density'
 import { computeFontSizeVars } from '@/lib/fontSize'
+import { normalizeCoverTitleFontSize } from '@/lib/coverTitle'
 import { CANVAS_HEIGHT, CANVAS_WIDTH, COVER_CROP_TOP } from '@/lib/canvas'
 import {
   calibratePageTypography,
@@ -82,8 +83,11 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
   const [overlayColor, overlayOpacity] = OVERLAY_MAP[theme.overlay]
   // 缩略图固定展示首页；除“不显示”外，其余策略首页都会有 Logo。
   const showLogo = theme.logoStrategy !== 'none'
+  const coverTitleFontSize = normalizeCoverTitleFontSize(theme.coverTitleFontSize)
 
   const cssVars: CSSProperties = {
+    // 缺省主题必须阻断当前稿件的独立值继承，继续使用各版式自己的 fallback。
+    ['--fs-cover-title' as never]: coverTitleFontSize === undefined ? 'initial' : `${coverTitleFontSize}px`,
     ['--font-h1' as never]: theme.fontH1,
     ['--font-h2' as never]: theme.fontH2,
     ['--font-h3' as never]: theme.fontH3,
@@ -138,6 +142,7 @@ export function ThemePreview({ theme, scale = 0.14 }: Props) {
     theme.density,
     theme.fontH2,
     theme.fontSize,
+    theme.coverTitleFontSize,
     theme.h2Bold,
     theme.themeClass,
     theme.coverLayout,

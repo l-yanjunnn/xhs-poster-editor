@@ -14,6 +14,7 @@ import {
   useId,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react'
 import {
   Bold,
@@ -61,12 +62,18 @@ import {
   type ImageAlign,
 } from '@/lib/imageModel'
 import {
+  getHighlightDefaultOpacity,
+  normalizeHighlightColor,
   normalizeHighlightOpacity,
-  TEXT_HIGHLIGHT_COLOR,
-  TEXT_HIGHLIGHT_DEFAULT_OPACITY,
+  normalizeHighlightStyle,
+  type TextHighlightColor,
+  type TextHighlightStyle,
 } from '@/lib/textHighlight'
 import { normalizePageBreakHtml } from '@/lib/pageBreak'
+import { resolveNoWrapH1Layout, type H1PhraseMetrics, type NoWrapH1Layout } from '@/lib/noWrapH1Layout'
 import '@/styles/editor.css'
+
+export type { NoWrapH1Layout } from '@/lib/noWrapH1Layout'
 
 // 上抛给 App 的选区状态，中央画布和右侧检查器共用。
 export interface ImageState {
@@ -82,18 +89,15 @@ export interface TextSelectionState {
   active: boolean
   highlighted: boolean
   opacity: number
+  style?: TextHighlightStyle
+  mixedStyle?: boolean
+  color?: TextHighlightColor
+  mixedColor?: boolean
 }
 
 export interface HistoryState {
   canUndo: boolean
   canRedo: boolean
-}
-
-export interface NoWrapH1Layout {
-  fontFamily: string
-  fontSizePx: number
-  fontWeight: number
-  maxWidthPx: number
 }
 
 // 暴露给 App 的命令式 API：apply 主题时需要外部 setContent，保存主题时需要 getJSON；
@@ -119,7 +123,7 @@ export interface EditorHandle {
   ) => boolean
   deleteImageById: (imageId: string) => boolean
   clearSelection: () => boolean
-  setTextHighlight: (opacity: number) => boolean
+  setTextHighlight: (opacity: number | undefined, style?: TextHighlightStyle, color?: TextHighlightColor) => boolean
   clearTextHighlight: () => boolean
   syncImageSources: (
     updates: Array<{ imageId: string; src: string }>,
@@ -152,7 +156,7 @@ export const DEFAULT_CONTENT = `
 <p>使用指南 · 给非技术朋友的开箱即用工具</p>
 <hr class="divider">
 <p>写正文 → 挑主题 → 确认 PNG 成品并下载，做出小红书图文长图。</p>
-<blockquote>左侧写正文，中央看 9:15 成品，右侧只显示当前对象的设置。所见即所得，不用懂代码。</blockquote>
+<blockquote>左侧写正文，中央看 9:15 成品，右侧按分类打开工具。所见即所得，不用懂代码。</blockquote>
 <p>这份五页教程带你认识整个工作台。</p>
 
 <hr class="page-break">
@@ -162,7 +166,7 @@ export const DEFAULT_CONTENT = `
 <ul>
   <li><strong>左侧</strong>：输入正文、切换段落样式、插图和分页</li>
   <li><strong>中央</strong>：查看多页成品、直接调整图片；滚动会和左侧自动联动</li>
-  <li><strong>右侧</strong>：显示当前选中对象的设置；顶部有独立的发布文案卡片</li>
+  <li><strong>右侧</strong>：文字、页面、外观、图片、发布、记录六类工具；点击分类展开，再点收起</li>
 </ul>
 <h2>已有文稿？直接导入</h2>
 <p>顶栏「导入文稿」支持 Markdown 和纯文本，拖进来或粘贴都行。确认后会生成一份全新草稿，原文一字不改，导入后照常继续编辑。</p>
@@ -170,7 +174,7 @@ export const DEFAULT_CONTENT = `
 <hr class="page-break">
 
 <h1>文字排版</h1>
-<p>左侧工具栏控制段落结构；右侧文字检查器处理当前选区。</p>
+<p>左侧工具栏控制段落结构；右侧「文字」统一设置字号、字体和当前选区的强调样式。</p>
 <h2>支持的块</h2>
 <ul>
   <li><strong>H1 / H2 / H3</strong>：三级标题，作用于整段</li>
@@ -178,17 +182,17 @@ export const DEFAULT_CONTENT = `
   <li><strong>有序 / 无序列表</strong>：嵌套自如，列表里也能放心分页</li>
 </ul>
 <p>选中 1–12 个字后点「短语不拆」，关键词就不会被换行拆开。</p>
-<p>选中文字可以加紫色荧光笔，透明度 0% 到 100% 随意调。</p>
+<p>选中标题或正文中的词，在「文字」里选择整块底色或划线荧光笔，再选择色板与透明度。</p>
 <blockquote>正文自动两端对齐；导出前会显示实际 PNG，确认后下载同一份成品。「分隔线」负责装饰，「插入分页」才会切页。</blockquote>
 
 <hr class="page-break">
 
 <h1>主题、图片与参考线</h1>
-<p>主题库内置四套视觉方案，一键套用、不改正文：公考·山水卷（封面 + 内页双底图）、雅致、极简白、深夜黑。右侧「封面版式」可选左对齐叠排、居中海报或小字在上大字在下，垂直位置上 / 中 / 下三档。</p>
+<p>主题库内置四套视觉方案，一键套用、不改正文：公考·山水卷（封面 + 内页双底图）、雅致、极简白、深夜黑。右侧「页面 → 封面版式」可选左对齐叠排、居中海报或小字在上大字在下，垂直位置上 / 中 / 下三档。</p>
 <h2>图片直接上手</h2>
 <ul>
   <li><strong>缩放</strong>：点击画布里的图片，拖四角等比调整</li>
-  <li><strong>对齐</strong>：拖顶部抓手，或在右侧选左 / 中 / 右</li>
+  <li><strong>对齐</strong>：拖顶部抓手，或在右侧「图片」选左 / 中 / 右</li>
   <li><strong>磁吸</strong>：自动吸附版心；按住 Option / Alt 临时关闭</li>
   <li><strong>取消</strong>：拖动中按 Esc，立即回到操作前</li>
 </ul>
@@ -235,7 +239,11 @@ function sameTextSelectionState(
   return (
     a.active === b.active &&
     a.highlighted === b.highlighted &&
-    a.opacity === b.opacity
+    a.opacity === b.opacity &&
+    a.style === b.style &&
+    a.mixedStyle === b.mixedStyle &&
+    a.color === b.color &&
+    a.mixedColor === b.mixedColor
   )
 }
 
@@ -272,6 +280,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   ref,
 ) {
   const noWrapH1LayoutRef = useRef(noWrapH1Layout)
+  const [noWrapNotice, setNoWrapNotice] = useState('')
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   // 上次上报值：仅当逐字段比较发现变化时才回调 App（见 sameImageState 注释）。
   const lastReportedRef = useRef<{
@@ -279,6 +288,13 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     text: TextSelectionState | null
     history: HistoryState | null
   }>({ image: null, text: null, history: null })
+
+  const repairUnsafeNoWrapMarks = useCallback((ed: Editor, layout?: NoWrapH1Layout) => {
+    const coverRemovals = removeUnsafeNoWrapMarks(ed, layout)
+    if (coverRemovals > 0) {
+      setNoWrapNotice(`封面主标题有 ${coverRemovals} 处“不拆短语”超出当前行宽，已恢复正常换行。文字已保留，可调整字号后重新设置。`)
+    }
+  }, [])
 
   const reportEditorState = useCallback((ed: Editor) => {
     const last = lastReportedRef.current
@@ -312,14 +328,36 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     const highlightAttrs = textActive
       ? (ed.getAttributes('textHighlight') as {
           opacity?: unknown
+          style?: unknown
+          color?: unknown
         })
       : {}
+    const highlightStyle = normalizeHighlightStyle(highlightAttrs.style)
+    const selectedStyles = new Set<TextHighlightStyle>()
+    const selectedColors = new Set<TextHighlightColor>()
+    if (textActive) {
+      ed.state.doc.nodesBetween(textSelection.from, textSelection.to, (node) => {
+        if (!node.isText) return true
+        const highlight = node.marks.find((mark) => mark.type.name === 'textHighlight')
+        if (highlight) {
+          const style = normalizeHighlightStyle(highlight.attrs.style)
+          selectedStyles.add(style)
+          selectedColors.add(normalizeHighlightColor(highlight.attrs.color, style))
+        }
+        return true
+      })
+    }
     const nextTextSelectionState: TextSelectionState = {
       active: textActive,
       highlighted: textActive && ed.isActive('textHighlight'),
       opacity: normalizeHighlightOpacity(
-        highlightAttrs.opacity ?? TEXT_HIGHLIGHT_DEFAULT_OPACITY,
+        highlightAttrs.opacity ?? getHighlightDefaultOpacity(highlightStyle),
+        highlightStyle,
       ),
+      style: highlightStyle,
+      mixedStyle: selectedStyles.size > 1,
+      color: normalizeHighlightColor(highlightAttrs.color, highlightStyle),
+      mixedColor: selectedColors.size > 1,
     }
     if (
       !last.text ||
@@ -361,7 +399,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
       // 每次文档 transaction 后都重新建立 nowrap 不变量。
       queueMicrotask(() => {
         if (!editor.isDestroyed) {
-          removeUnsafeNoWrapMarks(editor, noWrapH1LayoutRef.current)
+          repairUnsafeNoWrapMarks(editor, noWrapH1LayoutRef.current)
           reportEditorState(editor)
         }
       })
@@ -377,6 +415,7 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     resetHistory: boolean,
   ): void {
     if (!editor) return
+    setNoWrapNotice('')
     const normalized = normalizeIncomingContent(content)
     if (!resetHistory) {
       const current = editor.state.doc.attrs.logoSettings
@@ -458,40 +497,43 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
     return true
   }
 
-  function setTextHighlight(opacity: number): boolean {
+  function setTextHighlight(opacity: number | undefined, style?: TextHighlightStyle, color?: TextHighlightColor): boolean {
     if (!editor) return false
     const { selection } = editor.state
     if (!(selection instanceof TextSelection) || selection.empty) return false
     const mark = editor.schema.marks.textHighlight
     if (!mark) return false
-    const nextOpacity = normalizeHighlightOpacity(opacity)
-    let sawText = false
-    let alreadyApplied = true
-    editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+    let transaction = editor.state.tr
+    let changed = false
+    editor.state.doc.nodesBetween(selection.from, selection.to, (node, position) => {
       if (!node.isText) return true
-      sawText = true
       const existing = node.marks.find((item) => item.type === mark)
+      const existingStyle = normalizeHighlightStyle(existing?.attrs.style)
+      const nextStyle = normalizeHighlightStyle(style ?? existing?.attrs.style)
+      // 未提供的维度逐段保留；混合选区也不能被单一代表值重置。
+      const nextOpacity = opacity === undefined && existing
+        ? normalizeHighlightOpacity(existing.attrs.opacity, existingStyle)
+        : normalizeHighlightOpacity(opacity, nextStyle)
+      const nextColor = color === undefined && existing
+        ? normalizeHighlightColor(existing.attrs.color, existingStyle)
+        : normalizeHighlightColor(color, nextStyle)
       if (
         !existing ||
-        existing.attrs.color !== TEXT_HIGHLIGHT_COLOR ||
-        normalizeHighlightOpacity(existing.attrs.opacity) !== nextOpacity
+        normalizeHighlightStyle(existing.attrs.style) !== nextStyle ||
+        existing.attrs.color !== nextColor ||
+        normalizeHighlightOpacity(existing.attrs.opacity, existingStyle) !== nextOpacity
       ) {
-        alreadyApplied = false
+        changed = true
+        transaction = transaction.addMark(
+          Math.max(selection.from, position),
+          Math.min(selection.to, position + node.nodeSize),
+          mark.create({ style: nextStyle, color: nextColor, opacity: nextOpacity }),
+        )
       }
       return true
     })
-    if (sawText && alreadyApplied) return false
-    const transaction = closeHistory(
-      editor.state.tr.addMark(
-        selection.from,
-        selection.to,
-        mark.create({
-          color: TEXT_HIGHLIGHT_COLOR,
-          opacity: nextOpacity,
-        }),
-      ),
-    )
-    editor.view.dispatch(transaction)
+    if (!changed) return false
+    editor.view.dispatch(closeHistory(transaction))
     return true
   }
 
@@ -640,10 +682,12 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
   // 自动撤销该 mark，保留文字并恢复正常换行，绝不让内容被页面裁掉。
   useEffect(() => {
     noWrapH1LayoutRef.current = noWrapH1Layout
-    if (editor) {
-      removeUnsafeNoWrapMarks(editor, noWrapH1Layout)
-    }
-  }, [editor, noWrapH1Layout])
+    queueMicrotask(() => {
+      if (editor && !editor.isDestroyed) {
+        repairUnsafeNoWrapMarks(editor, noWrapH1LayoutRef.current)
+      }
+    })
+  }, [editor, noWrapH1Layout, repairUnsafeNoWrapMarks])
 
   return (
     <div className="editor-workspace">
@@ -658,6 +702,12 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane(
         onInsertImageClick={onInsertImageClick}
         noWrapH1Layout={noWrapH1Layout}
       />
+      {noWrapNotice && (
+        <div className="editor-toolbar-hint" role="status">
+          {noWrapNotice}
+          <button type="button" onClick={() => setNoWrapNotice('')} aria-label="关闭短语不拆提示">知道了</button>
+        </div>
+      )}
       <div className="editor-scroll-area" ref={scrollAreaRef}>
         <EditorContent editor={editor} className="tiptap-editor" />
       </div>
@@ -957,32 +1007,36 @@ function doesSelectionFitCanvasH1(
   if (!inH1) return true
   if (!layout) return false
 
-  return doesPhraseFitCanvasH1(text, layout)
+  const headingPosition = $from.before()
+  return doesPhraseFitCanvasH1(text, resolveNoWrapH1Layout(editor.state.doc, headingPosition, layout).metrics)
 }
 
-function doesPhraseFitCanvasH1(text: string, layout: NoWrapH1Layout): boolean {
+function doesPhraseFitCanvasH1(text: string, layout: H1PhraseMetrics): boolean {
   phraseMeasureCanvas ??= document.createElement('canvas')
   const context = phraseMeasureCanvas.getContext('2d')
   if (!context) return false
   context.font = `${layout.fontWeight} ${layout.fontSizePx}px ${layout.fontFamily}`
   const glyphCount = Array.from(text.trim()).length
-  // 画布 H1 的 letter-spacing 是 -0.5px；测量时保持同一规则。
+  // 封面眉题/公考主标题使用 0.01em，其余 H1 沿用 -0.5px。
   const measuredWidth =
-    context.measureText(text.trim()).width - Math.max(0, glyphCount - 1) * 0.5
+    context.measureText(text.trim()).width + Math.max(0, glyphCount - 1) * (layout.letterSpacingPx ?? -0.5)
   return measuredWidth <= layout.maxWidthPx
 }
 
 function removeUnsafeNoWrapMarks(
   editor: Editor,
   layout?: NoWrapH1Layout,
-): void {
+): number {
   const mark = editor.schema.marks.noWrapPhrase
-  if (!mark) return
+  if (!mark) return 0
   const removals: Array<{ from: number; to: number }> = []
+  let coverRemovals = 0
 
   editor.state.doc.descendants((node, position) => {
     if (!node.isTextblock) return true
     const isH1 = node.type.name === 'heading' && node.attrs.level === 1
+    const headingLayout = isH1 && layout
+      ? resolveNoWrapH1Layout(editor.state.doc, position, layout) : null
 
     let segmentStart: number | null = null
     let segmentEnd = 0
@@ -990,9 +1044,10 @@ function removeUnsafeNoWrapMarks(
     const flush = () => {
       const invalidLength = !canKeepPhraseTogether(segmentText)
       const invalidH1Width =
-        isH1 && (!layout || !doesPhraseFitCanvasH1(segmentText, layout))
+        isH1 && (!headingLayout || !doesPhraseFitCanvasH1(segmentText, headingLayout.metrics))
       if (segmentStart !== null && (invalidLength || invalidH1Width)) {
         removals.push({ from: segmentStart, to: segmentEnd })
+        if (headingLayout?.isCoverTitle && invalidH1Width) coverRemovals += 1
       }
       segmentStart = null
       segmentEnd = 0
@@ -1019,7 +1074,7 @@ function removeUnsafeNoWrapMarks(
     return false
   })
 
-  if (removals.length === 0) return
+  if (removals.length === 0) return 0
   const transaction = editor.state.tr
   for (const { from, to } of removals) {
     transaction.removeMark(from, to, mark)
@@ -1027,4 +1082,5 @@ function removeUnsafeNoWrapMarks(
   // 自动可靠性修正不是用户操作，不能被一次“撤销”重新带回来。
   transaction.setMeta('addToHistory', false)
   editor.view.dispatch(transaction)
+  return coverRemovals
 }

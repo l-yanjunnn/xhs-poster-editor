@@ -4,6 +4,7 @@ import { act, createElement, createRef, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { splitIntoPages } from '@/lib/splitPages'
+import { createNoWrapH1Layout } from '@/lib/noWrapH1Layout'
 import {
   EditorPane,
   type EditorHandle,
@@ -47,6 +48,7 @@ afterEach(async () => {
     await act(async () => item.root.unmount())
     item.host.remove()
   }
+  vi.restoreAllMocks()
 })
 
 function toolbarButton(host: HTMLElement, name: string): HTMLButtonElement {
@@ -68,6 +70,44 @@ function setTextSelection(editor: Editor, from: number, to = from): void {
 }
 
 describe('two-row editor toolbar', () => {
+  it('enlarging only the cover preserves other H1 phrases and reports a cover correction', async () => {
+    const context = {
+      font: '',
+      measureText(text: string) {
+        return { width: Array.from(text).length * Number(this.font.match(/ ([\d.]+)px/)?.[1] ?? 0) }
+      },
+    }
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
+    const input = {
+      fontFamily: 'sans-serif', fontSizePx: 90, fontWeight: 700,
+      h1Width: '66%', themeClass: '', coverLayout: 'stack-left' as const,
+      innerVerticalDefault: 'middle' as const, logoLayoutReserved: false,
+    }
+    const content = '<h1><span data-no-wrap-phrase>封面五个字</span></h1><h1><span data-no-wrap-phrase>其他五个字</span></h1><hr class="page-break"><h1><span data-no-wrap-phrase>内页五个字</span></h1><p>内页正文</p>'
+    const item = await mountEditor({ initialContent: content, noWrapH1Layout: createNoWrapH1Layout(input) })
+    const innerBefore = splitIntoPages(item.editor.getHTML())[1]
+    expect(item.host.querySelectorAll('[data-no-wrap-phrase]')).toHaveLength(3)
+
+    await act(async () => item.root.render(createElement(EditorPane, {
+      ref: item.handle,
+      noWrapH1Layout: createNoWrapH1Layout({ ...input, coverTitleFontSize: 144 }),
+    })))
+    expect(item.host.querySelectorAll('[data-no-wrap-phrase]')).toHaveLength(2)
+    expect(splitIntoPages(item.editor.getHTML())[1]).toBe(innerBefore)
+    expect(item.host.querySelector('h1')?.textContent).toBe('封面五个字')
+    expect(item.host.querySelector('[role="status"]')?.textContent).toContain('封面主标题有 1 处“不拆短语”超出当前行宽')
+
+    await act(async () => setTextSelection(item.editor, 1, 6))
+    expect(toolbarButton(item.host, '短语不拆').getAttribute('aria-disabled')).toBe('true')
+    let innerPos = 0
+    item.editor.state.doc.descendants((node, pos) => { if (node.isText && node.text === '内页五个字') innerPos = pos })
+    await act(async () => setTextSelection(item.editor, innerPos, innerPos + 5))
+    expect(toolbarButton(item.host, '短语不拆').getAttribute('aria-pressed')).toBe('true')
+    await act(async () => toolbarButton(item.host, '短语不拆').click())
+    expect(item.editor.isActive('noWrapPhrase')).toBe(false)
+    expect(toolbarButton(item.host, '短语不拆').getAttribute('aria-disabled')).toBeNull()
+  })
+
   it('keeps every tool directly visible with stable groups and toggle semantics', async () => {
     const { host } = await mountEditor({ onInsertImageClick: vi.fn() })
     expect(host.textContent).toContain(

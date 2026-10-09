@@ -33,6 +33,7 @@ import {
 } from '@/lib/documentStore'
 import type { ImportAnalysis } from '@/lib/importDocument'
 import { DEFAULT_THEME, type Theme } from '@/lib/themes'
+import { normalizeCoverTitleFontSize } from '@/lib/coverTitle'
 import type { WriterLeaseState } from '@/lib/useWriterLease'
 
 const AUTOSAVE_DELAY_MS = 900
@@ -71,6 +72,7 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     h2Bold: theme.h2Bold,
     h3Bold: theme.h3Bold,
     fontSize: theme.fontSize,
+    coverTitleFontSize: normalizeCoverTitleFontSize(theme.coverTitleFontSize),
     density: theme.density,
     logoStrategy: theme.logoStrategy,
     bgAssetId: theme.bgAssetId,

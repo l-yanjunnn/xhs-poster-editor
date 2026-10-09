@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   checkDeterministicFontReadiness,
   collectLayoutFontRequests,
+  DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES,
   fontRequestToCssFont,
   validateLayoutFontRequests,
 } from './deterministicFontReadiness'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 
 const initialDocumentFontsDescriptor = Object.getOwnPropertyDescriptor(
   document,
@@ -259,5 +261,33 @@ describe('deterministic font readiness', () => {
         weight: '900',
       }),
     ])
+  })
+
+  it('accepts the native system preset and Windows native families without requiring downloadable faces', async () => {
+    const load = vi.fn(async () => [])
+    const result = await validateLayoutFontRequests([
+      { family: SYSTEM_FONT_STACK, weight: 700, sample: '标题ABC2026' },
+      { family: '"Microsoft YaHei", system-ui, sans-serif', weight: 400, sample: '微软雅黑正文' },
+      { family: '"Segoe UI", sans-serif', weight: 400, sample: 'Latin' },
+      { family: 'BlinkMacSystemFont, sans-serif', weight: 400, sample: 'Latin' },
+    ], { load, allowlistedFamilies: DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES })
+
+    expect(result.ok).toBe(true)
+    expect(result.verified).toEqual([])
+    expect(result.allowlisted.map(({ family }) => family)).toEqual([
+      'PingFang SC', 'Microsoft YaHei', 'Segoe UI', 'BlinkMacSystemFont',
+    ])
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it('still blocks a missing primary webfont even when the stack contains a native fallback', async () => {
+    const load = vi.fn(async () => [])
+    const result = await validateLayoutFontRequests([
+      { family: '"Missing Downloaded Font", "Microsoft YaHei", sans-serif', sample: '正文' },
+    ], { load, allowlistedFamilies: DEFAULT_SYSTEM_LAYOUT_FONT_FAMILIES })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues).toEqual([expect.objectContaining({ reason: 'empty-result', family: 'Missing Downloaded Font' })])
+    expect(load).toHaveBeenCalledWith('normal 400 16px "Missing Downloaded Font"', '正文')
   })
 })

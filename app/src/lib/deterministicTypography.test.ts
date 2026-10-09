@@ -6,6 +6,7 @@ import {
   type DeterministicTypographyResult,
 } from './deterministicTypography'
 import { clearTypographyMetricsCache } from './typographyMetrics'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 
 let clientWidthSpy: ReturnType<typeof vi.spyOn>
 
@@ -44,6 +45,26 @@ afterEach(() => {
 })
 
 describe('deterministic typography DOM snapshot', () => {
+  it('keeps the complete native font stack through all heading/body layout requests and glyphs', () => {
+    const page = pageWithContent()
+    const source = ['h1', 'h2', 'h3', 'p'].map((tag) =>
+      `<${tag} style='font-family: ${SYSTEM_FONT_STACK}; width: 500px; font-size: 20px; line-height: 30px'>本机字体 ABC 2026</${tag}>`,
+    ).join('')
+    const result = layout(page, source)
+
+    expect(result.issues).toEqual([])
+    expect(result.blockCount).toBe(4)
+    expect(result.fontRequests.length).toBeGreaterThan(0)
+    for (const request of result.fontRequests) {
+      expect(request.family).toBe(SYSTEM_FONT_STACK)
+    }
+    for (const block of page.querySelectorAll<HTMLElement>('h1,h2,h3,p')) {
+      expect(block.textContent).toBe('本机字体 ABC 2026')
+      expect(getComputedStyle(block).fontFamily).toBe(SYSTEM_FONT_STACK)
+      expect(block.querySelectorAll('.dtl-glyph').length).toBeGreaterThan(0)
+    }
+  })
+
   it('materializes only an explicit continuation render marker as a justified terminal', () => {
     const continuationPage = pageWithContent()
     const continuation = layout(
@@ -724,6 +745,77 @@ describe('deterministic typography DOM snapshot', () => {
       )
     }
     expect(page.querySelector('.content')?.textContent).toBe('甲乙丙丁戊己')
+  })
+
+  it('draws the teal underline highlight separately on each line with stable lower-glyph geometry', () => {
+    const page = pageWithContent()
+    const source = '<h1 style="width: 84px; font-size: 20px; line-height: 30px"><span data-text-highlight data-highlight-style="underline" data-highlight-color="#31C9C1" data-highlight-opacity="0.5">创始人需要付费咨询<br>第二行继续</span></h1>'
+    const result = layout(page, source)
+    expect(result.issues).toEqual([])
+    expect(page.querySelector('h1')?.textContent).toBe('创始人需要付费咨询第二行继续')
+    const lines = Array.from(page.querySelectorAll<HTMLElement>('.dtl-line'))
+    const decorations = Array.from(page.querySelectorAll<HTMLElement>('.dtl-decoration--highlight-underline'))
+    expect(lines.length).toBeGreaterThan(2)
+    expect(decorations).toHaveLength(lines.length)
+    for (const decoration of decorations) {
+      const line = decoration.parentElement!
+      const baseline = Number(line.dataset.layoutBaseline)
+      expect(decoration.dataset.highlightStyle).toBe('underline')
+      expect(Number.parseFloat(decoration.style.height)).toBeCloseTo(20 * 0.28, 3)
+      expect(Number.parseFloat(decoration.style.top)).toBeCloseTo(baseline - 20 * 0.18, 3)
+      expect(decoration.style.backgroundColor).toBe('rgba(49, 201, 193, 0.5)')
+      expect(Number.parseFloat(decoration.style.left)).toBeGreaterThanOrEqual(0)
+      expect(Number.parseFloat(decoration.style.width)).toBeLessThanOrEqual(84)
+    }
+    expect(page.querySelectorAll('[data-layout-explicit-break]')).toHaveLength(1)
+    const firstSnapshot = result.snapshotId
+    expect(layout(page, source).snapshotId).toBe(firstSnapshot)
+  })
+
+  it.each(['background', 'underline'] as const)('renders every palette color in %s with separate deterministic line fragments', (style) => {
+    const palette = [
+      ['#31C9C1', 'rgba(49, 201, 193, 0.37)'],
+      ['#7B3B8B', 'rgba(123, 59, 139, 0.37)'],
+      ['#F2C94C', 'rgba(242, 201, 76, 0.37)'],
+      ['#EF7998', 'rgba(239, 121, 152, 0.37)'],
+      ['#5B8DEF', 'rgba(91, 141, 239, 0.37)'],
+    ]
+    const snapshots = new Set<string>()
+    for (const [color, rgba] of palette) {
+      const page = pageWithContent()
+      // Semantic attrs must win over a stale native background after a color edit.
+      const source = `<h1 style="width: 84px; font-size: 20px; line-height: 30px"><span data-text-highlight data-highlight-style="${style}" data-highlight-color="${color}" data-highlight-opacity="0.37" style="background-color: rgba(123, 59, 139, 0.25)">颜色独立于形状<br>跨行仍然完整</span></h1>`
+      const result = layout(page, source)
+      expect(result.issues).toEqual([])
+      const lines = page.querySelectorAll('.dtl-line')
+      const fragments = Array.from(page.querySelectorAll<HTMLElement>('.dtl-decoration--highlight'))
+      expect(lines.length).toBeGreaterThan(2)
+      expect(fragments).toHaveLength(lines.length)
+      expect(page.querySelector('h1')?.textContent).toBe('颜色独立于形状跨行仍然完整')
+      for (const fragment of fragments) {
+        expect(fragment.dataset.highlightStyle).toBe(style)
+        expect(fragment.style.backgroundColor).toBe(rgba)
+        expect(Number.parseFloat(fragment.style.height)).toBeCloseTo(20 * (style === 'underline' ? 0.28 : 1.04), 3)
+      }
+      snapshots.add(result.snapshotId)
+      expect(layout(page, source).snapshotId).toBe(result.snapshotId)
+    }
+    expect(snapshots.size).toBe(5)
+  })
+
+  it('keeps legacy full background geometry and never joins adjacent different highlight styles', () => {
+    const page = pageWithContent()
+    const result = layout(page, '<p style="width: 240px; font-size: 20px; line-height: 30px"><span data-text-highlight style="background-color: rgba(49, 201, 193, 0.5)">甲</span><span data-text-highlight data-highlight-style="underline" data-highlight-opacity="0.5">乙</span>丙<span data-text-highlight data-highlight-style="underline" data-highlight-opacity="0.5">丁</span></p>')
+    expect(result.issues).toEqual([])
+    const decorations = Array.from(page.querySelectorAll<HTMLElement>('.dtl-decoration--highlight'))
+    expect(decorations).toHaveLength(3)
+    const baseline = Number(decorations[0].parentElement!.dataset.layoutBaseline)
+    expect(decorations[0].dataset.highlightStyle).toBe('background')
+    expect(Number.parseFloat(decorations[0].style.top)).toBeCloseTo(baseline - 20 * 0.84, 3)
+    expect(Number.parseFloat(decorations[0].style.height)).toBeCloseTo(20 * 1.04, 3)
+    expect(decorations[1].classList.contains('dtl-decoration--highlight-underline')).toBe(true)
+    expect(decorations[2].classList.contains('dtl-decoration--highlight-underline')).toBe(true)
+    expect(Number.parseFloat(decorations[2].style.left)).toBeGreaterThan(Number.parseFloat(decorations[1].style.left) + Number.parseFloat(decorations[1].style.width))
   })
 
   it('preserves a legacy nested list without paragraph wrappers', () => {

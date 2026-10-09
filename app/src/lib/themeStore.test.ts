@@ -66,6 +66,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverLayout
   delete legacy.coverVertical
   delete legacy.coverSubtitleSpacing
+  delete legacy.coverTitleFontSize
   return legacy
 }
 
@@ -94,6 +95,7 @@ describe('themeStore V2 normalization', () => {
         coverTitleColor: '#F0F0F0',
         coverSubtitleColor: '#F0F0F0',
         coverSubtitleSpacing: 'standard',
+        coverTitleFontSize: undefined,
       }),
     ])
   })
@@ -135,6 +137,7 @@ describe('themeStore V2 normalization', () => {
       coverTitleColor: '#6d136c',
       coverSubtitleColor: '#5a465f',
       coverSubtitleSpacing: 'compact',
+      coverTitleFontSize: 126,
     })
 
     expect(records.get('user-lowercase')).toEqual(
@@ -143,6 +146,8 @@ describe('themeStore V2 normalization', () => {
         coverTitleColor: '#6D136C',
         coverSubtitleColor: '#5A465F',
         coverSubtitleSpacing: 'compact',
+        coverTitleFontSize: 126,
+        contentJSON: null,
       }),
     )
 
@@ -150,7 +155,35 @@ describe('themeStore V2 normalization', () => {
       expect.objectContaining({
         id: 'user-lowercase',
         coverSubtitleSpacing: 'compact',
+        coverTitleFontSize: 126,
       }),
     ])
+  })
+
+  it('normalizes an invalid stored cover size to follow while retaining legacy theme content', async () => {
+    const contentJSON = {
+      type: 'doc',
+      content: [{
+        type: 'heading',
+        attrs: { level: 1 },
+        content: [{
+          type: 'text',
+          text: '历史含正文主题',
+          marks: [{ type: 'textHighlight', attrs: { color: '#7B3B8B', opacity: 0.25 } }],
+        }],
+      }],
+    }
+    records.set('legacy-content-theme', {
+      ...BUILTIN_THEMES[0],
+      id: 'legacy-content-theme',
+      isBuiltin: false,
+      coverTitleFontSize: '126px',
+      contentJSON,
+    })
+
+    const [restored] = await listUserThemes()
+    expect(restored.coverTitleFontSize).toBeUndefined()
+    expect(restored.contentJSON).toEqual(contentJSON)
+    expect(restored.fontSize).toBe(BUILTIN_THEMES[0].fontSize)
   })
 })

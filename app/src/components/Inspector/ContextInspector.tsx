@@ -1,6 +1,7 @@
 import { InspectorCard } from './InspectorCard'
 import {
   useId,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
@@ -14,6 +15,9 @@ import {
   FileImage,
   FolderOpen,
   Highlighter,
+  History,
+  PanelsTopLeft,
+  PanelRightClose,
   ImagePlus,
   MessageSquareText,
   Palette,
@@ -47,8 +51,14 @@ import {
 import { DENSITY_OPTIONS } from '@/lib/density'
 import { FONT_SIZE_OPTIONS } from '@/lib/fontSize'
 import {
+  COVER_TITLE_FONT_SIZE_OPTIONS,
+  type CoverTitleFontSize,
+} from '@/lib/coverTitle'
+import {
   BODY_FONTS,
   DISPLAY_FONTS,
+  SYSTEM_FONT_OPTION,
+  SYSTEM_FONT_STACK,
   groupFonts,
   type FontOption,
 } from '@/lib/fontPresets'
@@ -57,7 +67,14 @@ import {
   imageWidthToNumber,
   type ImageAlign,
 } from '@/lib/imageModel'
-import { TEXT_HIGHLIGHT_COLOR } from '@/lib/textHighlight'
+import {
+  highlightColorWithOpacity,
+  normalizeHighlightColor,
+  normalizeHighlightStyle,
+  type TextHighlightStyle,
+  type TextHighlightColor,
+  TEXT_HIGHLIGHT_COLORS,
+} from '@/lib/textHighlight'
 import { normalizeHexColor } from '@/lib/hexColor'
 import {
   COVER_LAYOUT_EXAMPLES,
@@ -111,6 +128,8 @@ interface Props {
   h1Width: H1Width
   overlay: OverlayKey
   coverTitleColor: string
+  coverTitleFontSize?: CoverTitleFontSize
+  hasCoverTitle: boolean
   coverSubtitleColor: string
   coverLayout: CoverLayout
   coverVertical: CoverVertical
@@ -128,6 +147,7 @@ interface Props {
   onH1Width: (value: H1Width) => void
   onOverlay: (value: OverlayKey) => void
   onCoverTitleColor: (color: string) => void
+  onCoverTitleFontSizeChange: (value: CoverTitleFontSize | undefined) => void
   onCoverSubtitleColor: (color: string) => void
   onRestoreCoverColors: () => void
   onCoverLayout: (layout: CoverLayout) => void
@@ -142,66 +162,137 @@ interface Props {
   onReplaceImage: () => void
   onDeleteImage: () => void
   onHighlightOpacity: (opacity: number) => void
+  onHighlightStyle: (style: TextHighlightStyle) => void
+  onHighlightColor: (color: TextHighlightColor) => void
   onClearHighlight: () => void
 }
 
+const INSPECTOR_CATEGORIES = [
+  { id: 'text', label: '文字', title: '文字排版', description: '字体、字号与关键词强调', icon: Type },
+  { id: 'page', label: '页面', title: '页面布局', description: '封面版式、页面位置与间距', icon: PanelsTopLeft },
+  { id: 'appearance', label: '外观', title: '主题与外观', description: '主题、颜色与 Logo', icon: Palette },
+  { id: 'image', label: '图片', title: '图片与素材', description: '选中图片后调整尺寸与对齐', icon: FileImage },
+  { id: 'publish', label: '发布', title: '发布文案', description: '整理与复制配图文案', icon: MessageSquareText },
+  { id: 'history', label: '记录', title: '最近操作', description: '本次会话的操作记录', icon: History },
+] as const
+
+type InspectorCategory = typeof INSPECTOR_CATEGORIES[number]['id']
+
 export function ContextInspector(props: Props) {
-  const context = props.imageState.active
-    ? 'image'
-    : props.textSelectionState.active
-      ? 'text'
-      : 'page'
+  const [category, setCategory] = useState<InspectorCategory>('text')
+  const [collapsed, setCollapsed] = useState(false)
+  const panelId = useId()
+  const categoryButtons = useRef<Array<HTMLButtonElement | null>>([])
+  const current = INSPECTOR_CATEGORIES.find(item => item.id === category)!
+
+  function openCategory(next: InspectorCategory) {
+    setCategory(next)
+    setCollapsed(false)
+  }
+
+  function collapsePanel() {
+    setCollapsed(true)
+    categoryButtons.current[INSPECTOR_CATEGORIES.findIndex(item => item.id === category)]?.focus()
+  }
+
+  function handleRailKey(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
+    const count = INSPECTOR_CATEGORIES.length
+    const target = event.key === 'ArrowDown' ? (index + 1) % count
+      : event.key === 'ArrowUp' ? (index + count - 1) % count
+        : event.key === 'Home' ? 0 : event.key === 'End' ? count - 1 : null
+    if (target === null) return
+    event.preventDefault()
+    categoryButtons.current[target]?.focus()
+  }
 
   return (
-    <aside className="context-inspector" aria-label="当前对象属性">
-      <div className="inspector-context-label">
-        <span>当前草稿</span>
-        <strong>{props.releaseCopySourceName ? '导入生成' : '普通草稿'}</strong>
-      </div>
-
-      <PublicationCopyCard
-        value={props.releaseCopy}
-        sourceName={props.releaseCopySourceName}
-        onChange={props.onReleaseCopyChange}
-      />
-
-      {props.pageLayoutControls}
-      {props.logoControls}
-
-      <div className="inspector-context-label">
-        <span>当前对象</span>
-        <strong>
-          {context === 'image' ? '图片' : context === 'text' ? '文字选区' : '页面与主题'}
-        </strong>
-      </div>
-
-      {context === 'image' ? (
-        <ImageInspector
-          key={props.imageState.imageId}
-          {...props}
-        />
-      ) : context === 'text' ? (
-        <TextInspector {...props} />
-      ) : (
-        <PageInspector {...props} />
-      )}
-
-      {props.resourceIssues.length > 0 ? (
-        <ResourceIssues
-          issues={props.resourceIssues}
-          retrying={props.resourceRetrying}
-          onRetry={props.onRetryResources}
-        />
-      ) : null}
-
-      {props.resourceLoading ? (
-        <div className="resource-loading" role="status">
-          <RefreshCw aria-hidden="true" className="is-spinning" />
-          正在载入主题资源…
+    <aside
+      className="context-inspector"
+      aria-label="编辑工具"
+      data-collapsed={collapsed}
+      onKeyDown={event => {
+        if (event.key === 'Escape' && !event.defaultPrevented) {
+          event.preventDefault()
+          event.stopPropagation()
+          collapsePanel()
+        }
+      }}
+    >
+      <div className="inspector-drawer" id={panelId} hidden={collapsed}>
+        <header className="inspector-drawer-heading">
+          <div><h2>{current.title}</h2><p>{current.description}</p></div>
+          <button type="button" onClick={collapsePanel} aria-label="收起工具面板" title="收起工具面板">
+            <PanelRightClose aria-hidden="true" />
+          </button>
+        </header>
+        {props.resourceIssues.length > 0 && category !== 'appearance' && (
+          <button className="inspector-resource-alert" type="button" onClick={() => openCategory('appearance')}>
+            <AlertTriangle aria-hidden="true" />{props.resourceIssues.length} 项资源未载入 · 查看
+          </button>
+        )}
+        {props.resourceLoading && (
+          <div className="resource-loading" role="status"><RefreshCw aria-hidden="true" className="is-spinning" />正在载入主题资源…</div>
+        )}
+        <div className="inspector-drawer-content" key={category} aria-label={`${current.label}设置`}>
+          {category === 'text' && <>
+            <CoverTitleFontSizeField value={props.coverTitleFontSize} hasCoverTitle={props.hasCoverTitle} onChange={props.onCoverTitleFontSizeChange} />
+            {props.textSelectionState.active ? <TextInspector {...props} /> : (
+              <div className="inspector-empty-hint"><Highlighter aria-hidden="true" /><span>请先选中标题或正文中的词，再添加关键词强调。</span></div>
+            )}
+            <TypographyInspector {...props} />
+          </>}
+          {category === 'page' && <>
+            {props.pageLayoutControls}
+            <InspectorCard title="封面版式" description="仅第 1 页；改变文字组合和垂直位置。" icon={<PanelsTopLeft />}>
+              <CoverSlotFields layout={props.coverLayout} vertical={props.coverVertical} subtitleSpacing={props.coverSubtitleSpacing} onLayout={props.onCoverLayout} onVertical={props.onCoverVertical} onSubtitleSpacing={props.onCoverSubtitleSpacing} />
+            </InspectorCard>
+            <InspectorCard title="整篇排版" description="统一所有页面的排版规则。" icon={<Type />}>
+              <Field label="排版间距"><SimpleSelect value={props.density} options={DENSITY_OPTIONS} onValueChange={value => props.onDensity(value as DensityLevel)} /></Field>
+              <Field label="全篇 H1 宽度"><SimpleSelect value={props.h1Width} options={H1_WIDTH_OPTIONS} onValueChange={value => props.onH1Width(value as H1Width)} /></Field>
+            </InspectorCard>
+          </>}
+          {category === 'appearance' && <>
+            {props.resourceIssues.length > 0 && <ResourceIssues issues={props.resourceIssues} retrying={props.resourceRetrying} onRetry={props.onRetryResources} />}
+            <AppearanceInspector {...props} />
+            {props.logoControls}
+          </>}
+          {category === 'image' && <>
+            {props.imageState.active ? <ImageInspector key={props.imageState.imageId} {...props} /> : (
+              <div className="inspector-empty-hint"><FileImage aria-hidden="true" /><span>先在正文或预览中选中图片，即可调整尺寸、对齐或替换图片。</span></div>
+            )}
+            <button className="inspector-library-action" type="button" onClick={props.onOpenAssetLibrary}><FolderOpen aria-hidden="true" />打开素材库<span>插入图片或管理素材</span></button>
+          </>}
+          {category === 'publish' && <>
+            <PublicationCopyCard value={props.releaseCopy} sourceName={props.releaseCopySourceName} onChange={props.onReleaseCopyChange} />
+            <p className="inspector-section-note">图片成品通过右上角「导出 PNG」生成。</p>
+          </>}
+          {category === 'history' && <>
+            <RecentActions actions={props.recentActions} />
+            <p className="inspector-section-note">这里记录最近的操作。撤销与重做请使用顶栏按钮。</p>
+          </>}
         </div>
-      ) : null}
-
-      <RecentActions actions={props.recentActions} />
+      </div>
+      {collapsed && <div className="inspector-collapsed-hint"><Type aria-hidden="true" /><strong>工具面板已收起</strong><span>点击右侧分类继续设置</span></div>}
+      <nav className="inspector-rail" aria-label="工具分类">
+        <span className="inspector-rail-caption" aria-hidden="true">工具</span>
+        {INSPECTOR_CATEGORIES.map(({ id, label, icon: Icon }, index) => (
+          <button
+            key={id}
+            ref={element => { categoryButtons.current[index] = element }}
+            type="button"
+            aria-label={label}
+            aria-expanded={!collapsed && category === id}
+            aria-controls={panelId}
+            title={`${label} · 点击展开或收起`}
+            onClick={() => { if (category === id && !collapsed) collapsePanel(); else openCategory(id) }}
+            onKeyDown={event => handleRailKey(event, index)}
+          >
+            <Icon aria-hidden="true" /><span>{label}</span>
+            {((id === 'image' && props.imageState.active) || (id === 'text' && props.textSelectionState.active)) && <i className="inspector-rail-dot" aria-label="当前有选区" />}
+            {id === 'appearance' && props.resourceIssues.length > 0 && <i className="inspector-rail-dot is-warning" aria-label="有资源未载入" />}
+          </button>
+        ))}
+      </nav>
     </aside>
   )
 }
@@ -435,6 +526,8 @@ function ImageInspector(props: Props) {
 }
 
 function TextInspector(props: Props) {
+  const style = normalizeHighlightStyle(props.textSelectionState.style)
+  const color = normalizeHighlightColor(props.textSelectionState.color, style)
   const persistedOpacity = Math.round(props.textSelectionState.opacity * 100)
   const [draftOpacity, setDraftOpacity] = useState<number | null>(null)
   const visibleOpacity = draftOpacity ?? persistedOpacity
@@ -453,30 +546,68 @@ function TextInspector(props: Props) {
 
   return (
     <InspectorCard
-      title="正文荧光笔"
-      description="只作用于当前选中文字，不影响后续输入。"
+      title="关键词强调"
+      description="支持标题和正文，只作用于当前选中文字，不影响后续输入。"
       icon={<Highlighter />}
     >
-      <div className="highlight-swatch-row">
-        <span
-          className="highlight-swatch"
-          style={{ backgroundColor: TEXT_HIGHLIGHT_COLOR }}
-          aria-hidden="true"
-        />
-        <div>
-          <strong>固定基色</strong>
-          <span>{TEXT_HIGHLIGHT_COLOR}</span>
-        </div>
+      <div className="highlight-style-options" role="group" aria-label="荧光笔样式">
+        {([
+          ['background', '整块底色'],
+          ['underline', '划线荧光笔'],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-label={label}
+            aria-pressed={!props.textSelectionState.mixedStyle && style === value}
+            onClick={() => {
+              setDraftOpacity(null)
+              props.onHighlightStyle(value)
+            }}
+          >
+            <span className="highlight-style-sample" aria-hidden="true">
+              <span style={{
+                background: value === 'underline'
+                  ? `linear-gradient(transparent 65%, ${highlightColorWithOpacity(color, 0.5, value)} 65%, ${highlightColorWithOpacity(color, 0.5, value)} 93%, transparent 93%)`
+                  : highlightColorWithOpacity(color, 0.25, value),
+              }}>关键词</span>
+            </span>
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
+      {props.textSelectionState.mixedStyle && (
+        <p className="m-0 text-[11px] leading-4 text-neutral-500">
+          选区含多种强调样式；调整透明度会保留各自样式。
+        </p>
+      )}
+      <Field label="强调颜色" value={props.textSelectionState.mixedColor ? '多种颜色' : color}>
+        <div className="highlight-color-palette" role="group" aria-label="关键词强调色板">
+          {TEXT_HIGHLIGHT_COLORS.map(swatch => (
+            <button
+              type="button"
+              key={swatch.value}
+              aria-label={`${swatch.label} ${swatch.value}`}
+              aria-pressed={!props.textSelectionState.mixedColor && color === swatch.value}
+              title={`${swatch.label} ${swatch.value}`}
+              onClick={() => { setDraftOpacity(null); props.onHighlightColor(swatch.value) }}
+            >
+              <span style={{ backgroundColor: swatch.value }} aria-hidden="true">{!props.textSelectionState.mixedColor && color === swatch.value && <Check />}</span>
+              {swatch.label}
+            </button>
+          ))}
+        </div>
+      </Field>
       <Field label="透明度" value={`${visibleOpacity}%`}>
         <input
           className="inspector-range inspector-range--highlight"
+          style={{ accentColor: color }}
           type="range"
           min="0"
           max="100"
           step="1"
           value={visibleOpacity}
-          aria-label="荧光笔透明度"
+          aria-label="关键词强调透明度"
           onChange={(event) => setDraftOpacity(Number(event.target.value))}
           onPointerUp={commitOpacity}
           onKeyUp={commitOpacity}
@@ -493,7 +624,7 @@ function TextInspector(props: Props) {
         }
         title={
           props.textSelectionState.highlighted
-            ? '移除选区荧光笔'
+            ? '移除选区关键词强调'
             : `以 ${visibleOpacity}% 透明度应用到当前选区`
         }
       >
@@ -503,21 +634,15 @@ function TextInspector(props: Props) {
           <Highlighter aria-hidden="true" />
         )}
         {props.textSelectionState.highlighted
-          ? '移除荧光笔'
-          : `应用 ${visibleOpacity}% 荧光笔`}
+          ? '移除关键词强调'
+          : `应用 ${visibleOpacity}% 关键词强调`}
       </button>
     </InspectorCard>
   )
 }
 
-function PageInspector(props: Props) {
-  return (
-    <>
-      <InspectorCard
-        title="页面与主题"
-        description="这些设置影响整篇长图。"
-        icon={<Palette />}
-      >
+function AppearanceInspector(props: Props) {
+  return <InspectorCard title="主题与颜色" description="主题作用于整篇；文字颜色仅影响封面。" icon={<Palette />}>
         <Field label="主题">
           <Select
             value={props.currentThemeId ?? '__custom__'}
@@ -556,30 +681,7 @@ function PageInspector(props: Props) {
           </Select>
         </Field>
 
-        <div className="inspector-quick-actions">
-          <button type="button" onClick={props.onOpenThemeLibrary}>
-            <Palette aria-hidden="true" />
-            主题库
-          </button>
-          <button type="button" onClick={props.onOpenAssetLibrary}>
-            <FolderOpen aria-hidden="true" />
-            素材库
-          </button>
-          <button type="button" onClick={props.onOpenFontLibrary}>
-            <Type aria-hidden="true" />
-            字体库
-          </button>
-        </div>
-
-        <CoverSlotFields
-          layout={props.coverLayout}
-          vertical={props.coverVertical}
-          subtitleSpacing={props.coverSubtitleSpacing}
-          onLayout={props.onCoverLayout}
-          onVertical={props.onCoverVertical}
-          onSubtitleSpacing={props.onCoverSubtitleSpacing}
-        />
-
+        <button className="inspector-library-action" type="button" onClick={props.onOpenThemeLibrary}><Palette aria-hidden="true" />打开主题库<span>套用或管理整篇主题</span></button>
         <CoverColorFields
           titleColor={props.coverTitleColor}
           subtitleColor={props.coverSubtitleColor}
@@ -595,36 +697,14 @@ function PageInspector(props: Props) {
             onValueChange={(value) => props.onOverlay(value as OverlayKey)}
           />
         </Field>
-        <Field label="整体字号">
-          <SimpleSelect
-            value={String(props.fontSize)}
-            options={FONT_SIZE_OPTIONS.map((option) => ({
-              value: String(option.value),
-              label: option.label,
-            }))}
-            onValueChange={(value) => props.onFontSize(Number(value))}
-          />
-        </Field>
-        <Field label="排版间距">
-          <SimpleSelect
-            value={props.density}
-            options={DENSITY_OPTIONS}
-            onValueChange={(value) => props.onDensity(value as DensityLevel)}
-          />
-        </Field>
-        <Field label="全篇 H1 宽度">
-          <SimpleSelect
-            value={props.h1Width}
-            options={H1_WIDTH_OPTIONS}
-            onValueChange={(value) => props.onH1Width(value as H1Width)}
-          />
-        </Field>
+  </InspectorCard>
+}
 
-      </InspectorCard>
-
-      <details className="inspector-details">
-        <summary>高级字体设置</summary>
-        <div className="inspector-details-body">
+function TypographyInspector(props: Props) {
+  return <InspectorCard title="整篇字体" description="以下设置作用于所有页面的对应文字。" icon={<Type />}>
+    <Field label="整体字号">
+      <SimpleSelect value={String(props.fontSize)} options={FONT_SIZE_OPTIONS.map(option => ({value: String(option.value), label: option.label}))} onValueChange={value => props.onFontSize(Number(value))} />
+    </Field>
           <FontField
             label="H1 全局样式"
             value={props.fontH1}
@@ -659,15 +739,12 @@ function PageInspector(props: Props) {
             userFontFamilies={props.userFontFamilies}
             onChange={props.onFontBody}
           />
-        </div>
-      </details>
+          {[props.fontH1, props.fontH2, props.fontH3, props.fontBody].includes(SYSTEM_FONT_STACK) && (
+            <p className="font-local-note">{SYSTEM_FONT_OPTION.note}</p>
+          )}
 
-      <div className="inspector-empty-hint">
-        <Highlighter aria-hidden="true" />
-        <span>请先选中文字，再调整荧光笔。</span>
-      </div>
-    </>
-  )
+    <button className="inspector-library-action" type="button" onClick={props.onOpenFontLibrary}><Type aria-hidden="true" />打开字体库<span>管理已导入的字体</span></button>
+  </InspectorCard>
 }
 
 function CoverSlotFields({
@@ -745,6 +822,60 @@ function CoverSlotFields({
         </p>
       </div>
     </fieldset>
+  )
+}
+
+function CoverTitleFontSizeField({
+  value,
+  hasCoverTitle,
+  onChange,
+}: {
+  value?: CoverTitleFontSize
+  hasCoverTitle: boolean
+  onChange: (value: CoverTitleFontSize | undefined) => void
+}) {
+  const labelId = useId()
+  const hintId = useId()
+
+  return (
+    <section className="cover-title-size-card inspector-field" aria-labelledby={labelId}>
+      <div className="cover-title-size-heading">
+        <h2 id={labelId}>封面主标题字号</h2>
+        <span>仅第 1 页</span>
+      </div>
+      <div
+        className="width-presets cover-title-size-options"
+        role="group"
+        aria-labelledby={labelId}
+        aria-describedby={hintId}
+      >
+        <button
+          type="button"
+          className={value === undefined ? 'is-active' : undefined}
+          aria-pressed={value === undefined}
+          onClick={() => onChange(undefined)}
+        >
+          跟随原规则
+        </button>
+        {COVER_TITLE_FONT_SIZE_OPTIONS.map((size) => (
+          <button
+            key={size}
+            type="button"
+            className={value === size ? 'is-active' : undefined}
+            aria-pressed={value === size}
+            disabled={!hasCoverTitle}
+            onClick={() => onChange(size)}
+          >
+            {size} px
+          </button>
+        ))}
+      </div>
+      <p id={hintId} className="m-0 text-[11px] leading-4 text-neutral-500">
+        {hasCoverTitle
+          ? '只影响封面第一个主标题（H1），无需先选中文字。'
+          : '请先在第一页添加主标题（H1），再设置独立字号。'}
+      </p>
+    </section>
   )
 }
 
@@ -977,7 +1108,7 @@ function FontField({
       <span>{label}</span>
       <div>
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="min-w-0 flex-1">
+          <SelectTrigger className="min-w-0 flex-1" aria-label={label}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -986,7 +1117,7 @@ function FontField({
                 <SelectLabel>{group.group}</SelectLabel>
                 {group.items.map((font) => (
                   <SelectItem key={font.value} value={font.value}>
-                    {font.label} {font.crossPlatform ? '✓' : '✗'}
+                    {font.label} {font.note ? '· 随设备' : font.crossPlatform ? '✓' : '✗'}
                   </SelectItem>
                 ))}
               </SelectGroup>

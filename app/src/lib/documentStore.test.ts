@@ -84,6 +84,7 @@ function makeLegacyDocument(
   delete legacyStyle.coverLayout
   delete legacyStyle.coverVertical
   delete legacyStyle.coverSubtitleSpacing
+  delete legacyStyle.coverTitleFontSize
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION_V1,
@@ -250,6 +251,7 @@ describe('documentStore', () => {
       expect(restored?.style.coverLayout).toBe('stack-left')
       expect(restored?.style.coverVertical).toBe('top')
       expect(restored?.style.coverSubtitleSpacing).toBe('standard')
+      expect(restored?.style.coverTitleFontSize).toBeUndefined()
       expect(await listEditorDocuments()).toEqual([
         migratedLegacyDocument(legacy),
       ])
@@ -357,6 +359,72 @@ describe('documentStore', () => {
     expect(
       (await getEditorDocument(document.id))?.style.coverSubtitleSpacing,
     ).toBe('standard')
+  })
+
+  it.each([108, 126, 144] as const)(
+    '封面独立字号 %s px 在草稿与 WAL 中原值往返，不改变整体字号或标题强调',
+    async (coverTitleFontSize) => {
+      const document = makeDocument(`cover-title-${coverTitleFontSize}`, 679)
+      document.style.coverTitleFontSize = coverTitleFontSize
+      document.style.coverLayout = 'kicker-above'
+      document.contentJSON = {
+        type: 'doc',
+        content: [{
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{
+            type: 'text',
+            text: '关键词强调',
+            marks: [{ type: 'textHighlight', attrs: { color: '#7B3B8B', opacity: 0.25 } }],
+          }],
+        }],
+      }
+
+      await putEditorDocument(document)
+      const restored = await getEditorDocument(document.id)
+      expect(restored?.style).toEqual(document.style)
+      expect(restored?.contentJSON).toEqual(document.contentJSON)
+
+      expect(writeEditorDocumentRecovery(document)).toBe(true)
+      expect(readEditorDocumentRecovery()?.style).toEqual(document.style)
+      expect(readEditorDocumentRecovery()?.contentJSON).toEqual(document.contentJSON)
+    },
+  )
+
+  it('旧稿缺失与非法封面字号恢复跟随，不继承先前草稿的显式值', async () => {
+    const explicit = makeDocument('explicit-cover-title', 680)
+    explicit.style.coverTitleFontSize = 144
+    await putEditorDocument(explicit)
+
+    for (const [index, coverTitleFontSize] of [undefined, null, 0, 120, 500, '126', '126px', NaN].entries()) {
+      const document = makeDocument(`legacy-cover-title-${index}`, 681 + index)
+      const raw = {
+        ...document,
+        style: { ...document.style, coverTitleFontSize },
+      } as unknown as EditorDocumentV2
+      await putEditorDocument(raw)
+      expect((await getActiveEditorDocument())?.style.coverTitleFontSize).toBeUndefined()
+      expect((await getEditorDocument(explicit.id))?.style.coverTitleFontSize).toBe(144)
+      expect(writeEditorDocumentRecovery(raw)).toBe(true)
+      expect(readEditorDocumentRecovery()?.style.coverTitleFontSize).toBeUndefined()
+    }
+  })
+
+  it('恢复跟随后正式草稿和 WAL 均不保留上一显式字号', async () => {
+    const document = makeDocument('reset-cover-title', 699)
+    document.style.coverTitleFontSize = 126
+    await putEditorDocument(document)
+
+    const reset: EditorDocumentV2 = {
+      ...document,
+      revision: 700,
+      recoveryId: 'reset-cover-title-follow',
+      style: { ...document.style, coverTitleFontSize: undefined },
+    }
+    await putEditorDocument(reset)
+    expect((await getEditorDocument(document.id))?.style.coverTitleFontSize).toBeUndefined()
+    expect(writeEditorDocumentRecovery(reset)).toBe(true)
+    expect(readEditorDocumentRecovery()?.style.coverTitleFontSize).toBeUndefined()
   })
 
   it('保存并恢复用户选择的封面槽位与副标题字距', async () => {
