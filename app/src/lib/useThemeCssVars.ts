@@ -2,7 +2,7 @@ import { useInsertionEffect } from 'react'
 
 import { DENSITY_MAP } from './density'
 import { computeFontSizeVars } from './fontSize'
-import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
+import { normalizeCoverTitleFontFamily, normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
 import { OVERLAY_MAP, type DensityLevel, type OverlayKey } from './themes'
 
 export interface ThemeCssVarsInput {
@@ -14,6 +14,7 @@ export interface ThemeCssVarsInput {
   h2Bold: boolean
   h3Bold: boolean
   fontSize: number
+  coverTitleFontFamily?: string
   coverTitleFontSize?: CoverTitleFontSize
   density: DensityLevel
   h1Width: string
@@ -38,6 +39,7 @@ export function useThemeCssVars(input: ThemeCssVarsInput): void {
     h2Bold,
     h3Bold,
     fontSize,
+    coverTitleFontFamily,
     coverTitleFontSize,
     density,
     h1Width,
@@ -58,6 +60,9 @@ export function useThemeCssVars(input: ThemeCssVarsInput): void {
     root.style.setProperty('--h1-max-width', h1Width)
     root.style.setProperty('--c-cover-title', coverTitleColor)
     root.style.setProperty('--c-cover-subtitle', coverSubtitleColor)
+    const coverFont = normalizeCoverTitleFontFamily(coverTitleFontFamily)
+    if (coverFont === undefined) root.style.removeProperty('--font-cover-title')
+    else root.style.setProperty('--font-cover-title', coverFont)
     const coverSize = normalizeCoverTitleFontSize(coverTitleFontSize)
     if (coverSize === undefined) root.style.removeProperty('--fs-cover-title')
     else root.style.setProperty('--fs-cover-title', `${coverSize}px`)
@@ -81,6 +86,7 @@ export function useThemeCssVars(input: ThemeCssVarsInput): void {
     h2Bold,
     h3Bold,
     fontSize,
+    coverTitleFontFamily,
     coverTitleFontSize,
     density,
     h1Width,

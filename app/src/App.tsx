@@ -124,6 +124,7 @@ function App() {
   const [h3Bold, setH3Bold] = useState(DEFAULT_THEME.h3Bold)
   const [fontSize, setFontSize] = useState(DEFAULT_THEME.fontSize)
   const [coverTitleFontSize, setCoverTitleFontSize] = useState<CoverTitleFontSize | undefined>(DEFAULT_THEME.coverTitleFontSize)
+  const [coverTitleFontFamily, setCoverTitleFontFamily] = useState<string | undefined>(DEFAULT_THEME.coverTitleFontFamily)
   const [density, setDensity] = useState<DensityLevel>(DEFAULT_THEME.density)
   const [h1Width, setH1Width] = useState<H1Width>(DEFAULT_THEME.h1Width)
   const [overlay, setOverlay] = useState<OverlayKey>(DEFAULT_THEME.overlay)
@@ -325,6 +326,7 @@ function App() {
       h3Bold,
       fontSize,
       coverTitleFontSize,
+      coverTitleFontFamily,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -354,6 +356,7 @@ function App() {
       h3Bold,
       fontSize,
       coverTitleFontSize,
+      coverTitleFontFamily,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -383,11 +386,12 @@ function App() {
       themeClass,
       coverLayout,
       coverTitleFontSize,
+      coverTitleFontFamily,
       innerVerticalDefault,
       logoLayoutReserved: !!logoSrc,
     }),
     [fontH1, fontSize, h1Bold, h1Width, themeClass, coverLayout,
-      coverTitleFontSize, innerVerticalDefault, logoSrc],
+      coverTitleFontSize, coverTitleFontFamily, innerVerticalDefault, logoSrc],
   )
   const previewLayoutRevision = [
     fontH1,
@@ -406,7 +410,7 @@ function App() {
   ].join('|')
 
   // A cover-only change must preserve the already sealed inner-page geometry.
-  const coverPreviewLayoutRevision = [previewLayoutRevision, coverTitleFontSize].join('|')
+  const coverPreviewLayoutRevision = [previewLayoutRevision, coverTitleFontSize, coverTitleFontFamily].join('|')
 
   // hydrateDocument 真身在持久化 hook 之后定义（要写 hook 返回的
   // documentRevisionRef / pendingSnapshotRef / dirtyDocumentRef /
@@ -535,6 +539,7 @@ function App() {
     setH3Bold(document.style.h3Bold)
     setFontSize(document.style.fontSize)
     setCoverTitleFontSize(normalizeCoverTitleFontSize(document.style.coverTitleFontSize))
+    setCoverTitleFontFamily(document.style.coverTitleFontFamily)
     setDensity(document.style.density)
     setH1Width(document.style.h1Width)
     setOverlay(document.style.overlay)
@@ -756,6 +761,7 @@ function App() {
     setH3Bold(theme.h3Bold)
     setFontSize(theme.fontSize)
     setCoverTitleFontSize(normalizeCoverTitleFontSize(theme.coverTitleFontSize))
+    setCoverTitleFontFamily(theme.coverTitleFontFamily)
     setDensity(theme.density)
     setH1Width(theme.h1Width)
     setOverlay(theme.overlay)
@@ -832,6 +838,7 @@ function App() {
       h3Bold,
       fontSize,
       coverTitleFontSize,
+      coverTitleFontFamily,
       density,
       logoStrategy,
       coverLogoPosition,
@@ -1068,6 +1075,7 @@ function App() {
     h3Bold,
     fontSize,
     coverTitleFontSize,
+    coverTitleFontFamily,
     density,
     h1Width,
     overlay,
@@ -1138,6 +1146,7 @@ function App() {
       pageElements: pageRefs.current,
       pageCount: pages.length,
       selectedFontStacks: [fontH1, fontH2, fontH3, fontBody],
+      coverTitleFontFamily,
       resourceIssues,
       logoStrategy,
       ensureUserFontsLoaded,
@@ -1274,7 +1283,10 @@ function App() {
         <ImportDialog
           open={importOpen}
           onOpenChange={setImportOpen}
-          onGenerate={handleGenerateImportedDraft}
+          onGenerate={async (analysis, presetTheme) => {
+            await handleGenerateImportedDraft(analysis, presetTheme)
+            if (presetTheme) setCurrentThemeId(presetTheme.id)
+          }}
         />
         <ExportDialog
           inputVersion={JSON.stringify([activeDraft?.id, content, documentStyle, publication, coverLogoVisibility])}
@@ -1443,6 +1455,8 @@ function App() {
               h3Bold={h3Bold}
               fontSize={fontSize}
               coverTitleFontSize={coverTitleFontSize}
+              coverTitleFontFamily={coverTitleFontFamily}
+              onCoverTitleFontFamilyChange={customize(setCoverTitleFontFamily)}
               hasCoverTitle={hasCoverTitle}
               onCoverTitleFontSizeChange={customize(setCoverTitleFontSize)}
               density={density}

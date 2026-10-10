@@ -19,6 +19,7 @@ import {
   checkExportReadiness,
 } from '@/lib/exportReadiness'
 import { BODY_FONTS, DISPLAY_FONTS } from '@/lib/fontPresets'
+import { normalizeCoverTitleFontFamily } from '@/lib/coverTitle'
 import type { UserFontLoadReport } from '@/lib/fontRegistry'
 import type { LogoStrategy } from '@/lib/themes'
 import {
@@ -50,8 +51,9 @@ export interface RunExportContext {
   /** App 的 pageRefs.current：与渲染中的 .page DOM 同一数组引用 */
   pageElements: ReadonlyArray<HTMLDivElement | null>
   pageCount: number
-  /** 当前选中的字体栈：[fontH1, fontH2, fontH3, fontBody] */
+  /** 各级全篇字体；封面独立字体仅在导出包含封面主标题时检查。 */
   selectedFontStacks: string[]
+  coverTitleFontFamily?: string
   resourceIssues: readonly AppResourceIssue[]
   logoStrategy: LogoStrategy
   ensureUserFontsLoaded: () => Promise<UserFontLoadReport>
@@ -115,8 +117,17 @@ export async function runExport(
     throw new Error('请先查看裁切预览，并确认仍要导出')
   }
   if (!options?.skipReadiness || allowCanvasClipping) {
+    const fontStacks = [...selectedFontStacks]
+    const coverFont = normalizeCoverTitleFontFamily(context.coverTitleFontFamily)
+    if (
+      coverFont &&
+      plan.pages.includes(1) &&
+      allPageElements[0]?.querySelector('.content > h1')
+    ) {
+      fontStacks.push(coverFont)
+    }
     const customFontFamilies = new Set(
-      selectedFontStacks
+      fontStacks
         .filter((stack) => !BUILTIN_FONT_STACKS.has(stack))
         .map(primaryFontFamily),
     )

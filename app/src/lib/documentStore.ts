@@ -19,7 +19,7 @@ import type {
   ThemeKey,
 } from './themes'
 import { isNormalizedHexColor } from './hexColor'
-import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
+import { normalizeCoverTitleFontFamily, normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
 
 export const EDITOR_DOCUMENT_SCHEMA_VERSION_V1 = 1 as const
 export const EDITOR_DOCUMENT_SCHEMA_VERSION = 2 as const
@@ -49,6 +49,8 @@ export interface EditorDocumentStyleV1 {
 export interface EditorDocumentStyleV2 extends EditorDocumentStyleV1 {
   /** Missing follows the legacy cover title rule; explicit values are final canvas CSS px. */
   coverTitleFontSize?: CoverTitleFontSize
+  /** Missing follows the document's fontH1, including for legacy drafts. */
+  coverTitleFontFamily?: string
   /** Missing = legacy layout; only new drafts opt into preserved space advances. */
   whitespaceMode?: 'legacy' | 'preserve'
   /** 首页底图；空字符串是可持久化的“纯色封面”语义。 */
@@ -362,6 +364,7 @@ function parseStoredDocumentV2(value: unknown): EditorDocumentV2 {
     style: {
       ...(style as EditorDocumentStyleV2),
       coverTitleFontSize: normalizeCoverTitleFontSize(style.coverTitleFontSize),
+      coverTitleFontFamily: normalizeCoverTitleFontFamily(style.coverTitleFontFamily),
       whitespaceMode: style.whitespaceMode === 'preserve' ? 'preserve' : 'legacy',
       innerVerticalDefault: normalizeInnerPagePosition(style.innerVerticalDefault),
       innerOffsetDefault: normalizeInnerPageOffset(style.innerOffsetDefault),
@@ -410,6 +413,7 @@ function migrateStoredDocumentV1(document: EditorDocumentV1): EditorDocumentV2 {
     style: {
       ...document.style,
       coverTitleFontSize: undefined,
+      coverTitleFontFamily: undefined,
       coverBgAssetId: document.style.bgAssetId,
       coverTitleColor: legacyPrimaryColor,
       coverSubtitleColor: legacyPrimaryColor,

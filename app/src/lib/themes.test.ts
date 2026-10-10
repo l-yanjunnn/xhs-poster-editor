@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 import {
   BUILTIN_THEMES,
   getThemeCoverTextColors,
@@ -15,6 +16,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverVertical
   delete legacy.coverSubtitleSpacing
   delete legacy.coverTitleFontSize
+  delete legacy.coverTitleFontFamily
   return legacy
 }
 
@@ -37,6 +39,7 @@ describe('normalizeTheme', () => {
     expect(normalized?.coverVertical).toBe('top')
     expect(normalized?.coverSubtitleSpacing).toBe('standard')
     expect(normalized?.coverTitleFontSize).toBeUndefined()
+    expect(normalized?.coverTitleFontFamily).toBeUndefined()
   })
 
   it("preserves an explicit empty cover asset instead of falling back with '||'", () => {
@@ -111,9 +114,51 @@ describe('normalizeTheme', () => {
     expect(normalizeTheme(null)).toBeNull()
     expect(normalizeTheme({ id: 'broken' })).toBeNull()
   })
+
+  it('retains a separate cover font without changing whole-document fonts', () => {
+    for (const coverTitleFontFamily of [SYSTEM_FONT_STACK, '"user-font-123", serif']) {
+      const normalized = normalizeTheme({ ...BUILTIN_THEMES[0], coverTitleFontFamily })
+      expect(normalized?.coverTitleFontFamily).toBe(coverTitleFontFamily)
+      expect(normalized?.fontH1).toBe(BUILTIN_THEMES[0].fontH1)
+      expect(normalized?.fontBody).toBe(BUILTIN_THEMES[0].fontBody)
+    }
+  })
+
+  it('does not apply the new built-in cover defaults to old theme snapshots', () => {
+    for (const coverTitleFontFamily of [undefined, null, '', '  ', 123, {}]) {
+      const normalized = normalizeTheme({
+        ...BUILTIN_THEMES[0],
+        name: '雅致',
+        coverVertical: 'top',
+        coverTitleFontFamily,
+      })
+      expect(normalized).toMatchObject({ name: '雅致', coverVertical: 'top' })
+      expect(normalized?.coverTitleFontFamily).toBeUndefined()
+      expect(normalized?.fontH1).toBe(BUILTIN_THEMES[0].fontH1)
+    }
+  })
 })
 
 describe('built-in themes V2', () => {
+  it('reuses elegant for the centered Baicaolu cover while retaining inner-page fonts', () => {
+    const theme = BUILTIN_THEMES.find((candidate) => candidate.id === 'builtin-elegant')
+    expect(theme).toMatchObject({
+      name: '百草路撸猫战神',
+      themeClass: '',
+      coverVertical: 'middle',
+      coverTitleFontFamily: SYSTEM_FONT_STACK,
+      fontH1: SYSTEM_FONT_STACK,
+      fontH2: SYSTEM_FONT_STACK,
+      fontH3: SYSTEM_FONT_STACK,
+      fontBody: SYSTEM_FONT_STACK,
+      contentJSON: null,
+    })
+    expect(theme?.coverTitleFontSize).toBeUndefined()
+    for (const other of BUILTIN_THEMES.filter((candidate) => candidate.id !== 'builtin-elegant')) {
+      expect(other.coverTitleFontFamily).toBeUndefined()
+    }
+  })
+
   it('defines the public-exam pair and semantic colors without content', () => {
     const theme = BUILTIN_THEMES.find(
       (candidate) => candidate.id === 'builtin-public-exam-landscape',

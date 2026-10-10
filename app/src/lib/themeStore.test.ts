@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { BUILTIN_THEMES, type Theme } from './themes'
 import { listUserThemes, putUserTheme } from './themeStore'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 
 const records = new Map<string, unknown>()
 
@@ -67,6 +68,7 @@ function asLegacyTheme(theme: Theme): Record<string, unknown> {
   delete legacy.coverVertical
   delete legacy.coverSubtitleSpacing
   delete legacy.coverTitleFontSize
+  delete legacy.coverTitleFontFamily
   return legacy
 }
 
@@ -96,6 +98,7 @@ describe('themeStore V2 normalization', () => {
         coverSubtitleColor: '#F0F0F0',
         coverSubtitleSpacing: 'standard',
         coverTitleFontSize: undefined,
+        coverTitleFontFamily: undefined,
       }),
     ])
   })
@@ -147,6 +150,7 @@ describe('themeStore V2 normalization', () => {
         coverSubtitleColor: '#5A465F',
         coverSubtitleSpacing: 'compact',
         coverTitleFontSize: 126,
+        coverTitleFontFamily: SYSTEM_FONT_STACK,
         contentJSON: null,
       }),
     )
@@ -156,6 +160,7 @@ describe('themeStore V2 normalization', () => {
         id: 'user-lowercase',
         coverSubtitleSpacing: 'compact',
         coverTitleFontSize: 126,
+        coverTitleFontFamily: SYSTEM_FONT_STACK,
       }),
     ])
   })
@@ -185,5 +190,36 @@ describe('themeStore V2 normalization', () => {
     expect(restored.coverTitleFontSize).toBeUndefined()
     expect(restored.contentJSON).toEqual(contentJSON)
     expect(restored.fontSize).toBe(BUILTIN_THEMES[0].fontSize)
+  })
+
+  it('keeps legacy elegant snapshots unchanged instead of applying renamed built-in defaults', async () => {
+    const legacy = {
+      ...asLegacyTheme(BUILTIN_THEMES[0]),
+      id: 'user-old-elegant',
+      name: '雅致',
+      isBuiltin: false,
+      coverVertical: 'top',
+    }
+    records.set(legacy.id, structuredClone(legacy))
+
+    const [restored] = await listUserThemes()
+    expect(restored).toMatchObject({ name: '雅致', coverVertical: 'top', fontH1: BUILTIN_THEMES[0].fontH1 })
+    expect(restored.coverTitleFontFamily).toBeUndefined()
+    expect(records.get(legacy.id)).toEqual(legacy)
+  })
+
+  it('round-trips a custom cover font and clears it when the theme follows H1 again', async () => {
+    const theme: Theme = {
+      ...BUILTIN_THEMES[0],
+      id: 'user-cover-font',
+      isBuiltin: false,
+      coverTitleFontFamily: '"user-font-123", sans-serif',
+    }
+    await putUserTheme(theme)
+    expect((await listUserThemes())[0].coverTitleFontFamily).toBe(theme.coverTitleFontFamily)
+
+    await putUserTheme({ ...theme, coverTitleFontFamily: undefined })
+    expect((await listUserThemes())[0].coverTitleFontFamily).toBeUndefined()
+    expect((await listUserThemes())[0].fontH1).toBe(theme.fontH1)
   })
 })

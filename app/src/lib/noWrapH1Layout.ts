@@ -6,7 +6,7 @@ import {
   coverContentWidthForTheme,
 } from './canvas'
 import type { CoverLayout } from './coverSlots'
-import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
+import { normalizeCoverTitleFontFamily, normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
 import { resolvePageVertical, type InnerPagePosition } from './pageLayout'
 
 export interface H1PhraseMetrics {
@@ -32,6 +32,7 @@ interface Input {
   h1Width: string
   themeClass: string
   coverLayout: CoverLayout
+  coverTitleFontFamily?: string
   coverTitleFontSize?: CoverTitleFontSize
   innerVerticalDefault: InnerPagePosition
   logoLayoutReserved: boolean
@@ -55,6 +56,7 @@ export function createNoWrapH1Layout(input: Input): NoWrapH1Layout {
     ...base,
     coverTitle: {
       ...base,
+      fontFamily: normalizeCoverTitleFontFamily(input.coverTitleFontFamily) ?? fontFamily,
       fontSizePx: coverFontSize,
       maxWidthPx: coverLayout === 'poster-center' ? coverWidth : base.maxWidthPx,
       letterSpacingPx: coverLayout === 'kicker-above' || themeClass === 'theme-public-exam-landscape'

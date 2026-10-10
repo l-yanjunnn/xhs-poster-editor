@@ -2,6 +2,7 @@ import { Editor } from '@tiptap/react'
 import { describe, expect, it } from 'vitest'
 import { createEditorExtensions } from '@/components/Editor/editorExtensions'
 import { createNoWrapH1Layout, resolveNoWrapH1Layout } from './noWrapH1Layout'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 
 const input = {
   fontFamily: 'sans-serif', fontSizePx: 90, fontWeight: 700,
@@ -10,6 +11,26 @@ const input = {
 }
 
 describe('H1 no-wrap role measurements', () => {
+  it('uses the cover font only for the first top-level H1 and follows the global font when absent', () => {
+    const editor = new Editor({ extensions: createEditorExtensions(), content:
+      '<blockquote><h1>嵌套</h1></blockquote><h1>普通人<br>可以完整。</h1><h1>同页其他</h1><hr><h1>内页</h1>' })
+    try {
+      for (const coverTitleFontFamily of [SYSTEM_FONT_STACK, undefined, '  ']) {
+        const layout = createNoWrapH1Layout({ ...input, fontFamily: 'serif', coverTitleFontFamily })
+        const families: string[] = []
+        editor.state.doc.descendants((node, position) => {
+          if (node.type.name === 'heading') {
+            families.push(resolveNoWrapH1Layout(editor.state.doc, position, layout).metrics.fontFamily)
+          }
+        })
+        expect(families).toEqual(['serif', coverTitleFontFamily === SYSTEM_FONT_STACK ? SYSTEM_FONT_STACK : 'serif', 'serif', 'serif'])
+      }
+      expect(editor.getHTML()).toContain('普通人<br>可以完整。')
+    } finally {
+      editor.destroy()
+    }
+  })
+
   it('keeps explicit cover pixels equal across layouts and restores kicker multiplication only when following', () => {
     for (const coverLayout of ['stack-left', 'poster-center', 'kicker-above'] as const) {
       const layout = createNoWrapH1Layout({ ...input, coverLayout, coverTitleFontSize: 126 })

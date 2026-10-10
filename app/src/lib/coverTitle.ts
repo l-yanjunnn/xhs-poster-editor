@@ -12,3 +12,8 @@ export function normalizeCoverTitleFontSize(
     ? (value as CoverTitleFontSize)
     : undefined
 }
+
+/** Missing or blank values follow fontH1; preserve complete preset/custom stacks. */
+export function normalizeCoverTitleFontFamily(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}

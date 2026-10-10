@@ -33,7 +33,7 @@ import {
 } from '@/lib/documentStore'
 import type { ImportAnalysis } from '@/lib/importDocument'
 import { DEFAULT_THEME, type Theme } from '@/lib/themes'
-import { normalizeCoverTitleFontSize } from '@/lib/coverTitle'
+import { normalizeCoverTitleFontFamily, normalizeCoverTitleFontSize } from '@/lib/coverTitle'
 import type { WriterLeaseState } from '@/lib/useWriterLease'
 
 const AUTOSAVE_DELAY_MS = 900
@@ -73,6 +73,7 @@ function styleFromTheme(theme: Theme): EditorDocumentStyleV2 {
     h3Bold: theme.h3Bold,
     fontSize: theme.fontSize,
     coverTitleFontSize: normalizeCoverTitleFontSize(theme.coverTitleFontSize),
+    coverTitleFontFamily: normalizeCoverTitleFontFamily(theme.coverTitleFontFamily),
     density: theme.density,
     logoStrategy: theme.logoStrategy,
     bgAssetId: theme.bgAssetId,
@@ -126,7 +127,7 @@ export interface DraftPersistenceHandle {
   handleSaveAsDraft: (title: string) => Promise<boolean>
   handleOpenDraft: (document: EditorDocumentV2) => Promise<boolean>
   handleDeleteDraft: (document: EditorDocumentV2) => Promise<boolean>
-  handleGenerateImportedDraft: (analysis: ImportAnalysis) => Promise<void>
+  handleGenerateImportedDraft: (analysis: ImportAnalysis, presetTheme?: Theme) => Promise<void>
 }
 
 /**
@@ -558,6 +559,7 @@ export function useDraftPersistence(
 
   async function handleGenerateImportedDraft(
     analysis: ImportAnalysis,
+    presetTheme?: Theme,
   ): Promise<void> {
     if (!draftReady || writerLeaseState !== 'owned') {
       throw new Error('草稿仍在恢复，请稍候再生成。')
@@ -595,7 +597,7 @@ export function useDraftPersistence(
       revision: 0,
       updatedAt: now,
       contentJSON,
-      style: documentStyleRef.current,
+      style: presetTheme ? styleFromTheme(presetTheme) : documentStyleRef.current,
       publication: {
         releaseCopy: analysis.releaseCopy,
         sourceName: analysis.sourceName,

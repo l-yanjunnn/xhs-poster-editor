@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   calibrateDeterministicGlyphBaselinesForHtml2Canvas,
@@ -45,6 +46,56 @@ afterEach(() => {
 })
 
 describe('deterministic typography DOM snapshot', () => {
+  it('measures and snapshots the cover font while preserving other H1 fonts and manual line breaks', () => {
+    const style = document.createElement('style')
+    // happy-dom cannot resolve nested var() fallbacks. This fixture supplies an
+    // explicit cover font; canvas.test.ts separately verifies the real fallback.
+    style.textContent = readFileSync('src/styles/canvas.css', 'utf8').replace(
+      'var(--font-cover-title, var(--font-h1))',
+      'var(--font-cover-title)',
+    )
+    document.head.append(style)
+    const cover = pageWithContent()
+    cover.classList.add('page--first')
+    const inner = pageWithContent()
+    const innerFont = '"Noto Serif SC", serif'
+    for (const page of [cover, inner]) {
+      page.style.setProperty('--font-h1', innerFont)
+      page.style.setProperty('--font-cover-title', SYSTEM_FONT_STACK)
+    }
+    const source = '<h1 style="width: 480px; font-size: 20px; line-height: 30px">普通人<br>可以完整。</h1><h1 style="width: 480px; font-size: 20px; line-height: 30px">其他标题</h1>'
+    try {
+      const coverResult = layout(cover, source)
+      const innerResult = layout(inner, source)
+      expect(coverResult.issues).toEqual([])
+      expect(innerResult.issues).toEqual([])
+      expect(new Set(coverResult.fontRequests.map(request => request.family))).toEqual(new Set([SYSTEM_FONT_STACK, innerFont]))
+      expect(new Set(innerResult.fontRequests.map(request => request.family))).toEqual(new Set([innerFont]))
+      expect(getComputedStyle(cover.querySelector('h1')!).fontFamily).toBe(SYSTEM_FONT_STACK)
+      expect(getComputedStyle(cover.querySelectorAll('h1')[1]).fontFamily).toBe(innerFont)
+      expect(cover.querySelector('h1')?.textContent).toBe('普通人可以完整。')
+      expect(cover.querySelector('h1')?.querySelectorAll('.dtl-line')).toHaveLength(2)
+
+      const previousCoverSnapshot = cover.dataset.layoutSnapshot
+      const previousInnerSnapshot = inner.dataset.layoutSnapshot
+      const newCoverFont = '"Custom Cover", sans-serif'
+      cover.style.setProperty('--font-cover-title', newCoverFont)
+      const changed = layout(cover, source)
+      expect(changed.fontRequests.some(request => request.family === newCoverFont)).toBe(true)
+      expect(cover.dataset.layoutSnapshot).not.toBe(previousCoverSnapshot)
+      expect(inner.dataset.layoutSnapshot).toBe(previousInnerSnapshot)
+      expect(cover.querySelector('h1')?.querySelectorAll('.dtl-line')).toHaveLength(2)
+      // The export pipeline clones the same page and CSS scope, not a separate font rule.
+      const cloned = cover.cloneNode(true) as HTMLElement
+      document.body.append(cloned)
+      expect(getComputedStyle(cloned.querySelector('h1')!).fontFamily).toBe(newCoverFont)
+      expect(JSON.parse(cover.dataset.layoutFontRequest!)).not.toHaveLength(0)
+      expect(cloned.dataset.layoutFontRequest).toBe(cover.dataset.layoutFontRequest)
+    } finally {
+      style.remove()
+    }
+  })
+
   it('keeps the complete native font stack through all heading/body layout requests and glyphs', () => {
     const page = pageWithContent()
     const source = ['h1', 'h2', 'h3', 'p'].map((tag) =>

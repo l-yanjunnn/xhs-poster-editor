@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_THEME } from '@/lib/themes'
+import { BUILTIN_THEMES, DEFAULT_THEME } from '@/lib/themes'
 import { SYSTEM_FONT_OPTION, SYSTEM_FONT_STACK } from '@/lib/fontPresets'
 import { TEXT_HIGHLIGHT_COLORS } from '@/lib/textHighlight'
 import { ContextInspector } from './ContextInspector'
@@ -82,6 +82,7 @@ function createProps(
     onOverlay: vi.fn(),
     onCoverTitleColor: vi.fn(),
     onCoverTitleFontSizeChange: vi.fn(),
+    onCoverTitleFontFamilyChange: vi.fn(),
     onCoverSubtitleColor: vi.fn(),
     onRestoreCoverColors: vi.fn(),
     onCoverLayout: vi.fn(),
@@ -222,7 +223,7 @@ describe('ContextInspector category navigation', () => {
     const panel = item.host.querySelector<HTMLElement>('.inspector-drawer')!
     expect(buttons.every((button) => button.getAttribute('aria-controls') === panel.id)).toBe(true)
     expect(panel.hidden).toBe(false)
-    expect(item.host.querySelectorAll('.font-field')).toHaveLength(4)
+    expect(item.host.querySelectorAll('.font-field')).toHaveLength(5)
 
     await act(async () => {
       buttons[0].focus()
@@ -891,11 +892,12 @@ describe('ContextInspector system fonts', () => {
     expect(note.nextElementSibling?.textContent).toContain('打开字体库')
     expect(item.host.textContent).toContain('换机后外观和换行可能不同')
 
-    await item.rerender({ fontH1: DEFAULT_THEME.fontH1 })
+    const sansTheme = BUILTIN_THEMES.find(theme => theme.id === 'builtin-minimal-white')!
+    await item.rerender({ fontH1: sansTheme.fontH1 })
     expect(item.host.querySelectorAll('.font-local-note')).toHaveLength(1)
-    await item.rerender({ fontH2: DEFAULT_THEME.fontH2, fontH3: DEFAULT_THEME.fontH3 })
+    await item.rerender({ fontH2: sansTheme.fontH2, fontH3: sansTheme.fontH3 })
     expect(item.host.querySelectorAll('.font-local-note')).toHaveLength(1)
-    await item.rerender({ fontBody: DEFAULT_THEME.fontBody })
+    await item.rerender({ fontBody: sansTheme.fontBody })
     expect(item.host.querySelector('.font-local-note')).toBeNull()
     expect(item.props.onFontH1).not.toHaveBeenCalled()
     expect(item.props.onFontH2).not.toHaveBeenCalled()

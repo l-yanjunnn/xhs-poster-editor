@@ -216,6 +216,13 @@ describe('中文正文两端对齐契约', () => {
 })
 
 describe('封面槽位 CSS 契约', () => {
+  it('封面字体覆盖只命中首页首个顶层 H1，普通 H1 继续使用全篇字体', () => {
+    const selector = '.page--first .content > h1:first-of-type'
+    expect(property(findRule(selector), 'font-family')).toBe('var(--font-cover-title, var(--font-h1))')
+    expect(rules.filter(rule => rule.declarations.includes('--font-cover-title')).map(rule => rule.selectorText)).toEqual([selector])
+    expect(property(findRule('.content h1'), 'font-family')).toBe('var(--font-h1)')
+  })
+
   it('A · 上不改 .content 的默认文档流', () => {
     expect(() =>
       findRule('.page--first[data-cover-layout="stack-left"] .content'),

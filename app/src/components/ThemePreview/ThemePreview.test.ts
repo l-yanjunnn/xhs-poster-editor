@@ -9,6 +9,7 @@ import {
   calibratePageTypographyNow,
 } from '@/lib/opticalTypography'
 import { ThemePreview } from './ThemePreview'
+import { SYSTEM_FONT_STACK } from '@/lib/fontPresets'
 
 vi.mock('@/lib/resolveAsset', () => ({
   resolveAssetSrc: vi.fn(),
@@ -82,9 +83,41 @@ afterEach(async () => {
     await act(async () => item.root.unmount())
     item.host.remove()
   }
+  document.documentElement.style.removeProperty('--font-cover-title')
 })
 
 describe('ThemePreview cover semantics', () => {
+  it('百草路缩略图展示纯标题封面，完整短语保留在同一个 H1 内', async () => {
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockResolvedValue({ coverSrc: '', innerSrc: '', issues: [] })
+    const { host } = await mountThemePreview(BUILTIN_THEMES.find((theme) => theme.id === 'builtin-elegant')!)
+    const content = host.querySelector('.content')!
+    expect(content.children).toHaveLength(1)
+    expect(content.firstElementChild?.tagName).toBe('H1')
+    expect(content.querySelector('h1')?.innerHTML).toBe('普通人<br>可以完整。')
+    expect(host.querySelector('.page')?.getAttribute('data-cover-vertical')).toBe('middle')
+  })
+  it('isolates the cover font from the active document and recalibrates only the selected thumbnail value', async () => {
+    mockedResolveAssetSrc.mockResolvedValue('')
+    mockedResolvePageBackgrounds.mockResolvedValue({ coverSrc: '', innerSrc: '', issues: [] })
+    document.documentElement.style.setProperty('--font-cover-title', '"Other Draft Font", serif')
+    const item = await mountThemePreview(publicExamTheme())
+    const scope = item.host.querySelector('.page')!.parentElement!
+    expect(scope.style.getPropertyValue('--font-cover-title')).toBe('initial')
+    const initialSignal = mockedCalibratePageTypography.mock.calls.at(-1)?.[1]?.signal
+
+    await act(async () => item.root.render(createElement(ThemePreview, {
+      theme: publicExamTheme({ coverTitleFontFamily: SYSTEM_FONT_STACK }),
+    })))
+    expect(initialSignal?.aborted).toBe(true)
+    expect(scope.style.getPropertyValue('--font-cover-title')).toBe(SYSTEM_FONT_STACK)
+    expect(scope.style.getPropertyValue('--font-h1')).toBe(publicExamTheme().fontH1)
+
+    await act(async () => item.root.render(createElement(ThemePreview, { theme: publicExamTheme() })))
+    expect(scope.style.getPropertyValue('--font-cover-title')).toBe('initial')
+    expect(document.documentElement.style.getPropertyValue('--font-cover-title')).toBe('"Other Draft Font", serif')
+  })
+
   it('isolates a legacy thumbnail from the active cover size and recalibrates explicit sizes', async () => {
     mockedResolveAssetSrc.mockResolvedValue('')
     mockedResolvePageBackgrounds.mockResolvedValue({ coverSrc: '', innerSrc: '', issues: [] })

@@ -25,32 +25,34 @@ describe('system font preset', () => {
     }
   })
 
-  it('keeps old preset values and every built-in theme font unchanged and selectable', () => {
+  it('keeps old preset values selectable and changes only Baicaolu to system fonts', () => {
     const serif = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif'
     const sans = '"Noto Sans SC", "Source Han Sans SC", "PingFang SC", sans-serif'
     expect(DISPLAY_FONTS[1].value).toBe(serif)
     expect(BODY_FONTS[1].value).toBe(sans)
     expect(DEFAULT_THEME).toMatchObject({
       id: 'builtin-elegant',
-      fontH1: serif,
-      fontH2: serif,
-      fontH3: sans,
-      fontBody: sans,
+      fontH1: SYSTEM_FONT_STACK,
+      fontH2: SYSTEM_FONT_STACK,
+      fontH3: SYSTEM_FONT_STACK,
+      fontBody: SYSTEM_FONT_STACK,
     })
     expect(DISPLAY_FONTS.some((font) => font.value === '"PingFang SC", sans-serif')).toBe(true)
     expect(BODY_FONTS.some((font) => font.value === '"PingFang SC", sans-serif')).toBe(true)
     for (const theme of BUILTIN_THEMES) {
       expect([theme.fontH1, theme.fontH2, theme.fontH3, theme.fontBody]).toEqual(
-        theme.id === 'builtin-minimal-white'
+        theme.id === 'builtin-elegant'
+          ? Array(4).fill(SYSTEM_FONT_STACK)
+          : theme.id === 'builtin-minimal-white'
           ? [sans, sans, sans, sans]
           : [serif, serif, sans, sans],
       )
       for (const value of [theme.fontH1, theme.fontH2, theme.fontH3]) {
         expect(DISPLAY_FONTS.some((font) => font.value === value)).toBe(true)
-        expect(value).not.toBe(SYSTEM_FONT_STACK)
+        if (theme.id !== 'builtin-elegant') expect(value).not.toBe(SYSTEM_FONT_STACK)
       }
       expect(BODY_FONTS.some((font) => font.value === theme.fontBody)).toBe(true)
-      expect(theme.fontBody).not.toBe(SYSTEM_FONT_STACK)
+      if (theme.id !== 'builtin-elegant') expect(theme.fontBody).not.toBe(SYSTEM_FONT_STACK)
     }
   })
 })

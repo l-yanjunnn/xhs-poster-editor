@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 import {
   clearEditorDocumentRecovery,
   discardEditorDocumentRecovery,
@@ -85,6 +86,7 @@ function makeLegacyDocument(
   delete legacyStyle.coverVertical
   delete legacyStyle.coverSubtitleSpacing
   delete legacyStyle.coverTitleFontSize
+  delete legacyStyle.coverTitleFontFamily
   return {
     ...document,
     schemaVersion: EDITOR_DOCUMENT_SCHEMA_VERSION_V1,
@@ -252,6 +254,7 @@ describe('documentStore', () => {
       expect(restored?.style.coverVertical).toBe('top')
       expect(restored?.style.coverSubtitleSpacing).toBe('standard')
       expect(restored?.style.coverTitleFontSize).toBeUndefined()
+      expect(restored?.style.coverTitleFontFamily).toBeUndefined()
       expect(await listEditorDocuments()).toEqual([
         migratedLegacyDocument(legacy),
       ])
@@ -425,6 +428,59 @@ describe('documentStore', () => {
     expect((await getEditorDocument(document.id))?.style.coverTitleFontSize).toBeUndefined()
     expect(writeEditorDocumentRecovery(reset)).toBe(true)
     expect(readEditorDocumentRecovery()?.style.coverTitleFontSize).toBeUndefined()
+  })
+
+  it.each([SYSTEM_FONT_STACK, '"user-font-123", serif'])(
+    '封面独立字体 %s 在草稿与 WAL 中原值往返，内页 H1 和正文不变',
+    async (coverTitleFontFamily) => {
+      const document = makeDocument('cover-family', 701)
+      document.style.coverTitleFontFamily = coverTitleFontFamily
+      await putEditorDocument(document)
+
+      expect((await getEditorDocument(document.id))?.style).toEqual(document.style)
+      expect(writeEditorDocumentRecovery(document)).toBe(true)
+      expect(readEditorDocumentRecovery()?.style).toEqual(document.style)
+    },
+  )
+
+  it('旧 V2 缺失与非法封面字体保持跟随，不继承其他草稿或新内置主题', async () => {
+    const explicit = makeDocument('explicit-cover-family', 702)
+    explicit.style.coverTitleFontFamily = SYSTEM_FONT_STACK
+    await putEditorDocument(explicit)
+
+    for (const [index, coverTitleFontFamily] of [undefined, null, '', '  ', 123, {}].entries()) {
+      const document = makeDocument(`legacy-cover-family-${index}`, 703 + index)
+      const raw = {
+        ...document,
+        style: { ...document.style, coverTitleFontFamily },
+      } as unknown as EditorDocumentV2
+      await putEditorDocument(raw)
+      const restored = await getActiveEditorDocument()
+      expect(restored?.style.coverTitleFontFamily).toBeUndefined()
+      expect(restored?.style.fontH1).toBe('serif')
+      expect(restored?.style.coverVertical).toBe('top')
+      expect((await getEditorDocument(explicit.id))?.style.coverTitleFontFamily).toBe(SYSTEM_FONT_STACK)
+      expect(writeEditorDocumentRecovery(raw)).toBe(true)
+      expect(readEditorDocumentRecovery()?.style.coverTitleFontFamily).toBeUndefined()
+    }
+  })
+
+  it('封面字体恢复跟随后正式草稿和 WAL 均清除上一显式字体', async () => {
+    const document = makeDocument('reset-cover-family', 710)
+    document.style.coverTitleFontFamily = SYSTEM_FONT_STACK
+    await putEditorDocument(document)
+
+    const reset: EditorDocumentV2 = {
+      ...document,
+      revision: 711,
+      recoveryId: 'reset-cover-family-follow',
+      style: { ...document.style, coverTitleFontFamily: undefined },
+    }
+    await putEditorDocument(reset)
+    expect((await getEditorDocument(document.id))?.style.coverTitleFontFamily).toBeUndefined()
+    expect((await getEditorDocument(document.id))?.style.fontH1).toBe('serif')
+    expect(writeEditorDocumentRecovery(reset)).toBe(true)
+    expect(readEditorDocumentRecovery()?.style.coverTitleFontFamily).toBeUndefined()
   })
 
   it('保存并恢复用户选择的封面槽位与副标题字距', async () => {

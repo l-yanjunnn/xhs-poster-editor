@@ -1,3 +1,31 @@
+# v1.16.0 发布中（2026-10-10 北京时间）
+
+- 用户已授权双入口上线闭环与向本人发送近期累计飞书更新。最终 ci.sh 通过：59 文件 / 630 测试、TypeScript、ESLint、Vite build；独立审阅无阻断。
+- 正式候选 index-CoZB2wY4.js / index-CdVwlP7M.css。部署、生产 UI/PNG/下载、归档与飞书回读完成后在顶部更新实际状态。
+- 发行内容见 docs/RELEASE-v1.16.0.md；证据目录 /Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/。下方本地候选与旧发行记录均为历史。
+
+# 纯大字封面与独立排版示例（2026-10-10，本地已验证，未发布）
+
+- 用户确认默认纯大字封面；本主题缩略图仅一个 H1，人工断为「普通人／可以完整。」。默认系统字体、字号跟随、middle 不变。设计规则更新至 [v0.4](docs/design/COVER-DESIGN-RULES-v0.4.md)。
+- 复用「导入文稿 → 示例文稿」增加 3 页可编辑排版说明；确认后新建独立草稿并仅给新稿套用本主题，旧稿先保存，普通导入不带示例预设。工具教程和套主题只改样式的行为保留；未增加自动断句或通用 Markdown 新语法。
+- 6 文件 / 89 项相关测试、scoped ESLint、TypeScript/build、diff 检查通过。独立审阅无阻断。macOS 真实浏览器：深夜黑旧稿 → 示例新建 → 刷新 → 切回旧稿，旧正文 HTML、字体和主题类一致；示例三页 ready，H1/H2/H3/正文均系统字体，90/56/44/40 px；三张实际 2160×3600 PNG 通过导出门禁并目检。
+- 构建 `index-BO4vidN7.js`；本地预览 `http://127.0.0.1:4235/`（示例稿已载入）。证据位于 `/Users/a0000/Codex_YJ/tasks/xhs-baicaolu-theme-implementation-20261010/evidence/pure-cover/`。未实际下载 ZIP；Windows 未真机验证。当前未提交、未升版本、未部署。
+- 既有行为：草稿恢复会把主题下拉显示为「自定义样式」，保存的完整样式仍恢复；新建内置示例完成时显示对应主题名称。本轮未扩展为主题身份持久化重构。
+
+# 整篇系统字体追加确认（2026-10-10，本地已验证，未发布）
+
+- 用户追加要求：百草路撸猫战神的封面、H1/H2/H3、正文统一 `SYSTEM_FONT_STACK`；默认字号、middle、底图与 Logo 不变。旧稿需重新套主题使用新默认，其他主题不变。
+- 示例文本先讨论，尚未修改：现有缩略图为通用样本、默认新稿为工具教程。建议简洁封面＋长文内页，但不自动替换用户稿。见 [设计规则 v0.3](docs/design/COVER-DESIGN-RULES-v0.3.md)。
+- 本轮 5 文件 / 102 项相关测试、TypeScript、scoped ESLint、build 通过；实际五页预览 H1/H2/H3/p 均为系统栈，五页 layout ready。构建 `index-MAkG3htu.js`，本地 `http://127.0.0.1:4234/`，证据在原任务 evidence/all-system-fonts/。本轮未重复 PNG 导出；下方 624 测试及 PNG 为上一轮封面独立字体候选证据。
+
+# 百草路撸猫战神主题（2026-10-10，本地已验证，未发布）
+
+- 用户确认修改已有「雅致」：保留 `builtin-elegant` ID，名称改为「百草路撸猫战神」；封面主标题默认系统字体，字号跟随原规则（整体 40 px 时为 90 px），垂直位置「中」。宣纸、猫环、字重、内页字体保留。
+- 新增可选 `coverTitleFontFamily`，仅首页首个顶层 H1 生效；文字设置顶部可独立选择字体或恢复跟随全篇 H1。草稿/WAL/主题快照、短语测量、缩略图、DTL 与 PNG 共用该值；旧稿缺字段继续跟随旧 H1，不自动迁移。
+- 仅导出内页时不检查封面独用的自定义字体；包含有主标题的封面时仍执行字体失败门禁。未新增自动语义断句；手动换行保留，规则见 [封面设计规则 v0.2](docs/design/COVER-DESIGN-RULES-v0.2.md)。
+- 最终 57 文件 / 624 测试、TypeScript、ESLint、build、diff 检查通过；独立审阅无剩余阻断。浏览器验证重新套主题、清除字体覆盖、内页快照不变、刷新恢复、显式换行，以及实际两页 2160×3600 PNG 并目检通过。macOS 已验，Windows 未真机验证；未验 ZIP 下载。
+- 本地最终构建 `index-DWLUQY7o.js`，编辑器 `http://127.0.0.1:4233/`；证据 `/Users/a0000/Codex_YJ/tasks/xhs-baicaolu-theme-implementation-20261010/evidence/`。当前未提交、未升版本、未部署；线上仍是下方 v1.15.0 记录。
+
 # v1.15.0 已双轨部署，生产 UI 验收待完成（2026-10-09 北京时间）
 
 - 发布提交 / 精确 tag：`47cd8ee6829c0142cd7ffa411c8f72ccd87627e8` / `v1.15.0`，main 与 tag 已推送。Cloudflare 准确提交的 Workers Build 已成功；OSS 部署与 CDN index 刷新成功。两个入口的 HTML、JS、CSS 均与本地最终构建逐字节一致。

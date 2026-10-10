@@ -98,6 +98,7 @@
  * 公考和用户主题则可通过同一组 token 实时修改。 */
 .page--first .content > h1:first-of-type {
   color: var(--c-cover-title, var(--c-text-primary));
+  font-family: var(--font-cover-title, var(--font-h1));
   font-size: var(--fs-cover-title, var(--fs-h1));
 }
 .page--first .content > h1:first-of-type + p {

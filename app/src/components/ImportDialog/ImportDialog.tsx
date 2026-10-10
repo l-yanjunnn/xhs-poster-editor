@@ -26,11 +26,13 @@ import {
   type SeparatorMode,
 } from '@/lib/importDocument'
 import { ORDINARY_POST_IMAGE_LIMIT } from '@/lib/productConfig'
+import { BUILTIN_THEMES, type Theme } from '@/lib/themes'
+import { createBaicaoluExample } from '@/lib/baicaoluExample'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onGenerate: (analysis: ImportAnalysis) => Promise<void>
+  onGenerate: (analysis: ImportAnalysis, presetTheme?: Theme) => Promise<void>
 }
 
 type ImportStep = 'source' | 'review' | 'saving'
@@ -61,6 +63,7 @@ export function ImportDialog({
   const [inputMode, setInputMode] = useState<InputMode>('file')
   const [pasteValue, setPasteValue] = useState('')
   const [analysis, setAnalysis] = useState<ImportAnalysis | null>(null)
+  const [presetTheme, setPresetTheme] = useState<Theme | undefined>()
   const [error, setError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -77,6 +80,7 @@ export function ImportDialog({
     setInputMode('file')
     setPasteValue('')
     setAnalysis(null)
+    setPresetTheme(undefined)
     setError(null)
     setReading(false)
     setDragging(false)
@@ -84,6 +88,7 @@ export function ImportDialog({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function parseSource(source: string, sourceName: string) {
+    setPresetTheme(undefined)
     try {
       const result = analyzeImportDocument(source, { sourceName })
       setAnalysis(result)
@@ -93,6 +98,15 @@ export function ImportDialog({
       setError(importErrorMessage(cause))
       setStep('source')
     }
+  }
+
+  function loadBaicaoluExample() {
+    readRequestRef.current += 1
+    setReading(false)
+    setError(null)
+    setAnalysis(createBaicaoluExample())
+    setPresetTheme(BUILTIN_THEMES.find((theme) => theme.id === 'builtin-elegant'))
+    setStep('review')
   }
 
   async function readFile(file: File) {
@@ -150,7 +164,7 @@ export function ImportDialog({
     setStep('saving')
     setError(null)
     try {
-      await onGenerate(analysis)
+      await onGenerate(analysis, presetTheme)
       onOpenChange(false)
     } catch (cause) {
       setError(importErrorMessage(cause))
@@ -194,10 +208,17 @@ export function ImportDialog({
 
         <div className="min-h-0 overflow-y-auto px-6 py-5" aria-busy={reading || step === 'saving'}>
           {review ? (
-            <ReviewAnalysis
-              analysis={analysis}
-              onSeparatorMode={chooseSeparatorMode}
-            />
+            <>
+              {presetTheme && (
+                <p className="mb-4 rounded-lg bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800">
+                  新草稿使用「{presetTheme.name}」主题：纯大字封面，第二页开始正文。内页是可替换的排版说明。
+                </p>
+              )}
+              <ReviewAnalysis
+                analysis={analysis}
+                onSeparatorMode={chooseSeparatorMode}
+              />
+            </>
           ) : (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 p-1" role="tablist" aria-label="导入方式">
@@ -282,10 +303,23 @@ export function ImportDialog({
                     <div className="mb-2 flex items-center justify-between">
                       <strong className="text-xs text-neutral-700">示例文稿</strong>
                       <span className="text-[10px] text-neutral-400">
-                        体验 {ORDINARY_POST_IMAGE_LIMIT} / {ORDINARY_POST_IMAGE_LIMIT + 1}+ 页完整流程
+                        载入后生成独立新草稿
                       </span>
                     </div>
                     <div className="grid gap-2">
+                      <button
+                        type="button"
+                        className="flex min-w-0 items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-3 text-left hover:border-blue-300 hover:bg-blue-50/40"
+                        onClick={loadBaicaoluExample}
+                        disabled={reading}
+                      >
+                        <span className="flex-none rounded-md bg-neutral-100 px-2 py-1 text-[10px] font-bold text-neutral-600">3 页</span>
+                        <span className="min-w-0 flex-1">
+                          <strong className="block text-xs text-neutral-800">百草路撸猫战神 · 排版示例</strong>
+                          <small className="mt-0.5 block text-[10px] text-neutral-500">纯大字封面 + 长文内页，自动使用对应主题</small>
+                        </span>
+                        <span className="text-xs font-semibold text-blue-700">载入</span>
+                      </button>
                       {FIXTURES.map((fixture) => (
                         <button
                           key={fixture.path}
@@ -341,6 +375,7 @@ export function ImportDialog({
               onClick={() => {
                 setStep('source')
                 setAnalysis(null)
+                setPresetTheme(undefined)
                 setError(null)
               }}
               disabled={step === 'saving'}
@@ -430,7 +465,7 @@ function ReviewAnalysis({
             </div>
             <div>
               <dt className="text-[10px] text-neutral-400">封面副标题</dt>
-              <dd className="mt-1 text-neutral-700">{analysis.cover.subtitle || '未识别'}</dd>
+              <dd className="mt-1 text-neutral-700">{analysis.cover.subtitle || '无'}</dd>
             </div>
           </dl>
           {analysis.needsSeparatorDecision ? (

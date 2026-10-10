@@ -15,7 +15,8 @@ import {
   type CoverVertical,
 } from './coverSlots'
 import { normalizeHexColor } from './hexColor'
-import { normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
+import { normalizeCoverTitleFontFamily, normalizeCoverTitleFontSize, type CoverTitleFontSize } from './coverTitle'
+import { SYSTEM_FONT_STACK } from './fontPresets'
 
 export type LogoStrategy = 'every' | 'first' | 'first-last' | 'none'
 export type OverlayKey =
@@ -56,6 +57,8 @@ export interface Theme {
   fontSize: number
   /** Missing follows the original theme/layout rule; explicit values are final canvas CSS px. */
   coverTitleFontSize?: CoverTitleFontSize
+  /** Missing follows fontH1; applies only to the cover's primary title. */
+  coverTitleFontFamily?: string
   density: DensityLevel
   logoStrategy: LogoStrategy
   bgAssetId: string // 默认/内页背景；builtin/user asset id；'' = 纯色背景
@@ -102,20 +105,21 @@ export function getThemeCoverTextColors(themeClass: ThemeKey): CoverTextColors {
 export const BUILTIN_THEMES: Theme[] = [
   {
     id: 'builtin-elegant',
-    name: '雅致',
+    name: '百草路撸猫战神',
     isBuiltin: true,
     createdAt: 0,
     themeClass: '',
     overlay: 'none',
     h1Width: '66%',
-    fontH1: DISPLAY_SERIF,
-    fontH2: DISPLAY_SERIF,
-    fontH3: DISPLAY_SANS,
-    fontBody: DISPLAY_SANS,
+    fontH1: SYSTEM_FONT_STACK,
+    fontH2: SYSTEM_FONT_STACK,
+    fontH3: SYSTEM_FONT_STACK,
+    fontBody: SYSTEM_FONT_STACK,
     h1Bold: true,
     h2Bold: true,
     h3Bold: true,
     fontSize: 40,
+    coverTitleFontFamily: SYSTEM_FONT_STACK,
     density: 'normal',
     logoStrategy: 'every',
     bgAssetId: 'builtin-bg-xuan',
@@ -124,7 +128,7 @@ export const BUILTIN_THEMES: Theme[] = [
     coverTitleColor: '#1A1A1A',
     coverSubtitleColor: '#1A1A1A',
     coverLayout: DEFAULT_COVER_LAYOUT,
-    coverVertical: DEFAULT_COVER_VERTICAL,
+    coverVertical: 'middle',
     coverSubtitleSpacing: DEFAULT_COVER_SUBTITLE_SPACING,
     contentJSON: null,
   },
@@ -306,6 +310,7 @@ export function normalizeTheme(value: unknown): Theme | null {
     // 主题层必须 clamp 到同一区间，否则坏主题应用后自动保存会永久失败。
     fontSize: Math.min(120, Math.max(12, theme.fontSize)),
     coverTitleFontSize: normalizeCoverTitleFontSize(theme.coverTitleFontSize),
+    coverTitleFontFamily: normalizeCoverTitleFontFamily(theme.coverTitleFontFamily),
     density: theme.density as DensityLevel,
     logoStrategy: theme.logoStrategy as LogoStrategy,
     bgAssetId: theme.bgAssetId,

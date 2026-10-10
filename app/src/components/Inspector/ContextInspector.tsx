@@ -129,6 +129,7 @@ interface Props {
   overlay: OverlayKey
   coverTitleColor: string
   coverTitleFontSize?: CoverTitleFontSize
+  coverTitleFontFamily?: string
   hasCoverTitle: boolean
   coverSubtitleColor: string
   coverLayout: CoverLayout
@@ -148,6 +149,7 @@ interface Props {
   onOverlay: (value: OverlayKey) => void
   onCoverTitleColor: (color: string) => void
   onCoverTitleFontSizeChange: (value: CoverTitleFontSize | undefined) => void
+  onCoverTitleFontFamilyChange: (value: string | undefined) => void
   onCoverSubtitleColor: (color: string) => void
   onRestoreCoverColors: () => void
   onCoverLayout: (layout: CoverLayout) => void
@@ -235,7 +237,16 @@ export function ContextInspector(props: Props) {
         )}
         <div className="inspector-drawer-content" key={category} aria-label={`${current.label}设置`}>
           {category === 'text' && <>
-            <CoverTitleFontSizeField value={props.coverTitleFontSize} hasCoverTitle={props.hasCoverTitle} onChange={props.onCoverTitleFontSizeChange} />
+            <CoverTitleFontSizeField value={props.coverTitleFontSize} hasCoverTitle={props.hasCoverTitle} onChange={props.onCoverTitleFontSizeChange}>
+              <FontField
+                label="封面主标题字体"
+                value={props.coverTitleFontFamily ?? 'inherit'}
+                fonts={DISPLAY_FONTS}
+                userFontFamilies={props.userFontFamilies}
+                inheritLabel="跟随全篇 H1 字体"
+                onChange={value => props.onCoverTitleFontFamilyChange(value === 'inherit' ? undefined : value)}
+              />
+            </CoverTitleFontSizeField>
             {props.textSelectionState.active ? <TextInspector {...props} /> : (
               <div className="inspector-empty-hint"><Highlighter aria-hidden="true" /><span>请先选中标题或正文中的词，再添加关键词强调。</span></div>
             )}
@@ -701,7 +712,7 @@ function AppearanceInspector(props: Props) {
 }
 
 function TypographyInspector(props: Props) {
-  return <InspectorCard title="整篇字体" description="以下设置作用于所有页面的对应文字。" icon={<Type />}>
+  return <InspectorCard title="整篇字体" description="全篇基础样式；封面主标题可在上方单独选字体。" icon={<Type />}>
     <Field label="整体字号">
       <SimpleSelect value={String(props.fontSize)} options={FONT_SIZE_OPTIONS.map(option => ({value: String(option.value), label: option.label}))} onValueChange={value => props.onFontSize(Number(value))} />
     </Field>
@@ -739,7 +750,7 @@ function TypographyInspector(props: Props) {
             userFontFamilies={props.userFontFamilies}
             onChange={props.onFontBody}
           />
-          {[props.fontH1, props.fontH2, props.fontH3, props.fontBody].includes(SYSTEM_FONT_STACK) && (
+          {[props.coverTitleFontFamily, props.fontH1, props.fontH2, props.fontH3, props.fontBody].includes(SYSTEM_FONT_STACK) && (
             <p className="font-local-note">{SYSTEM_FONT_OPTION.note}</p>
           )}
 
@@ -829,10 +840,12 @@ function CoverTitleFontSizeField({
   value,
   hasCoverTitle,
   onChange,
+  children,
 }: {
   value?: CoverTitleFontSize
   hasCoverTitle: boolean
   onChange: (value: CoverTitleFontSize | undefined) => void
+  children?: React.ReactNode
 }) {
   const labelId = useId()
   const hintId = useId()
@@ -875,6 +888,7 @@ function CoverTitleFontSizeField({
           ? '只影响封面第一个主标题（H1），无需先选中文字。'
           : '请先在第一页添加主标题（H1），再设置独立字号。'}
       </p>
+      {children}
     </section>
   )
 }
@@ -1094,6 +1108,7 @@ function FontField({
   bold,
   onBold,
   onChange,
+  inheritLabel,
 }: {
   label: string
   value: string
@@ -1102,6 +1117,7 @@ function FontField({
   bold?: boolean
   onBold?: () => void
   onChange: (value: string) => void
+  inheritLabel?: string
 }) {
   return (
     <div className="font-field">
@@ -1112,6 +1128,7 @@ function FontField({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {inheritLabel && <SelectItem value="inherit">{inheritLabel}</SelectItem>}
             {groupFonts(fonts).map((group) => (
               <SelectGroup key={group.group}>
                 <SelectLabel>{group.group}</SelectLabel>
