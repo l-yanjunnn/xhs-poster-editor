@@ -1,0 +1,198 @@
+{
+  "version": "1.16.0",
+  "status": "completed-for-recorded-scope",
+  "updatedAtBeijing": "2026-10-10T22:27:23.867858+08:00",
+  "releaseCommit": "e402cc8006dcc61ede571dc54f249824f4254ed3",
+  "tag": "v1.16.0",
+  "tagCommit": "e402cc8006dcc61ede571dc54f249824f4254ed3",
+  "tagMatchesReleaseCommit": true,
+  "builtAssets": {
+    "index.html": "a8b932be139b66c1fd29a84cedc72142b2f448e7ae5e44d2a503cc8ac80d3b3b",
+    "assets/index-CdVwlP7M.css": "24482283b58c2d7e852b71a2962297a0ddad907203e47c3a4fc046b42bc5b3be",
+    "assets/index-CoZB2wY4.js": "5105030c5a4bd1220372e468326684d0020ab97d127aaed16a7ba6793772f1b9"
+  },
+  "evidenceDirectory": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010",
+  "local": {
+    "ci": "passed",
+    "testFiles": 59,
+    "tests": 630,
+    "typescript": "passed",
+    "lint": "passed",
+    "build": "passed",
+    "ciEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/ci.log",
+    "buildManifest": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/build-manifest.json",
+    "note": "Final release build checks; production UI results are recorded separately below."
+  },
+  "cloudflare": {
+    "url": "https://xhs-poster-editor.l-yanjunnn.workers.dev",
+    "workerBuild": "success",
+    "buildId": "42a4ef25-92ec-4cbd-88df-ae85c9f356bf",
+    "buildCommit": "e402cc8006dcc61ede571dc54f249824f4254ed3",
+    "buildEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/cloudflare-check.json",
+    "htmlJsCssMatchLocal": true,
+    "httpObservedAt": "2026-10-10T13:59:00.365000+00:00",
+    "httpEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/production-http.json",
+    "productionUi": "passed for listed checks",
+    "browser": "macOS Safari",
+    "uiChecks": {
+      "newThreePageExample": "passed",
+      "independentCoverFont": "passed: cover set to Noto Serif SC while all four global font levels remained system font, then restored",
+      "actualThreePagePngPreview": "passed"
+    },
+    "uiEvidenceSource": "Release operator verified these native browser interactions; screenshot linked below.",
+    "previewEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/cloudflare-export-preview.png",
+    "zipDownload": {
+      "status": "passed",
+      "verified": true,
+      "path": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/cloudflare-download.zip",
+      "metadata": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/cloudflare-download.json",
+      "bytes": 29530471,
+      "sha256": "807ea12ffbbd1d8dabd23ab11fddd9afe76ce08820f6ce456e863e62763699d3",
+      "zipIntegrityPassed": true,
+      "pngCount": 3,
+      "allPngDimensions": [
+        2160,
+        3600
+      ],
+      "visualInspection": "passed: independent reviewer, checks/cloudflare-png-review.md",
+      "pngs": [
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-221826/01_普通人可以完整。_cover.png",
+          "bytes": 9779913,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "9cc35f97667c00f21623cbf9d8abfd34a840f08468f97c76dce6599fc3c0d060"
+        },
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-221826/02_普通人可以完整。_inner.png",
+          "bytes": 9874346,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "796185892102c633e9c9eac1b83cb389c882485c739a29620995080077da5757"
+        },
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-221826/03_普通人可以完整。_inner.png",
+          "bytes": 9869385,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "d856a015d1614c820945bf54097986bdd44eb4c39cf1c292bf9652b92e33a260"
+        }
+      ]
+    }
+  },
+  "mainland": {
+    "url": "https://xhsposter.tshzchen.cn",
+    "ossDeploy": "success",
+    "cdnRefresh": "success",
+    "deployEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/deploy-oss.log",
+    "htmlJsCssMatchLocal": true,
+    "httpObservedAt": "2026-10-10T13:59:00.364322+00:00",
+    "httpEvidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/production-http.json",
+    "productionUi": "passed for listed checks",
+    "browser": "macOS Safari private browsing",
+    "uiChecks": {
+      "newThreePageExample": "passed",
+      "switchBackToPreviousTutorialDraft": "passed",
+      "returnToExampleDraft": "passed",
+      "refreshRestoresExample": "passed"
+    },
+    "uiEvidenceSource": "Release operator verified native browser interactions and visually inspected all three downloaded PNGs.",
+    "uiEvidence": [
+      "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/mainland-after-refresh.png",
+      "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/mainland-cover.png"
+    ],
+    "zipDownload": {
+      "status": "passed",
+      "verified": true,
+      "path": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/mainland-download.zip",
+      "metadata": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/mainland-download.json",
+      "bytes": 29543684,
+      "sha256": "7805b3e230cafbc90d7f51b85e0330cedec026c80bde00872b52f409c760bf86",
+      "zipIntegrityPassed": true,
+      "pngCount": 3,
+      "allPngDimensions": [
+        2160,
+        3600
+      ],
+      "pngMetadataRecheckedAgainstZip": true,
+      "visualInspection": "all three PNGs passed by release operator",
+      "pngs": [
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-220326/01_普通人可以完整。_cover.png",
+          "bytes": 9788314,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "ab6e43f084ffc2717e5055786b4cd30e913a6c33375f77550db3d022f52ae0b2"
+        },
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-220326/02_普通人可以完整。_inner.png",
+          "bytes": 9877764,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "879a16b3af5c48fdebc05fa81d2fd9c4a7f365f0bb8973816536c5729883e838"
+        },
+        {
+          "file": "普通人可以完整。__全部__3张__20261010-220326/03_普通人可以完整。_inner.png",
+          "bytes": 9871619,
+          "size": [
+            2160,
+            3600
+          ],
+          "sha256": "d6d742af5cae2b04ec877d322c3826577aa1ab9b2273e800e4ecb472efe8e2c8"
+        }
+      ]
+    }
+  },
+  "archive": {
+    "path": "archive/dist-v1.16.0",
+    "coreFiles": 14,
+    "allMatches": true,
+    "allMatchBuildManifest": true,
+    "fontManifestEntries": 3337,
+    "fontFilenameInventoryMatchesDist": true,
+    "fontValidationScope": "Filename inventory only; archive stores bundled font filenames and tag/rebuild instructions rather than font binaries.",
+    "trackedFilesCleanAtArchiveCheck": true,
+    "checkedAtBeijing": "2026-10-10T22:11:05.684042+08:00",
+    "evidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/checks/archive-check.json"
+  },
+  "guide": {
+    "url": "https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd",
+    "title": "小红书排版编辑器 · 使用说明",
+    "updatedTextBlocks": 7,
+    "newTextBlocks": 10,
+    "addedImages": 1,
+    "addedCaptions": 1,
+    "untouchedBlocksContentAndStylesPreserved": 141,
+    "readback": "passed",
+    "readbackErrors": [],
+    "imageSource": "Actual cover PNG downloaded from mainland production in macOS Safari; 2160×3600.",
+    "evidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/feishu-guide-proof.json"
+  },
+  "announcement": {
+    "status": "sent",
+    "messageId": "om_x100b6390e14f58acc38ba325213a30a",
+    "sender": "Claude聊天助手",
+    "recipient": "刘彦君 existing bot 1v1",
+    "scope": "cumulative v1.15–v1.16",
+    "readback": "exact text and sender verified",
+    "evidence": "/Users/a0000/Codex_YJ/tasks/xhs-release-v1.16.0-20261010/evidence/announcement-proof.json"
+  },
+  "pending": [],
+  "limitations": [
+    "Production UI checks use macOS Safari and synthetic built-in example/tutorial drafts; they do not establish all browsers or real author manuscripts.",
+    "Windows native-font real-machine behavior has not been verified; system font glyphs and wrapping may differ across devices.",
+    "Narrow-window support is not a claim of complete phone/touchscreen verification.",
+    "Independent rendering batches are not guaranteed pixel-identical; the existing export validation gates remain unchanged.",
+    "Native browser automation timed out or changed window focus during testing. Safari private windows completed the stated checks. Mainland preview screenshot was blank while backgrounded; downloaded PNGs were valid. A follow-up screenshot failed with macOS ScreenCaptureKit -3811; Cloudflare foreground preview was visually confirmed."
+  ]
+}

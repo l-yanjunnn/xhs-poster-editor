@@ -1,6 +1,6 @@
 # 小红书排版编辑器 使用说明
 
-> 本说明对应 **v1.16.0**。本轮正在执行双入口发布与生产验收，实际状态见 [HANDOFF.md](HANDOFF.md) 与 [发布说明](docs/RELEASE-v1.16.0.md)。
+> 本说明对应 **v1.16.0**。本轮已完成双入口发布、macOS Safari 示例与实际 PNG / ZIP 验收；完整范围及设备边界见 [HANDOFF.md](HANDOFF.md) 与 [发布说明](docs/RELEASE-v1.16.0.md)。
 
 ## 怎么打开
 

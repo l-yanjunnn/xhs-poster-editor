@@ -1,6 +1,6 @@
 # v1.16.0 · 百草路撸猫战神主题与独立排版示例
 
-**2026-10-10 北京时间：发布候选，本地已有验证；最终发布构建、双入口部署与生产验收待核验。** 本文记录本轮实际功能，发布提交、精确 tag、最终测试及生产证据由发布执行者补齐；不把本地预览或历史版本验收记为本版已上线。
+**2026-10-10 北京时间：双入口发布、归档、使用说明同步与本人飞书公告均已完成。** 最终测试和生产操作的准确范围见文末记录；不外推为全部设备验收。
 
 ## 这次更新了什么
 
@@ -41,19 +41,23 @@
 
 设计依据：[封面设计规则 v0.4](design/COVER-DESIGN-RULES-v0.4.md)。本地证据目录：[主题实现与验证](/Users/a0000/Codex_YJ/tasks/xhs-baicaolu-theme-implementation-20261010/)，其中 [纯大字示例证据](/Users/a0000/Codex_YJ/tasks/xhs-baicaolu-theme-implementation-20261010/evidence/pure-cover/) 保存了导入确认、编辑器与三页成品。
 
-## 发布闭环记录（待核验）
+## 发布闭环记录
 
-| 项目 | 当前记录 |
+| 项目 | 实际记录 |
 | --- | --- |
-| 发布提交 / 精确 tag | 待核验：实际 commit 与 `v1.16.0` tag；不移动历史 tag |
-| 最终构建 | 待核验：版本、生成时间、HTML / JS / CSS 文件名及 SHA-256 |
-| 最终本地门禁 | 待核验：完整测试数量、类型、lint、build、宽窄窗口、实际 PNG 与下载结果 |
-| Cloudflare 生产入口 | 待核验：部署提交、核心哈希、真实主题 / 示例 / 旧稿 / 导出操作 |
-| 大陆生产入口 | 待核验：部署与刷新结果、核心哈希、真实主题 / 示例 / 旧稿 / 导出操作 |
-| 不可覆盖归档 | 待核验：`archive/dist-v1.16.0/` 与最终构建的一致性 |
-| 使用说明 | 待核验：README / USAGE / 权威飞书说明同步及回读 |
-| 私聊公告 | 仅准备文案；待实际生产结果补齐后按授权发送并回读，不填写虚构消息 ID |
+| 发布提交 / 精确 tag | `e402cc8006dcc61ede571dc54f249824f4254ed3` / `v1.16.0`，已推送；归档文档不移动 tag |
+| 最终构建 | `index-CoZB2wY4.js` / `index-CdVwlP7M.css`；两端 HTML/JS/CSS SHA-256 与本地发布包一致 |
+| 最终本地门禁 | ci.sh 全通过：59 文件 / 630 项测试、TypeScript、ESLint、Vite build；独立审阅无阻断 |
+| Cloudflare 生产入口 | 精确代码提交 Workers Build success；Safari 三页示例、独立封面字体、真实 PNG 预览及三页 ZIP 下载通过 |
+| 大陆生产入口 | OSS 部署和 CDN 刷新成功；Safari 三页示例、旧教程往返、刷新恢复及三页 ZIP 下载通过 |
+| 成品检查 | 两个实际 ZIP 共六张 2160×3600 PNG，封面两行纯大字、内页引用/加粗/页脚完整；Cloudflare 另经独立目检 |
+| 不可覆盖归档 | `archive/dist-v1.16.0/` 14 个核心文件与 dist 一致，3337 字体分片记录文件名清单 |
+| 使用说明 | README / USAGE / 权威飞书说明已同步；飞书新增10块、1张实际封面和1图注、更新7块，141个未涉及块原样保留，回读通过 |
+| 私聊公告 | default「Claude聊天助手」向刘彦君既有1v1发送累计 v1.15–v1.16 更新；消息 `om_x100b6390e14f58acc38ba325213a30a` 全文/发送者回读一致 |
 
+生产结构化证据见 [PRODUCTION-v1.16.0.json](PRODUCTION-v1.16.0.json)。原生浏览器控制发生超时与窗口焦点变化，最终使用 Safari 无痕环境完成列出的操作。大陆 PNG 预览在后台截图曾空白，实际下载内容正常；补拍遇 macOS ScreenCaptureKit -3811。Cloudflare 前台 PNG 预览明确可见，六张下载原图均已核验。此限制不记成成品生成失败，也不虚写大陆补截图成功。
+
+本轮生产验收不覆盖 Windows、真实手机、全部浏览器、真实作者稿或原生目录选择器；不承诺独立渲染批次全像素相同。本地各阶段与生产结果分别记录。
 首选入口：[大陆通道](https://xhsposter.tshzchen.cn)。备用入口：[Cloudflare](https://xhs-poster-editor.l-yanjunnn.workers.dev)。详细操作：[权威飞书使用说明](https://icnyqonxxzop.feishu.cn/docx/SFDddCFb3o8T5VxP2wBcb0XXndd)。
 
 近期工具调整见 [v1.15.0 发布说明](RELEASE-v1.15.0.md)：六类右栏、系统字体置顶、封面独立字号、两种强调与独立五色色板、窄窗口切换。其最终生产状态以该版本的实际记录为准，不由本文追认。
